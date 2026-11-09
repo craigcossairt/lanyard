@@ -87,8 +87,8 @@ changes. [Inputs](../../data/seed/question-pairs.json),
 Plan-my-day retrieves at most 50 candidates from the requested event-local
 calendar day, with exact UTC day bounds applied **before ranking** (including
 23/25-hour DST days). The model may select only those session IDs. Server
-validation rejects invented/cross-event/duplicate IDs, caps the plan at eight,
-orders it by start time and removes overlaps.
+validation rejects invented/cross-event/duplicate IDs and plans longer than
+eight, orders accepted plans by start time and removes overlaps.
 
 Ask-the-conference retrieves at most 12 transcript/question passages with RRF,
 excludes hidden questions, and accepts only exact retrieved
@@ -107,9 +107,20 @@ the client through `https://lanyard.cnh.radarhq.io`:
 | Same plan after retry delay | 200, eight real IDs, no overlaps | 2.039 s |
 
 Each measured response stayed below 8 s; the cold plan completed in about
-11.65 s including the 2 s retry delay. Search/plan/ask route smokes additionally
-cover event/role isolation and invalid citations. No private question,
-transcript, interest text or credentials are included in telemetry.
+11.65 s including the 2 s retry delay.
+
+**Organizer ask verified at 2026-11-09T21:28:56.897Z**, deployed version
+`07f2b03` (includes #39): a fixed question about attendee concerns returned
+**200 with a cited answer in 5.283 s**, below the 7.5 s wait budget, without a
+pending response or retry. Its one question citation was independently checked
+against ES metadata: the record exists in `cnh-demos`, paired with session
+`cnh-demos-opening`. An unrelated overflow prompt returned an explicit
+no-answer in 3.571 s rather than inventing guidance. These are individual
+client measurements, not percentile latency claims.
+
+Search/plan/ask route smokes additionally cover event/role isolation and invalid
+citations. No private question, transcript, interest text or credentials are
+included in telemetry.
 
 [Search implementation](../../apps/api/src/modules/search/search.ts) ·
 [plan validation](../../apps/api/src/modules/search/plan.ts) ·

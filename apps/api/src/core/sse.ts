@@ -18,6 +18,8 @@ import { getBus } from './context';
 const HEARTBEAT_MS = 15_000;
 /** Reconnect hint for clients (ms); they back off exponentially from here. */
 const RETRY_MS = 2_000;
+const READY_TIMEOUT_MS = 2_000;
+const MAX_BUFFERED_BYTES = 512 * 1024;
 
 const clientsGauge = metrics.getMeter('lanyard').createUpDownCounter(METRICS.sseClients);
 
@@ -49,10 +51,19 @@ export function openSse(req: FastifyRequest, reply: FastifyReply, opts: SseOptio
   res.write(`retry: ${RETRY_MS}\n\n`);
 
   let closed = false;
-  const send = (event: string, data: unknown, id?: string) => {
+  // Backpressure: a client that stops reading gets dropped once its buffer passes the
+  // cap; it reconnects and refetches its snapshot, so nothing is silently lost.
+  const write = (chunk: string) => {
     if (closed) return;
-    res.write(`${id ? `id: ${id}\n` : ''}event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    if (res.writableLength > MAX_BUFFERED_BYTES) {
+      close();
+      res.destroy(); // don't wait behind a full buffer
+      return;
+    }
+    res.write(chunk);
   };
+  const send = (event: string, data: unknown, id?: string) =>
+    write(`${id ? `id: ${id}\n` : ''}event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 
   const bus = getBus();
   const unsubs = subs.map((channel) =>
@@ -61,19 +72,24 @@ export function openSse(req: FastifyRequest, reply: FastifyReply, opts: SseOptio
       if (out) send(out.type, out);
     }),
   );
-  const heartbeat = setInterval(() => !closed && res.write(`: hb ${Date.now()}\n\n`), HEARTBEAT_MS);
+  const heartbeat = setInterval(() => write(`: hb ${Date.now()}\n\n`), HEARTBEAT_MS);
   clientsGauge.add(1, { channel_kind: kind });
 
-  const close = () => {
+  function close() {
     if (closed) return;
     closed = true;
     clearInterval(heartbeat);
     unsubs.forEach((u) => u());
     clientsGauge.add(-1, { channel_kind: kind });
     res.end();
-  };
+  }
   req.raw.on('close', close);
 
-  send('ready', { channels: subs.map(channelKind), retryMs: RETRY_MS });
+  // Say "ready" only once every channel is live (or after 2 s), so a client that
+  // refetches its snapshot on "ready" can't miss messages published in between.
+  void Promise.race([
+    Promise.all(unsubs.map((u) => u.ready)),
+    new Promise((r) => setTimeout(r, READY_TIMEOUT_MS)),
+  ]).then(() => send('ready', { channels: subs.map(channelKind), retryMs: RETRY_MS }));
   return { send, close };
 }

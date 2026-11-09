@@ -10,11 +10,13 @@ import { logger } from './logger';
 
 export type Handler = (msg: RealtimeMessage, channel: Channel) => void;
 
+/** Call it to unsubscribe; `ready` resolves once the channel is live on Valkey. */
+export type Subscription = (() => void) & { ready: Promise<void> };
+
 export interface Bus {
   readonly kind: 'valkey' | 'memory';
   publish(channel: Channel, msg: RealtimeMessage): Promise<void>;
-  /** Returns an unsubscribe function. */
-  subscribe(channel: Channel, handler: Handler): () => void;
+  subscribe(channel: Channel, handler: Handler): Subscription;
   close(): Promise<void>;
 }
 
@@ -30,8 +32,9 @@ function observeFanout(channel: Channel, msg: RealtimeMessage): void {
 /** Refcounted local fan-out shared by both implementations. */
 class LocalFanout {
   private emitter = new EventEmitter().setMaxListeners(0);
+  private ready = new Map<string, Promise<void>>();
   count = (ch: string) => this.emitter.listenerCount(ch);
-  on(ch: Channel, h: Handler, onFirst: () => void, onLast: () => void): () => void {
+  on(ch: Channel, h: Handler, onFirst: () => Promise<void>, onLast: () => void): Subscription {
     const wrapped = (m: RealtimeMessage) => {
       try {
         h(m, ch);
@@ -39,15 +42,20 @@ class LocalFanout {
         logger.warn({ err, channel_kind: channelKind(ch) }, 'bus handler failed');
       }
     };
-    if (this.count(ch) === 0) onFirst();
+    const first = this.count(ch) === 0;
     this.emitter.on(ch, wrapped);
+    if (first) this.ready.set(ch, onFirst());
     let done = false;
-    return () => {
+    const off = () => {
       if (done) return;
       done = true;
       this.emitter.off(ch, wrapped);
-      if (this.count(ch) === 0) onLast();
+      if (this.count(ch) === 0) {
+        this.ready.delete(ch);
+        onLast();
+      }
     };
+    return Object.assign(off, { ready: this.ready.get(ch) ?? Promise.resolve() });
   }
   emit(ch: Channel, m: RealtimeMessage): void {
     observeFanout(ch, m);
@@ -65,7 +73,7 @@ class MemoryBus implements Bus {
     return this.local.on(
       channel,
       handler,
-      () => {},
+      async () => {},
       () => {},
     );
   }
@@ -117,12 +125,25 @@ class ValkeyBus implements Bus {
     return this.local.on(
       channel,
       handler,
-      () =>
-        void this.sub
-          .subscribe(channel)
-          .catch((err) => logger.warn({ err: err.message }, 'subscribe failed')),
+      () => this.subscribeWithRetry(channel),
       () => void this.sub.unsubscribe(channel).catch(() => {}),
     );
+  }
+
+  /** SUBSCRIBE, retrying with backoff while anyone still listens; never rejects. */
+  private async subscribeWithRetry(channel: Channel): Promise<void> {
+    for (let delay = 250; this.local.count(channel) > 0; delay = Math.min(delay * 2, 5000)) {
+      try {
+        await this.sub.subscribe(channel);
+        return;
+      } catch (err) {
+        logger.warn(
+          { err: (err as Error).message, channel_kind: channelKind(channel) },
+          'subscribe failed; retrying',
+        );
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
   }
 
   async close() {

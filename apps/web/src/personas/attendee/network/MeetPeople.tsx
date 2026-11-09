@@ -4,6 +4,7 @@ import type {
   NetworkingSuggestionsResponse,
 } from '@lanyard/contracts';
 import { api, ApiError } from '../../../app/api';
+import { Button, Card, TextArea, TextInput } from '../../../ui';
 import { AttendeeHeader } from '../components/AttendeeHeader';
 import { useEventId, useSession } from '../lib/session';
 import './network.css';
@@ -104,6 +105,7 @@ export default function MeetPeople() {
 
   const toggleOptIn = (checked: boolean) => {
     if (checked) {
+      setOptInSelected(true);
       setError('');
       setStatus('Save your profile to join the attendee match list.');
     } else if (optedIn) {
@@ -133,23 +135,21 @@ export default function MeetPeople() {
           <p role="status" className="at-muted">Loading your networking settings…</p>
         ) : (
           <>
-            <label className="at-check at-network__toggle" htmlFor="networking-opt-in">
-              <input
-                id="networking-opt-in"
-                type="checkbox"
-                checked={optInSelected}
-                onChange={(event) => toggleOptIn(event.currentTarget.checked)}
-                disabled={saving}
-              />
+            <Button
+              className="at-network__toggle"
+              type="button"
+              aria-pressed={optInSelected}
+              onClick={() => toggleOptIn(!optInSelected)}
+              disabled={saving}
+            >
               I want to meet people at this event
-            </label>
+            </Button>
 
             {optInSelected && (
-              <form className="at-fieldset" onSubmit={save}>
-                <label htmlFor="networking-linkedin" className="at-label">LinkedIn profile URL</label>
-                <input
+              <form className="at-network__form" onSubmit={save}>
+                <TextInput
                   id="networking-linkedin"
-                  className="at-input"
+                  label="LinkedIn profile URL"
                   type="url"
                   required
                   pattern="https://(www\.)?linkedin\.com/in/[A-Za-z0-9-]+"
@@ -159,43 +159,40 @@ export default function MeetPeople() {
                   onChange={(event) => updateProfile('linkedinUrl', event.currentTarget.value)}
                   placeholder="https://www.linkedin.com/in/your-slug"
                 />
-                <label htmlFor="networking-needs" className="at-label">Who would you like to meet?</label>
-                <textarea
+                <TextArea
                   id="networking-needs"
-                  className="at-textarea"
+                  label="Who would you like to meet?"
                   required
                   maxLength={240}
                   value={profile.needs}
                   onChange={(event) => updateProfile('needs', event.currentTarget.value)}
                   placeholder="People building reliable AI platforms"
                 />
-                <label htmlFor="networking-offers" className="at-label">What can you help with?</label>
-                <textarea
+                <TextArea
                   id="networking-offers"
-                  className="at-textarea"
+                  label="What can you help with?"
                   required
                   maxLength={240}
                   value={profile.offers}
                   onChange={(event) => updateProfile('offers', event.currentTarget.value)}
                   placeholder="Lessons from running Kubernetes at scale"
                 />
-                <label htmlFor="networking-interests" className="at-label">Interests</label>
-                <input
+                <TextInput
                   id="networking-interests"
-                  className="at-input"
+                  label="Interests"
                   required
                   maxLength={500}
                   value={profile.interests}
                   onChange={(event) => updateProfile('interests', event.currentTarget.value)}
                   placeholder="OpenTelemetry, platform engineering"
                 />
-                <div className="at-sheet__actions">
-                  <button type="submit" className="at-btn at-btn--primary" disabled={saving}>
+                <div className="at-network__actions">
+                  <Button type="submit" variant="primary" disabled={saving}>
                     {saving ? 'Saving…' : 'Save my profile'}
-                  </button>
-                  <button type="button" className="at-btn" onClick={() => void remove()} disabled={saving}>
+                  </Button>
+                  <Button type="button" variant="danger" onClick={() => void remove()} disabled={saving}>
                     Remove me
-                  </button>
+                  </Button>
                 </div>
               </form>
             )}
@@ -209,13 +206,13 @@ export default function MeetPeople() {
               ) : (
                 <ul className="at-network__list" aria-live="polite">
                   {matches.map((match) => (
-                    <li className="at-card" key={`${match.handle}:${match.linkedinUrl}`}>
+                    <Card as="li" className="at-network__match" key={`${match.handle}:${match.linkedinUrl}`}>
                       <h3 className="at-card__title">{match.handle}</h3>
                       <p className="at-card__why">{match.reason}</p>
                       <a href={match.linkedinUrl} target="_blank" rel="noreferrer">
                         View LinkedIn profile <span className="at-sr-only">for {match.handle}</span>
                       </a>
-                    </li>
+                    </Card>
                   ))}
                 </ul>
               )}

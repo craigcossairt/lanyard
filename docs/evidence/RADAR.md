@@ -39,7 +39,7 @@ URL checks alongside: `https://lanyard.cnh.radarhq.io/` served `version f8c3220`
 - **Finding:** "Deployment app is healthy now: the rollout to a new image finished and both replicas are ready with no restarts." `healthy: true`, `certainty: established`, `confidence: 0.92`, `inconclusive: false`.
 - **What it worked through:** its first evidence bundle landed mid-rollout (four image tags `63f928d` → `f1f876d` → `51317cf` → `7596c48` within 5 minutes), with a surge pod's readiness and liveness probes reporting "connection refused". It re-read that pod (Running/Ready, 0 restarts), saw the probe warnings stop once the container bound :8080, and confirmed the Deployment's `Progressing` condition: "ReplicaSet has successfully progressed".
 - **Caveat it stated:** health is established at the time of the check only. Probe warnings outside a deploy window, or accumulating restarts, would warrant a fresh look.
-- **Our action:** none needed. This matches our own Radar reads (0 issues at 19:37Z and 19:42Z). It's evidence that the rapid multi-PR release train didn't destabilize `app`.
+- **What we learned and did:** the verdict matches our own Radar reads (0 issues at 19:37Z and 19:42Z), so the rapid multi-PR release train didn't destabilize `app`. But the investigation surfaced a real, cheap improvement: readiness and liveness fire before the process listens. We added a `startupProbe` (`httpGet /healthz`, every 2 s, up to 30 tries = 60 s) to `app` and `worker` in [#23](https://github.com/craigcossairt/lanyard/pull/23), citing this run. Closing the loop: after #23 deploys, a follow-up on the same run asks "after adding startupProbe, do the probe warnings still occur during rollouts?"; the answer gets recorded here.
 
 ## Checks (audit) before / after
 

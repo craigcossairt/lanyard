@@ -7,7 +7,7 @@ For WS3 (attendee and speaker), WS4 (organizer) and WS6 (accessibility). Design 
 In `apps/web/src/main.tsx`, replace the neutral theme import and wrap the app:
 
 ```tsx
-import './ui/styles.css'; // replaces './app/neutral-theme.css'
+import './ui/styles.css';
 import { DisplayPrefsProvider, ToastProvider } from './ui';
 
 <DisplayPrefsProvider>

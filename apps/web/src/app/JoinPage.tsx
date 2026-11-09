@@ -1,10 +1,12 @@
 // /join: role links land here as /join#t=<token> (captured in main.tsx before RUM);
 // attendees join an event by picking it or entering its join code.
 import { useState, type FormEvent } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { EVENT_IDS } from '@lanyard/contracts';
+import { Button, TextInput } from '../ui';
 import { ApiError, api } from './api';
 import { homeFor, saveToken } from './auth';
+import { EVENT_NAMES, Wordmark } from './brand';
 import { useSession } from './session';
 
 export function JoinPage() {
@@ -31,37 +33,52 @@ export function JoinPage() {
       saveToken(res.token);
       navigate(homeFor(res.role), { replace: true });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not join. Try again.');
+      setError(
+        err instanceof ApiError && (err.status === 404 || err.status === 400)
+          ? 'We couldn’t find that event or join code. Check it and try again.'
+          : 'Couldn’t join just now. Check your connection and try again.',
+      );
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <main className="shell">
+    <main className="page join" id="main">
+      <header className="page__brand">
+        <Link to="/" aria-label="Lanyard home" className="wordmark-link">
+          <Wordmark />
+        </Link>
+      </header>
       <h1>Join an event</h1>
       <form onSubmit={submit} className="stack">
-        <label>
-          Event{' '}
+        <label className="join__label">
+          Event
           <select value={eventId} onChange={(e) => setEventId(e.target.value)}>
-            <option value={EVENT_IDS.cnhDemos}>CNH Demos</option>
-            <option value={EVENT_IDS.kubecon}>KubeCon + CloudNativeCon NA 2026</option>
+            {Object.entries(EVENT_NAMES).map(([id, name]) => (
+              <option key={id} value={id}>
+                {name}
+              </option>
+            ))}
           </select>
         </label>
-        <label>
-          or join code{' '}
-          <input value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" />
-        </label>
-        <button type="submit" disabled={busy}>
+        <TextInput
+          label="Or a join code"
+          hint="Printed on the room screen. Leave empty to join the event above."
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          autoComplete="off"
+        />
+        <Button type="submit" variant="primary" size="lg" disabled={busy}>
           {busy ? 'Joining…' : 'Join anonymously'}
-        </button>
+        </Button>
         {error && (
           <p role="alert" className="error">
             {error}
           </p>
         )}
       </form>
-      <p className="muted">No sign-up and no personal data: you get a random handle.</p>
+      <p className="page__foot muted">No sign-up and no personal data: you get a random handle.</p>
     </main>
   );
 }

@@ -19,6 +19,7 @@ const key = (run: Crowd, suffix: string) => `ops:cnh-demos:simulation:${run.id}:
 export function createDemoRunner(app: FastifyInstance, ctx: ModuleContext, cleanup: CleanupSynthetic,
   ownsLease: () => Promise<boolean>, now = Date.now) {
   const work = new Map<string, Promise<void>>();
+  const drain = () => Promise.allSettled(work.values());
   let subscriptions: Subscription[] = [];
   let subscribedRun: string | undefined;
   let active = false;
@@ -120,7 +121,7 @@ export function createDemoRunner(app: FastifyInstance, ctx: ModuleContext, clean
     },
     async cleanup(run: Crowd) {
       detach();
-      await Promise.allSettled(work.values());
+      await drain();
       const [questionIds, chunkIds] = await Promise.all([
         kv().smembers(key(run, 'questions')), kv().smembers(key(run, 'chunks')),
       ]);
@@ -129,6 +130,7 @@ export function createDemoRunner(app: FastifyInstance, ctx: ModuleContext, clean
       await kv().del(...['questions', 'chunks', 'dispatched', 'offers'].map(suffix => key(run, suffix)));
     },
     detach,
-    async close() { detach(); await Promise.allSettled(work.values()); },
+    drain,
+    async close() { detach(); await drain(); },
   };
 }

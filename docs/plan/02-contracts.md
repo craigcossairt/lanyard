@@ -45,7 +45,7 @@ All ids are opaque strings. All times are **UTC ISO-8601** in storage and transi
 | Match (P1) | anonId, boothId or anonId, score, consented flag | Only with consent |
 
 ## 3. Elasticsearch indices (Elastic Cloud, prefix `cnh-`)
-Each index has a `semantic` field of type `semantic_text` where noted. It uses the deployment's default inference endpoint, which WS1 verifies in the first 30 minutes. The fallback is a `dense_vector` field filled with OpenAI embeddings.
+Each index has a `semantic` field of type `semantic_text` where noted. **Source fields stay ordinary `text` fields with `copy_to: "semantic"`** (sessions: title, abstract, speakerNames; transcripts and questions: text; people: interests; booths: description), and every semantic query targets the field named `semantic`. Writers only index the plain fields, and embeddings are filled automatically. It uses the deployment's default inference endpoint, which WS1 verifies in the first 30 minutes. The fallback is a `dense_vector` field filled with OpenAI embeddings.
 
 | Index | Mappings (described) | Queries it serves |
 |---|---|---|

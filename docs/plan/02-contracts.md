@@ -90,6 +90,8 @@ Roles are carried by a signed token: attendee (issued on join), or speaker, orga
 | GET `/sessions/:id/digest` | speaker | P1 post-talk digest | WS2 |
 | GET `/events/:eventId/ops` | organizer | Room grid snapshot | WS4 |
 | GET `/events/:eventId/ops/stream` | organizer | SSE ops stream | WS4 |
+| GET `/events/:eventId/ops/simulation` | organizer | Read `SimulationStatus`; CNH Demos only | WS4 |
+| POST `/events/:eventId/ops/simulation` | organizer | `SimulationControlRequest` `{ running, attendees? }`; start or stop a SIMULATED crowd of 1–200 attendees (default 40) | WS4 |
 | POST `/events/:eventId/alerts/:id/reroute` | organizer | Push alternatives to attendees of a full room | WS4 |
 | POST `/events/:eventId/reroute/accept` | attendee | Body `{ suggestionId }`; idempotently count acceptance, return `{ accepted, sessionId }`. Client then joins via the normal presence route | WS4 |
 | GET `/events/:eventId/rooms/:roomId/history` | organizer | Occupancy and signal series | WS4 |
@@ -98,6 +100,8 @@ Roles are carried by a signed token: attendee (issued on join), or speaker, orga
 Errors use a JSON body with `error.code` and `error.message`. Every route validates input with the shared schema library chosen by WS0: **zod 4**. `packages/contracts` exports a zod schema and a TypeScript type with the same name for every entity, request and response (`JoinRequest`, `JoinResponse`, `EventView`, `SessionSnapshot`, ...), so the exact field names live there.
 
 The ops snapshot's `RoomStatus` includes optional `questionCount` (a nonnegative integer). Reroute recommendations include optional `suggestionId` for the acceptance route; WS4 always supplies it on new suggestions.
+
+The P2 crowd simulator is visibly labelled **SIMULATED**, is restricted to `cnh-demos`, and requires concurrent Main Stage and Side Stage sessions. `SimulationStatus` contains `{ simulated: true, running, stopping, attendees, startedAt?, endsAt? }` with UTC timestamps. Only one run may exist at a time. New simulated activity stops after at most ten minutes; `stopping` remains true while normal presence-leave calls remove the simulated attendees. A new run is refused until cleanup completes. All simulated presence, questions and signals use the normal attendee handlers and their metrics; the simulator does not write WS2's live-state keys directly.
 
 ## 5. Realtime messages (SSE, fanned out via Valkey channels)
 Channels: `session:<id>`, `ops:<eventId>`, `user:<anonId>`. Each message has `type`, `at` and a `payload` (`RealtimeMessage` in `packages/contracts`; build one with `realtime(type, payload)`). Payload ids are named `chunkId`, `questionId`, `clusterId`, `sessionId`, `roomId`.
@@ -128,6 +132,7 @@ WS2 writes live state; WS4 reads it through the core `ctx.kv` client (500 ms tim
 - `questions:{sessionId}:count` INT.
 - WS2 treats an SSE disconnect as leave after a 30 s grace.
 - WS4 stores suggestions as `reroute:{suggestionId}` HASH `{anonId, alertId, fromRoomId, toSessionId}`, TTL 15 min.
+- WS4 owns `ops:cnh-demos:simulation` (bounded run metadata retained until cleanup), its `:lease` (20-second elected runner lease), and `:stop:{runId}` (24-hour stop request). These keys contain no tokens. Persisted actor IDs use a `sim_` prefix and are never metric labels or logged.
 
 The ops rules open an overflow alert at occupancy ≥90%, and a signal-spike alert at ≥5 `lost` or `louder` signals within the rolling 60-second window. Acceptance increments `conf.reroute.accepted` once per suggestion; normal presence handles the subsequent session move.
 

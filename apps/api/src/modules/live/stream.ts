@@ -8,7 +8,7 @@ import {
   type RealtimeMessage,
 } from '@lanyard/contracts';
 import { authOf, requireAuth } from '../../core/auth';
-import { getContext } from '../../core/context';
+import { getBus, getContext } from '../../core/context';
 import { logger } from '../../core/logger';
 import { openSse } from '../../core/sse';
 import { applyPresence } from './presence';
@@ -141,6 +141,11 @@ export function registerStream(app: FastifyInstance): void {
           return undefined;
         },
       });
+      // Read state only once the session channel is live on Valkey (max 2 s), so the
+      // buffer above covers everything published after the snapshot's reads.
+      const probe = getBus().subscribe(channels.session(s.id), () => {});
+      await Promise.race([probe.ready, new Promise((r) => setTimeout(r, 2_000))]);
+      probe();
       let snap: LiveSnapshot;
       try {
         snap = await buildSnapshot(s);

@@ -11,13 +11,31 @@ import type {
 } from '@lanyard/contracts';
 import { getSession } from './auth';
 
+/**
+ * What a person sees for a failed call. Server messages are for developers ("WORKER_URL is not
+ * set"), so `message` is always one of these sentences; the server's text stays in `detail`.
+ */
+export function friendlyMessage(status: number, code: string): string {
+  if (code === 'bad_join_code') return 'That join code doesn’t match this event.';
+  if (status === 401) return 'Your link has expired. Open it again, or rejoin the event.';
+  if (status === 403) return 'Your link doesn’t give access to that.';
+  if (status === 404) return 'We couldn’t find that. It may have moved or ended.';
+  if (status === 400 || status === 422) return 'That didn’t look right. Check it and try again.';
+  if (status === 429) return 'Lots of people are doing that right now. Try again in a moment.';
+  if (status >= 500) return 'That isn’t available right now. Try again in a moment.';
+  return 'Something went wrong. Try again.';
+}
+
 export class ApiError extends Error {
+  /** The server's own message, for logs and debugging. Never show it to people. */
+  public readonly detail: string;
   constructor(
     public readonly status: number,
     public readonly code: string,
-    message: string,
+    detail: string,
   ) {
-    super(message);
+    super(friendlyMessage(status, code));
+    this.detail = detail;
   }
 }
 
@@ -42,7 +60,13 @@ async function request<T>(
     signal: AbortSignal.timeout(timeoutMs),
   });
   const text = await res.text();
-  const data: unknown = text ? JSON.parse(text) : undefined;
+  let data: unknown;
+  try {
+    data = text ? JSON.parse(text) : undefined;
+  } catch {
+    // A gateway or proxy error page (HTML), not our API: fall through to the status code.
+    if (res.ok) throw new ApiError(502, 'bad_response', 'Response was not JSON');
+  }
   if (!res.ok) {
     const err = (data as { error?: { code?: string; message?: string } } | undefined)?.error;
     throw new ApiError(res.status, err?.code ?? 'http_error', err?.message ?? res.statusText);

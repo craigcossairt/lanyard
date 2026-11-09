@@ -58,6 +58,7 @@ export function RoomTile({
         value={occupancy}
         max={capacity}
         valueText={`${occupancy} / ${capacity}`}
+        overText="over capacity"
         warnAt={0.75}
         critAt={0.9}
       />

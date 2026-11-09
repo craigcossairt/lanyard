@@ -7,6 +7,8 @@ export interface MeterProps {
   max?: number;
   /** Visible value text, e.g. "212 / 240". Defaults to a percentage. */
   valueText?: string;
+  /** Appended when value is over max, e.g. "over capacity". Occupancy only; lag and signals omit it. */
+  overText?: string;
   /**
    * Colour by threshold (fraction of max): below warnAt is ok, from warnAt is warn, from critAt is crit.
    * Omit both for a neutral accent bar. The value text always carries the number, so colour is never alone.
@@ -23,6 +25,7 @@ export function Meter({
   value,
   max = 100,
   valueText,
+  overText,
   warnAt,
   critAt,
   size = 'default',
@@ -39,6 +42,9 @@ export function Meter({
           ? 'ok'
           : null;
   const text = valueText ?? `${Math.round(ratio * 100)}%`;
+  // aria-valuenow must sit inside [min, max]. The words keep the real count ("34 / 30").
+  const now = Math.min(max, Math.max(0, value));
+  const described = overText && value > max ? `${text}, ${overText}` : text;
   return (
     <div
       className={cx(
@@ -52,15 +58,15 @@ export function Meter({
         <span id={labelId} className="ly-meter__label">
           {label}
         </span>
-        <span className="ly-meter__value">{text}</span>
+        <span className="ly-meter__value">{described}</span>
       </div>
       <div
         className="ly-meter__track"
         role="meter"
         aria-valuemin={0}
         aria-valuemax={max}
-        aria-valuenow={value}
-        aria-valuetext={text}
+        aria-valuenow={now}
+        aria-valuetext={described}
         aria-labelledby={labelId}
       >
         <div className="ly-meter__fill" style={{ width: `${ratio * 100}%` }} />

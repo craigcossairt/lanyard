@@ -37,11 +37,19 @@ export async function seed({ refreshDemoWindow = false } = {}) {
       { index: 'cnh-events', source: event, doc: { startsAt: event.startsAt, endsAt: event.endsAt } },
       ...sessions.map(source => ({ index: 'cnh-sessions', source, doc: { title: source.title, startsAt: source.startsAt, endsAt: source.endsAt, status: source.status } })),
     ];
-    const body = rows.flatMap(row => [JSON.stringify({ update: { _index: row.index, _id: row.source.id } }), JSON.stringify({ doc: row.doc, upsert: row.source })]).join('\n') + '\n';
+    const existing = await request('/_mget', { method: 'POST', body: { docs: rows.map(row => ({ _index: row.index, _id: row.source.id, _source: Object.keys(row.doc) })) }, timeoutMs: 10_000 });
+    if (existing.docs?.length !== rows.length || existing.docs.some(doc => doc.error)) throw new Error('Seed demo refresh could not read existing fixtures');
+    const changed = rows.filter((row, i) => !existing.docs[i].found || Object.entries(row.doc).some(([key, value]) => existing.docs[i]._source?.[key] !== value));
+    // semantic_text updates can re-run inference even when these fields are unchanged.
+    if (!changed.length) {
+      console.log(JSON.stringify({ action: 'refresh-demo-window', documents: 3, noops: 3 }));
+      return;
+    }
+    const body = changed.flatMap(row => [JSON.stringify({ update: { _index: row.index, _id: row.source.id } }), JSON.stringify({ doc: row.doc, upsert: row.source })]).join('\n') + '\n';
     const result = await request('/_bulk', { method: 'POST', body, ndjson: true, timeoutMs: 120_000 });
-    if (result.items.length !== 3 || result.items.some(({ update }) => update.status !== 200 && update.status !== 201)) throw new Error('Bulk demo window refresh failed');
+    if (result.items.length !== changed.length || result.items.some(({ update }) => update.status !== 200 && update.status !== 201)) throw new Error('Bulk demo window refresh failed');
     await request('/cnh-events,cnh-sessions/_refresh', { method: 'POST', timeoutMs: 60_000 });
-    console.log(JSON.stringify({ action: 'refresh-demo-window', documents: 3, noops: result.items.filter(({ update }) => update.result === 'noop').length }));
+    console.log(JSON.stringify({ action: 'refresh-demo-window', documents: 3, noops: rows.length - changed.length + result.items.filter(({ update }) => update.result === 'noop').length }));
     return;
   }
   for (const entity of ['events', 'rooms', 'speakers', 'sessions']) {

@@ -8,8 +8,8 @@ import type {
   SignalType,
 } from '@lanyard/contracts';
 import { api } from '../../attendee/lib/api';
-import type { LiveSnapshot } from '../../attendee/lib/live';
-import { useSse, type SseStatus, type StreamEvent } from '../../attendee/lib/sse';
+import type { CaptionLine, LiveSnapshot } from '../../attendee/lib/live';
+import { useSse, type SseStatus } from '../../../app/sse';
 
 export type SignalCounts = Partial<Record<SignalType, number>>;
 
@@ -19,12 +19,21 @@ interface State {
   clusters: QuestionCluster[];
   signals: SignalCounts;
   attendance: { count: number; capacity: number } | null;
-  captionCount: number;
+  /** What attendees see: the snapshot tail plus every caption.appended, from any source. */
+  captions: CaptionLine[];
   ended: boolean;
 }
 
+const MAX_CAPTIONS = 300;
+function addCaption(list: CaptionLine[], c: CaptionLine): CaptionLine[] {
+  // Our own POSTs come back on the stream too: one entry per chunk id.
+  if (list.some((x) => x.chunkId === c.chunkId)) return list;
+  return [...list, c].sort((a, b) => a.seq - b.seq).slice(-MAX_CAPTIONS);
+}
+
 type Action =
-  | { type: 'event'; e: StreamEvent }
+  | { type: 'snapshot'; snapshot: LiveSnapshot }
+  | { type: 'message'; m: RealtimeMessage }
   | { type: 'status'; questionId: string; status: QuestionStatus };
 
 function upsert<T extends { id: string }>(
@@ -48,24 +57,33 @@ function reducer(state: State, action: Action): State {
       ),
     };
   }
-  const e = action.e;
-  if (e.type === 'snapshot') {
-    const p = (e as LiveSnapshot).payload;
+  if (action.type === 'snapshot') {
+    const p = action.snapshot.payload;
     return {
       ready: true,
       questions: p.questions,
       clusters: p.clusters,
       signals: (p.signals?.counts ?? {}) as SignalCounts,
       attendance: p.attendance ?? state.attendance,
-      captionCount: p.captions.length,
+      captions: p.captions
+        .map((c) => ({ chunkId: c.chunkId, seq: c.seq, text: c.text }))
+        .sort((a, b) => a.seq - b.seq)
+        .slice(-MAX_CAPTIONS),
       ended: p.status === 'ended',
     };
   }
-  const m = e as RealtimeMessage;
+  const m = action.m;
   const sid = state.questions[0]?.sessionId ?? state.clusters[0]?.sessionId ?? '';
   switch (m.type) {
     case 'caption.appended':
-      return { ...state, captionCount: state.captionCount + 1 };
+      return {
+        ...state,
+        captions: addCaption(state.captions, {
+          chunkId: m.payload.chunkId,
+          seq: m.payload.seq,
+          text: m.payload.text,
+        }),
+      };
     case 'question.created':
     case 'question.updated':
       return {
@@ -129,7 +147,7 @@ const initial: State = {
   clusters: [],
   signals: {},
   attendance: null,
-  captionCount: 0,
+  captions: [],
   ended: false,
 };
 
@@ -141,8 +159,13 @@ export interface ConsoleApi extends State {
 
 export function useSpeakerConsole(sessionId: string): ConsoleApi {
   const [state, dispatch] = useReducer(reducer, initial);
-  const onEvent = useCallback((e: StreamEvent) => dispatch({ type: 'event', e }), []);
-  const stream = useSse(`/sessions/${encodeURIComponent(sessionId)}/stream`, onEvent);
+  const onMessage = useCallback((m: RealtimeMessage) => dispatch({ type: 'message', m }), []);
+  const onEvent = useCallback((event: string, data: unknown) => {
+    if (event === 'snapshot') dispatch({ type: 'snapshot', snapshot: data as LiveSnapshot });
+  }, []);
+  const stream = useSse(`/sessions/${encodeURIComponent(sessionId)}/stream`, onMessage, {
+    onEvent,
+  });
 
   const setAnswered = useCallback(
     async (clusterId: string, answered: boolean) => {

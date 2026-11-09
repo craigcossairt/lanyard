@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import type { SearchResponse } from '@lanyard/contracts';
+import { Banner, Button, TextInput } from '../../ui';
 import { AttendeeHeader } from './components/AttendeeHeader';
 import { SessionCard } from './components/SessionCard';
 import { api, ApiError } from './lib/api';
@@ -26,7 +27,6 @@ export default function Search() {
   const [result, setResult] = useState<SearchResponse | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // Keep the URL as the source of truth, debounced from typing.
   useEffect(() => {
@@ -71,10 +71,6 @@ export default function Search() {
     };
   }, [q, eventId]);
 
-  useEffect(() => {
-    if (!q) inputRef.current?.focus();
-  }, [q]);
-
   const hits = result?.hits ?? [];
   const summary =
     status === 'loading'
@@ -95,26 +91,23 @@ export default function Search() {
             setParams(draft.trim() ? { q: draft.trim() } : {}, { replace: true });
           }}
         >
-          <label htmlFor="search-q" className="at-sr-only">
-            Search talks by topic, speaker or vibe
-          </label>
-          <input
-            ref={inputRef}
-            id="search-q"
+          <TextInput
+            autoFocus={!q}
+            label="Search talks by topic, speaker or vibe"
+            hideLabel
             type="search"
-            className="at-input"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Topic, speaker, or “eBPF but for security folks”"
             autoComplete="off"
             enterKeyHint="search"
           />
-          <button type="submit" className="at-btn at-btn--primary">
+          <Button variant="primary" type="submit" icon="search">
             Search
-          </button>
+          </Button>
         </form>
 
-        <p className="at-muted" role="status" aria-live="polite">
+        <p className="ly-muted" role="status" aria-live="polite">
           {summary}
         </p>
 
@@ -124,17 +117,11 @@ export default function Search() {
             <ul className="at-examples">
               {EXAMPLES.map((ex) => (
                 <li key={ex}>
-                  <button
-                    type="button"
-                    className="at-chip at-chip--button"
-                    onClick={() => setDraft(ex)}
-                  >
-                    {ex}
-                  </button>
+                  <Button onClick={() => setDraft(ex)}>{ex}</Button>
                 </li>
               ))}
             </ul>
-            <p className="at-muted">
+            <p className="ly-muted">
               Hybrid search: keywords plus meaning, so “security folks” still finds the eBPF runtime
               talk.
             </p>
@@ -142,13 +129,13 @@ export default function Search() {
         )}
 
         {status === 'error' && (
-          <div role="alert" className="at-error">
-            <p>{error}</p>
-          </div>
+          <Banner tone="warn" icon="warn">
+            {error}
+          </Banner>
         )}
 
         {q && result && hits.length === 0 && status !== 'loading' && (
-          <p className="at-muted">No talks matched. Try fewer words, or a topic like “GitOps”.</p>
+          <p className="ly-muted">No talks matched. Try fewer words, or a topic like “GitOps”.</p>
         )}
 
         <div className="at-list" aria-busy={status === 'loading'}>

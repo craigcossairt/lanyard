@@ -14,17 +14,6 @@
   margin: 0 auto;
   padding: var(--space-4) var(--space-4) calc(var(--space-8) * 2);
 }
-.at-sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-}
 .at-skip {
   position: absolute;
   left: var(--space-2);
@@ -86,25 +75,17 @@
 .at-search {
   display: flex;
   gap: var(--space-2);
+  align-items: flex-end;
   margin-bottom: var(--space-4);
 }
-.at-input,
-.at-textarea {
-  flex: 1;
+/* The design system's field wrapper is the flex item now: let it grow and shrink. */
+.at-search > .ly-field {
+  flex: 1 1 0;
   min-width: 0;
-  min-height: 48px;
-  font: inherit;
-  font-size: var(--text-md);
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-3);
 }
-.at-textarea {
+.at-search .ly-input {
   width: 100%;
-  min-height: 96px;
-  resize: vertical;
+  min-width: 0;
 }
 .at-examples {
   list-style: none;
@@ -116,48 +97,6 @@
 }
 
 /* Buttons */
-.at-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  min-height: 48px;
-  padding: var(--space-2) var(--space-4);
-  font: inherit;
-  font-weight: 600;
-  color: var(--color-text);
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  text-decoration: none;
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease);
-}
-.at-btn:hover {
-  background: var(--color-surface);
-}
-.at-btn--primary {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-  border-color: var(--color-accent);
-}
-.at-btn--primary:hover {
-  filter: brightness(1.08);
-  background: var(--color-accent);
-}
-.at-btn--sm {
-  min-height: 40px;
-  padding: var(--space-1) var(--space-3);
-  font-size: var(--text-sm);
-}
-.at-btn[aria-pressed='true'] {
-  background: var(--color-ok-bg);
-  border-color: var(--color-ok);
-}
-.at-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
 
 .at-quick {
   display: grid;
@@ -248,53 +187,6 @@
   gap: var(--space-2);
   align-items: center;
 }
-.at-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 32px;
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  font-size: var(--text-sm);
-  color: var(--color-text);
-}
-.at-chip--button {
-  min-height: 44px;
-  font: inherit;
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-.at-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-pill);
-  font-weight: 700;
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.at-pill--live {
-  background: var(--color-crit-bg);
-  color: var(--color-crit);
-}
-
-.at-muted {
-  color: var(--color-text-muted);
-  margin: 0 0 var(--space-3);
-}
-.at-error {
-  border: 1px solid var(--color-crit);
-  background: var(--color-crit-bg);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-  margin-bottom: var(--space-4);
-}
-.at-error p {
-  margin: 0 0 var(--space-2);
-}
 
 @media (min-width: 720px) {
   .at-quick {
@@ -312,10 +204,6 @@
 .at-block {
   width: 100%;
   margin-top: var(--space-4);
-}
-.at-field-error {
-  color: var(--color-crit);
-  margin: var(--space-2) 0 0;
 }
 
 /* Settings and plan */
@@ -353,9 +241,6 @@
 .at-hint {
   font-size: var(--text-sm);
   margin-top: var(--space-2);
-}
-select.at-input {
-  width: 100%;
 }
 .at-plan-summary {
   font-size: var(--text-lg);

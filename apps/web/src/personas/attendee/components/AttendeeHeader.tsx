@@ -26,7 +26,7 @@ export function AttendeeHeader({ eventName, handle, title, back }: Props) {
         )}
         {handle && (
           <span className="at-handle" title="Your anonymous handle for this event">
-            <span className="at-sr-only">You are </span>
+            <span className="ly-sr-only">You are </span>
             {handle}
           </span>
         )}

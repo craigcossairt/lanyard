@@ -75,7 +75,17 @@
 .at-search {
   display: flex;
   gap: var(--space-2);
+  align-items: flex-end;
   margin-bottom: var(--space-4);
+}
+/* The design system's field wrapper is the flex item now: let it grow and shrink. */
+.at-search > .ly-field {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.at-search .ly-input {
+  width: 100%;
+  min-width: 0;
 }
 .at-examples {
   list-style: none;

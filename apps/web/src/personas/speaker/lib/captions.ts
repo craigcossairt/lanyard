@@ -13,8 +13,8 @@ export interface CaptionsApi {
   state: CaptionState;
   /** Words recognised so far in the current utterance (not yet sent). */
   interim: string;
-  /** Last few finals we sent, newest last. */
-  recent: string[];
+  /** Last few finals we sent, newest last, with stable ids (a running sequence). */
+  recent: Array<{ id: string; text: string }>;
   sentCount: number;
   error: string | null;
   start: () => void;
@@ -35,7 +35,7 @@ export function useSpeechCaptions(sessionId: string, lang = 'en-US'): CaptionsAp
   const supported = Boolean(Ctor);
   const [state, setState] = useState<CaptionState>(supported ? 'idle' : 'unsupported');
   const [interim, setInterim] = useState('');
-  const [recent, setRecent] = useState<string[]>([]);
+  const [recent, setRecent] = useState<Array<{ id: string; text: string }>>([]);
   const [sentCount, setSentCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const rec = useRef<SpeechRecognitionLike | null>(null);
@@ -49,6 +49,7 @@ export function useSpeechCaptions(sessionId: string, lang = 'en-US'): CaptionsAp
       if (!trimmed) return;
       const endedAt = new Date().toISOString();
       seq.current += 1;
+      const id = `c${seq.current}`;
       const body: TranscriptRequest = {
         text: trimmed,
         startedAt: startedAt ?? endedAt,
@@ -58,7 +59,7 @@ export function useSpeechCaptions(sessionId: string, lang = 'en-US'): CaptionsAp
       };
       await api.post(`/sessions/${encodeURIComponent(sessionId)}/transcript`, body);
       setSentCount((n) => n + 1);
-      setRecent((r) => [...r, trimmed].slice(-RECENT));
+      setRecent((r) => [...r, { id, text: trimmed }].slice(-RECENT));
     },
     [sessionId, lang],
   );

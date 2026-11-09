@@ -91,7 +91,7 @@ function Console({ id }: { id: string }) {
   };
 
   const listening = captions.state === 'listening' || captions.state === 'starting';
-  const lines = captions.recent.map((text, i) => ({ id: `${i}-${text.slice(0, 12)}`, text }));
+  const lines = captions.recent;
   const captionStatus = lines.length === 0 && !captions.interim ? 'waiting' : 'live';
 
   return (
@@ -181,10 +181,7 @@ function Console({ id }: { id: string }) {
               'Captions are off. Attendees see them the moment you start.'}
             {captions.state === 'blocked' && 'Microphone blocked.'}
           </p>
-          {/* Screen readers hear each published caption once; interim text stays silent. */}
-          <div className="ly-sr-only" aria-live="polite" aria-atomic="true">
-            {captions.recent[captions.recent.length - 1] ?? ''}
-          </div>
+          {/* CaptionStream's role="log" announces each published caption once; interim text stays silent. */}
           <CaptionStream
             lines={lines}
             interim={captions.interim || undefined}

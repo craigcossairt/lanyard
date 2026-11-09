@@ -1,13 +1,12 @@
-import { useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import { formatRange, type Session } from '@lanyard/contracts';
-import { Banner, Button, Card, ErrorState, LivePill, SkeletonList } from '../../ui';
+import { Banner, Card, ErrorState, LivePill, SkeletonList } from '../../ui';
 import { roomById, useEventView } from '../attendee/lib/event';
 import { useEventId, useSession } from '../attendee/lib/session';
 
 export default function SessionPicker() {
   const eventId = useEventId();
   const me = useSession();
-  const navigate = useNavigate();
   const { view, error, loading, reload } = useEventView(eventId);
   const tz = view?.event.timezone;
   const sessions: Session[] = [...(view?.now ?? []), ...(view?.next ?? [])];
@@ -59,12 +58,9 @@ export default function SessionPicker() {
                       <p className="ly-muted">{s.speakerNames.join(', ')}</p>
                     )}
                   </div>
-                  <Button
-                    variant="primary"
-                    onClick={() => navigate(`/s/${encodeURIComponent(s.id)}`)}
-                  >
+                  <Link className="ly-btn ly-btn--primary" to={`/s/${encodeURIComponent(s.id)}`}>
                     Open console
-                  </Button>
+                  </Link>
                 </div>
               </Card>
             </li>

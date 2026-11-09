@@ -48,3 +48,24 @@
 .ops-empty h2, .ops-empty p { margin-bottom: var(--space-3); }
 @media (max-width: 1050px) { .ops-layout { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .ops-page { padding: var(--space-6) var(--space-4); } .ops-summary { grid-template-columns: repeat(2, 1fr); gap: var(--space-6); } .ops-header { align-items: start; } }
+.ops-ask, .ops-observability { margin-top: var(--space-8); border: 1px solid var(--color-border); background: var(--color-surface); padding: var(--space-6); border-radius: var(--radius-lg); }
+.ops-ask h2, .ops-observability h2 { font-size: var(--text-xl); margin-top: var(--space-2); }
+.ops-ask label, .ops-observability label { display: block; font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: var(--space-2); }
+.ops-ask-input { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.ops-ask-input input { flex: 1; min-width: min(100%, 280px); background: var(--color-bg); }
+.ops-ask-input button { background: var(--color-accent); color: var(--color-on-accent); }
+.ops-ask .ops-notice { margin-top: var(--space-3); }
+.ops-answer { margin-top: var(--space-5); padding-top: var(--space-5); border-top: 1px solid var(--color-border); }
+.ops-answer h3 { font-size: var(--text-md); margin-bottom: var(--space-3); }
+.ops-answer > p { white-space: pre-wrap; max-width: 85ch; }
+.ops-answer nav { margin-top: var(--space-4); font-size: var(--text-sm); }
+.ops-source-note { color: var(--color-text-muted); margin-top: var(--space-4) !important; }
+.ops-observability > div > p { margin-top: var(--space-3); max-width: 70ch; color: var(--color-text-muted); }
+.ops-observability nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: var(--space-4); margin-top: var(--space-5); }
+.ops-observability nav > * { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); }
+.ops-link-hint, .ops-link-unset small { display: block; color: var(--color-text-muted); font-size: var(--text-xs); margin-top: var(--space-2); }
+.ops-link-unset { color: var(--color-text-muted); }
+.ops-observability details { margin-top: var(--space-5); font-size: var(--text-sm); }
+.ops-observability summary { cursor: pointer; padding: var(--space-2) 0; }
+.ops-observability form { margin-top: var(--space-4); display: grid; gap: var(--space-3); max-width: 650px; }
+.ops-observability input { display: block; margin-top: var(--space-2); width: 100%; }

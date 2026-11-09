@@ -4,6 +4,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { OpsSnapshot } from '@lanyard/contracts';
 import { RoomCard, roomHealth } from './RoomCard';
+import { safeOpsLink } from './links';
 
 test('organizer room exposes health, occupancy and stale state without relying on color', () => {
   const status: OpsSnapshot['rooms'][number] = {
@@ -31,4 +32,10 @@ test('organizer room exposes health, occupancy and stale state without relying o
   assert.match(html, /Questions/);
   assert.equal(roomHealth({ ...status, ratio: 0.5 }).kind, 'warn');
   assert.equal(roomHealth({ ...status, ratio: 0.5, signals: {} }).kind, 'ok');
+  assert.equal(safeOpsLink('javascript:alert(1)'), '');
+  assert.equal(safeOpsLink('https://name:password@example.com'), '');
+  assert.equal(
+    safeOpsLink('https://app.dash0.com/dashboards/conference'),
+    'https://app.dash0.com/dashboards/conference',
+  );
 });

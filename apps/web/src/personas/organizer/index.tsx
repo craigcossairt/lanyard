@@ -3,6 +3,8 @@ import { Link } from 'react-router';
 import { EVENT_IDS, formatTime } from '@lanyard/contracts';
 import { useSession } from '../../app/session';
 import { Alerts } from './Alerts';
+import { AskConference } from './AskConference';
+import { ObservabilityLinks } from './ObservabilityLinks';
 import { RoomCard, roomHealth } from './RoomCard';
 import { useOps } from './useOps';
 import './organizer.css';
@@ -84,6 +86,8 @@ function Board({ eventId }: { eventId: string }) {
           refresh={refresh}
         />
       </div>
+      <AskConference view={view} />
+      <ObservabilityLinks />
     </>
   );
 }

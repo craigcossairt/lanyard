@@ -207,10 +207,14 @@ export type OpsSnapshot = z.infer<typeof OpsSnapshot>;
 export const SimulationControlRequest = z.object({
   running: z.boolean(),
   attendees: z.number().int().min(1).max(200).default(40),
+  mode: z.enum(['crowd', 'demo']).default('crowd'),
+}).refine(request => request.mode !== 'demo' || request.attendees === 40, {
+  message: 'Demo mode uses exactly 40 attendees', path: ['attendees'],
 });
 export type SimulationControlRequest = z.input<typeof SimulationControlRequest>;
 export const SimulationStatus = z.object({
   simulated: z.literal(true),
+  mode: z.enum(['crowd', 'demo']).optional(),
   running: z.boolean(),
   stopping: z.boolean(),
   attendees: z.number().int().min(0).max(200),

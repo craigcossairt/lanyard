@@ -33,7 +33,7 @@ All ids are opaque strings. All times are **UTC ISO-8601** in storage and transi
 | Room | id, eventId, name, capacity, floor, x/y on the floor map, accessibility (step-free, hearing loop, quiet) | |
 | Session | id, eventId, roomId, title, abstract, track, level, tags, speakerIds, starts at, ends at, status (scheduled, live, ended) | |
 | Speaker | id, name, title, company, bio | Public speaker info only |
-| Attendee | anonId, handle, interests (opt-in, free text), accessibility prefs, language | No PII ever. The handle is generated, e.g. "Teal Otter" |
+| Attendee | anonId, handle, interests (opt-in, free text), accessibility prefs, language | The base attendee record has no PII. Networking identity data is separate and explicitly opt-in (see NetworkingProfile). The handle is generated, e.g. "Teal Otter" |
 | Presence | anonId, eventId, roomId or sessionId, kind (join, leave, checkin), at | Drives occupancy |
 | TranscriptChunk | id, sessionId, seq, text, startedAt, endedAt, lang, source (speech, typed) | About 1 chunk per finalized utterance |
 | Question | id, sessionId, anonId, text, clusterId, votes, status (open, answered, hidden), at | **Text never goes into logs, spans or metric labels** |
@@ -43,7 +43,7 @@ All ids are opaque strings. All times are **UTC ISO-8601** in storage and transi
 | Recommendation | for an anonId: alternative sessionId, reason | Reroute output |
 | Booth (P1) | id, eventId, vendor name, description, tags | |
 | Match (P1) | anonId, boothId or anonId, score, consented flag | Only with consent; attendee suggestions expose handle and LinkedIn URL only to opted-in attendees |
-| NetworkingProfile (P1) | anonId, eventId, handle, linkedinUrl, needs, offers, interests, consented=true | Absent until explicit opt-in; stored only in `cnh-people`; text and URL never logged or added to spans/metric labels |
+| NetworkingProfile (P1) | anonId, eventId, handle, linkedinUrl, needs, offers, interests, consented=true | Identity data, absent until explicit opt-in; stored only in `cnh-people`; visible only to opted-in attendees at the same event; retained only while opted in and physically deleted by DELETE; text and URL never logged or added to spans/metric labels |
 
 ## 3. Elasticsearch indices (Elastic Cloud, prefix `cnh-`)
 Each index has a `semantic` field of type `semantic_text` where noted. **Source fields stay ordinary `text` fields with `copy_to: "semantic"`** (sessions: title, abstract, speakerNames; transcripts and questions: text; people: interests; booths: description), and every semantic query targets the field named `semantic`. Writers only index the plain fields, and embeddings are filled automatically. It uses the deployment's default inference endpoint, which WS1 verifies in the first 30 minutes. The fallback is a `dense_vector` field filled with OpenAI embeddings.
@@ -83,7 +83,7 @@ Roles are carried by a signed token: attendee (issued on join), or speaker, orga
 | PUT `/me/networking` | attendee | Explicitly opt in or update a networking profile (`NetworkingProfileRequest`) | WS7 |
 | GET `/me/networking` | attendee | Read this attendee's own opt-in state and profile fields | WS7 |
 | DELETE `/me/networking` | attendee | Remove consent and delete the caller's `cnh-people` profile | WS7 |
-| GET `/events/:eventId/networking/suggestions` | attendee | Event-scoped suggestions for other opted-in attendees; excludes self and returns handle, LinkedIn URL and optional one-line reason | WS7 |
+| GET `/events/:eventId/networking/suggestions` | attendee | Event-scoped suggestions for other opted-in attendees; excludes self and returns handle, LinkedIn URL, and a one-line reason (cached fast LLM when ready, short fallback otherwise) | WS7 |
 | POST `/sessions/:id/presence` | attendee | Join or leave session (drives occupancy) | WS2 |
 | GET `/sessions/:id/stream` | any | SSE stream of realtime messages for the session | WS2 |
 | POST `/sessions/:id/transcript` | speaker | Append a caption chunk | WS2 |

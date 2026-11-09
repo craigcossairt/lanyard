@@ -39,19 +39,22 @@ async function publishWindow(s: LiveSession): Promise<void> {
   ]);
 }
 
-// One republish per session just after the newest signal ages out, so meters decay to
-// zero without a ticker. Per pod; duplicates across pods carry the same counts.
-const decay = new Map<string, NodeJS.Timeout>();
-function scheduleDecay(s: LiveSession): void {
-  clearTimeout(decay.get(s.id));
-  const t = setTimeout(
+// Republish when each signal ages out of the window, so meters decay without a ticker.
+// Timers are coalesced per session and second. Per pod; duplicates across pods carry the
+// same counts.
+const decay = new Set<string>();
+function scheduleDecay(s: LiveSession, at: number): void {
+  const due = Math.ceil((at + SIGNAL_WINDOW_SEC * 1000) / 1000) * 1000 + 250;
+  const id = `${s.id}:${due}`;
+  if (decay.has(id)) return;
+  decay.add(id);
+  setTimeout(
     () => {
-      decay.delete(s.id);
+      decay.delete(id);
       publishWindow(s).catch(() => logger.warn('signals decay publish failed'));
     },
-    SIGNAL_WINDOW_SEC * 1000 + 500,
+    Math.max(0, due - Date.now()),
   ).unref();
-  decay.set(s.id, t);
 }
 
 export function registerSignals(app: FastifyInstance): void {
@@ -73,12 +76,19 @@ export function registerSignals(app: FastifyInstance): void {
 
       const now = Date.now();
       const key = keys.signals(s.id, type);
-      await r
-        .multi()
-        .zadd(key, now, `${claims.sub}:${now}`)
-        .zremrangebyscore(key, '-inf', now - SIGNAL_TRIM_SEC * 1000)
-        .expire(key, SIGNAL_TRIM_SEC * 2)
-        .exec();
+      try {
+        const res = await r
+          .multi()
+          .zadd(key, now, `${claims.sub}:${now}`)
+          .zremrangebyscore(key, '-inf', now - SIGNAL_TRIM_SEC * 1000)
+          .expire(key, SIGNAL_TRIM_SEC * 2)
+          .exec();
+        if (!res || res.some(([err]) => err)) throw new Error('signal write failed');
+      } catch (err) {
+        // Not stored: give the rate slot back so the attendee's retry counts.
+        await r.del(rateKey).catch(() => undefined);
+        throw err;
+      }
       signalsCounter.add(1, { event: s.eventId, room: s.roomId, type });
 
       const doc = {
@@ -93,8 +103,9 @@ export function registerSignals(app: FastifyInstance): void {
         c.index({ index: ES_INDICES.signals, document: doc }, o),
       ).catch(() => logger.warn({ type }, 'signal record failed'));
 
-      await publishWindow(s);
-      scheduleDecay(s);
+      // Stored is accepted: a fan-out hiccup must not turn it into an error.
+      publishWindow(s).catch(() => logger.warn('signals publish failed'));
+      scheduleDecay(s, now);
       return { accepted: true };
     },
   );

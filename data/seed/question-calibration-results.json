@@ -1,0 +1,112 @@
+{
+  "measuredAt": "2026-11-09T19:35:43.481Z",
+  "inferenceId": ".jina-embeddings-v5-text-small",
+  "pairs": [
+    {
+      "id": "capacity",
+      "duplicate": true,
+      "score": 0.87235653
+    },
+    {
+      "id": "captions",
+      "duplicate": true,
+      "score": 0.8296925
+    },
+    {
+      "id": "kernel",
+      "duplicate": true,
+      "score": 0.89320904
+    },
+    {
+      "id": "gitops",
+      "duplicate": true,
+      "score": 0.8504992
+    },
+    {
+      "id": "signals",
+      "duplicate": true,
+      "score": 0.8048728
+    },
+    {
+      "id": "privacy",
+      "duplicate": true,
+      "score": 0.8047112
+    },
+    {
+      "id": "summary",
+      "duplicate": true,
+      "score": 0.8171079
+    },
+    {
+      "id": "inference",
+      "duplicate": true,
+      "score": 0.7657857
+    },
+    {
+      "id": "seats",
+      "duplicate": true,
+      "score": 0.73379445
+    },
+    {
+      "id": "question",
+      "duplicate": true,
+      "score": 0.80945706
+    },
+    {
+      "id": "different-room",
+      "duplicate": false,
+      "score": 0.63058454
+    },
+    {
+      "id": "different-caption",
+      "duplicate": false,
+      "score": 0.84526175
+    },
+    {
+      "id": "different-kernel",
+      "duplicate": false,
+      "score": 0.8285269
+    },
+    {
+      "id": "different-gitops",
+      "duplicate": false,
+      "score": 0.7890374
+    },
+    {
+      "id": "different-signal",
+      "duplicate": false,
+      "score": 0.5640793
+    },
+    {
+      "id": "different-privacy",
+      "duplicate": false,
+      "score": 0.5866601
+    },
+    {
+      "id": "different-summary",
+      "duplicate": false,
+      "score": 0.60655266
+    },
+    {
+      "id": "different-inference",
+      "duplicate": false,
+      "score": 0.6022912
+    },
+    {
+      "id": "different-seats",
+      "duplicate": false,
+      "score": 0.60822976
+    },
+    {
+      "id": "different-votes",
+      "duplicate": false,
+      "score": 0.7290585
+    }
+  ],
+  "selected": {
+    "threshold": 0.847880475,
+    "falseMerges": 0,
+    "missedDuplicates": 7,
+    "loss": 7
+  }
+}

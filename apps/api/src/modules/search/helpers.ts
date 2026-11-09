@@ -3,8 +3,8 @@ import { HttpError } from '../../core/errors';
 import { es } from '../../core/es';
 import { completeSearch } from './response';
 
-// Conservative provisional Jina cosine-based score; calibrated pairs follow next slice.
-export const QUESTION_CLUSTER_THRESHOLD = 0.85;
+// Calibrated on 20 synthetic pairs for .jina-embeddings-v5-text-small; see README.
+export const QUESTION_CLUSTER_THRESHOLD = 0.848;
 
 export async function findQuestionCluster(input: {
   eventId: string;

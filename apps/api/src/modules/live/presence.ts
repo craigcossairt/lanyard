@@ -60,8 +60,13 @@ export async function applyPresence(
   const m = r.multi();
   if (kind === 'leave') {
     m.srem(keys.sessionMembers(s.id), anonId);
-    if (!prev.roomId || prev.roomId === s.roomId) m.srem(keys.roomMembers(s.roomId), anonId);
-    if (!prev.sessionId || prev.sessionId === s.id) m.del(keys.attendeeAt(anonId));
+    // Room and attendee:at follow the current session only: a late leave for an earlier
+    // session in the same room must not drop the attendee from that room.
+    const current = !prev.sessionId || prev.sessionId === s.id;
+    if (current) {
+      m.srem(keys.roomMembers(s.roomId), anonId);
+      m.del(keys.attendeeAt(anonId));
+    }
   } else {
     if (prev.sessionId && prev.sessionId !== s.id)
       m.srem(keys.sessionMembers(prev.sessionId), anonId);

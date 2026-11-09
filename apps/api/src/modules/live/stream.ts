@@ -1,7 +1,12 @@
 // GET /api/sessions/:id/stream (any role). SSE via the core helper (fetch + Bearer, plus
 // the caller's user channel). First event after `ready` is `snapshot`; then live messages.
 import type { FastifyInstance } from 'fastify';
-import { channels, type Question, type QuestionCluster } from '@lanyard/contracts';
+import {
+  channels,
+  type Question,
+  type QuestionCluster,
+  type RealtimeMessage,
+} from '@lanyard/contracts';
 import { authOf, requireAuth } from '../../core/auth';
 import { getContext } from '../../core/context';
 import { logger } from '../../core/logger';
@@ -85,13 +90,16 @@ async function onAttendeeOpen(s: LiveSession, anonId: string): Promise<void> {
     .getdel(keys.graceLeft(anonId))
     .exec();
   const left = res?.[2]?.[1];
-  if (left === s.id) await applyPresence(s, anonId, 'join');
+  if (left === s.id) await applyPresence(s, anonId, 'join').catch(() => undefined);
 }
 
+/** Atomic DECR clamped at 0 (DEL at zero), TTL refreshed while streams remain. */
+const DECR_CLAMP = `local n = redis.call('DECR', KEYS[1])
+if n <= 0 then redis.call('DEL', KEYS[1]) return 0 end
+redis.call('EXPIRE', KEYS[1], ARGV[1]) return n`;
+
 function onAttendeeClose(s: LiveSession, anonId: string): void {
-  const r = kv();
-  void r
-    .decr(keys.conns(anonId))
+  void (kv().eval(DECR_CLAMP, 1, keys.conns(anonId), CONNS_TTL_S) as Promise<number>)
     .then((n) => {
       if (n > 0) return;
       setTimeout(() => void graceExpired(s, anonId), GRACE_MS).unref();
@@ -122,16 +130,54 @@ export function registerStream(app: FastifyInstance): void {
       const claims = authOf(req);
       const s = await getLiveSession(req.params.id);
       assertSameEvent(claims, s);
-      // Build the snapshot before hijacking, so failures still get a JSON error status.
-      const snap = await buildSnapshot(s);
-      const conn = openSse(req, reply, { channels: [channels.session(s.id)] });
+      // Subscribe first and buffer live messages until the snapshot is out, so nothing
+      // published while the snapshot is read gets lost.
+      let buffer: RealtimeMessage[] | undefined = [];
+      const conn = openSse(req, reply, {
+        channels: [channels.session(s.id)],
+        filter: (msg) => {
+          if (!buffer) return msg;
+          buffer.push(msg);
+          return undefined;
+        },
+      });
+      let snap: LiveSnapshot;
+      try {
+        snap = await buildSnapshot(s);
+      } catch {
+        conn.send('error', { error: { code: 'snapshot_failed', message: 'Retry shortly' } });
+        conn.close();
+        return;
+      }
       conn.send('snapshot', snap);
+      const pending = buffer;
+      buffer = undefined;
+      // Drop buffered messages the snapshot already contains.
+      const maxSeq = Math.max(-1, ...snap.payload.captions.map((c) => c.seq));
+      const seen = new Set(snap.payload.questions.map((q) => q.id));
+      for (const m of pending) {
+        if (m.type === 'caption.appended' && m.payload.seq <= maxSeq) continue;
+        if (m.type === 'question.created' && seen.has(m.payload.questionId)) continue;
+        conn.send(m.type, m);
+      }
+
       if (claims.role === 'attendee' && getContext().kv) {
-        const opened = onAttendeeOpen(s, claims.sub).catch(() =>
-          logger.warn('stream open bookkeeping failed'),
+        const anonId = claims.sub;
+        const r = kv();
+        const opened = onAttendeeOpen(s, anonId).then(
+          () => true,
+          () => (logger.warn('stream open bookkeeping failed'), false),
         );
-        // Decrement only after the increment landed.
-        req.raw.on('close', () => void opened.then(() => onAttendeeClose(s, claims.sub)));
+        // Keep the open-stream counter alive for streams longer than its TTL.
+        const refresh = setInterval(
+          () => void r.expire(keys.conns(anonId), CONNS_TTL_S).catch(() => undefined),
+          (CONNS_TTL_S * 1000) / 3,
+        ).unref();
+        req.raw.on('close', () => {
+          clearInterval(refresh);
+          // Decrement only if the increment landed.
+          void opened.then((ok) => ok && onAttendeeClose(s, anonId));
+        });
       }
     },
   );

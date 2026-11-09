@@ -11,4 +11,4 @@ resources:
 images:
   - name: app
     newName: ghcr.io/craigcossairt/lanyard
-    newTag: 43edcc3
+    newTag: ae83d61

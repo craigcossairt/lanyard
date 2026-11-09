@@ -21,6 +21,7 @@ import { useEventView } from './lib/event';
 import { useLiveSession } from './lib/live';
 import { cachedSessions } from './lib/schedule';
 import { useEventId, useSession } from './lib/session';
+import { useDelayedFlag } from './lib/useDelayedFlag';
 
 type SheetName = 'ask' | 'questions' | 'react' | 'catchup' | 'display' | 'reroute' | null;
 const CATCH_UP_MINUTES = 10;
@@ -94,8 +95,10 @@ function SessionLive({ id }: { id: string }) {
     () => buildClusterViews(live.questions, live.clusters),
     [live.questions, live.clusters],
   );
-  const connected = live.stream === 'open' || live.stream === 'connecting';
-  const captionStatus = !connected ? 'stale' : live.captions.length ? 'live' : 'waiting';
+  // The server rotates streams every ~12 s and the shell resumes at once; only a real
+  // outage (over 3 s) is worth telling people about.
+  const offline = useDelayedFlag(live.stream === 'reconnecting', 3_000);
+  const captionStatus = offline ? 'stale' : live.captions.length ? 'live' : 'waiting';
   const title = live.session?.title ?? 'Live session';
 
   const questions = (
@@ -147,7 +150,7 @@ function SessionLive({ id }: { id: string }) {
                 </span>
               )}
             </nav>
-            {live.stream === 'reconnecting' && (
+            {offline && (
               <Banner icon="offline">Reconnecting… captions catch up automatically.</Banner>
             )}
           </>

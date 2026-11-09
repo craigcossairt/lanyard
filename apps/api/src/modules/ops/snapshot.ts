@@ -1,10 +1,19 @@
 import { Alert, SignalType, type OpsSnapshot } from '@lanyard/contracts';
+import { SpanStatusCode, trace } from '@opentelemetry/api';
 import type { ModuleContext } from '../../core/context';
 import { HttpError } from '../../core/errors';
 import { getNowNext, getRooms } from '../../core/events';
 
 export const alertKey = (eventId: string) => `ops:${eventId}:alerts`;
 export type OpsReading = { snapshot: OpsSnapshot; attendees: Map<string, number> };
+
+export function opsUnavailable(ctx: ModuleContext, event: string, message: string): never {
+  const span = trace.getActiveSpan();
+  span?.recordException({ name: 'OpsStateError', message });
+  span?.setStatus({ code: SpanStatusCode.ERROR });
+  ctx.logger.warn({ event }, message);
+  throw new HttpError(503, 'ops_unavailable', message);
+}
 
 export async function readOps(
   ctx: ModuleContext,
@@ -38,15 +47,20 @@ export async function readOps(
     values = results.map(([, value]) => value);
   } catch {
     // Do not leak Redis command arguments (including live-state identifiers).
-    throw new HttpError(503, 'ops_unavailable', 'Live state is temporarily unavailable');
+    opsUnavailable(ctx, eventId, 'Live state is temporarily unavailable');
   }
   let cursor = 0;
   const rawAlerts = values[cursor++];
-  const alerts = rawAlerts ? Alert.array().parse(JSON.parse(String(rawAlerts))) : [];
+  let alerts: Alert[] = [];
+  try {
+    alerts = rawAlerts ? Alert.array().parse(JSON.parse(String(rawAlerts))) : [];
+  } catch {
+    opsUnavailable(ctx, eventId, 'Invalid live alert state');
+  }
   const count = () => {
     const value = Number(values[cursor++]);
     if (!Number.isSafeInteger(value) || value < 0)
-      throw new HttpError(503, 'ops_unavailable', 'Invalid live count');
+      opsUnavailable(ctx, eventId, 'Invalid live count');
     return value;
   };
   const attendees = new Map<string, number>();

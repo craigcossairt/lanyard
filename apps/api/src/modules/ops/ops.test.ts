@@ -35,6 +35,7 @@ test('ops reads bounded live counts and enforces organizer/event authorization',
     endsAt: '2026-11-09T21:00:00Z',
   });
   const commands: unknown[][] = [];
+  let rawAlerts: string | null = null;
   const pipeline = {
     get(key: string) {
       commands.push(['get', key]);
@@ -49,12 +50,15 @@ test('ops reads bounded live counts and enforces organizer/event authorization',
       return this;
     },
     async exec() {
-      return [null, 27, 26, 4, ...SignalType.options.map((t) => (t === 'lost' ? 5 : 0))].map(
+      return [rawAlerts, 27, 26, 4, ...SignalType.options.map((t) => (t === 'lost' ? 5 : 0))].map(
         (v) => [null, v],
       );
     },
   };
-  const ctx = { kv: { pipeline: () => pipeline } } as unknown as ModuleContext;
+  const ctx = {
+    kv: { pipeline: () => pipeline },
+    logger: { warn() {} },
+  } as unknown as ModuleContext;
   const at = new Date('2026-11-09T20:00:00Z');
   const reading = await readOps(ctx, 'demo', at, {
     getRooms: async () => [room],
@@ -64,6 +68,16 @@ test('ops reads bounded live counts and enforces organizer/event authorization',
   assert.equal(reading.snapshot.rooms[0]?.questionCount, 4);
   assert.equal(reading.snapshot.rooms[0]?.signals.lost, 5);
   assert.equal(reading.attendees.get('talk'), 26);
+  for (const invalid of ['not json', '[{}]']) {
+    rawAlerts = invalid;
+    await assert.rejects(
+      readOps(ctx, 'demo', at, {
+        getRooms: async () => [room],
+        getNowNext: async () => ({ now: [session], next: [] }),
+      }),
+      { status: 503, code: 'ops_unavailable' },
+    );
+  }
   assert.deepEqual(commands.at(-1), [
     'zcount',
     'signals:talk:too_hot',

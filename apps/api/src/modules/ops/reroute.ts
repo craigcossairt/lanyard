@@ -32,15 +32,19 @@ export function createReroute(ctx: ModuleContext, deps = { readOps, findDestinat
       }
       const destinations = await deps.findDestinations(eventId, source, snapshot.rooms);
       if (!destinations.length) return { suggested: 0, toSessionIds: [] };
+      const lockKey = `ops:${eventId}:reroute:${alertId}`;
+      const dispatch = randomUUID();
+      let locked = false;
       try {
         // Bound repeated clicks and concurrent organizers; never overwrite another dispatch.
-        const lock = await ctx.kv.set(`ops:${eventId}:reroute:${alertId}`, '1', 'EX', 60, 'NX');
+        const lock = await ctx.kv.set(lockKey, dispatch, 'EX', 60, 'NX');
         if (!lock)
           throw new HttpError(
             429,
             'reroute_recent',
             'Suggestions were just sent; retry in one minute',
           );
+        locked = true;
         const members = (await ctx.kv.smembers(`room:${source.room.id}:members`)).slice(
           0,
           MAX_RECIPIENTS,
@@ -89,6 +93,15 @@ export function createReroute(ctx: ModuleContext, deps = { readOps, findDestinat
         return { suggested: sent.length, toSessionIds: [...new Set(sent)] };
       } catch (error) {
         if (error instanceof HttpError) throw error;
+        if (locked)
+          await ctx.kv
+            .eval(
+              "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0",
+              1,
+              lockKey,
+              dispatch,
+            )
+            .catch(() => undefined);
         opsUnavailable(ctx, eventId, 'Reroute is temporarily unavailable');
       }
     },

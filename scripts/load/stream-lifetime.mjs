@@ -32,12 +32,23 @@ try {
     signal: ctrl.signal,
   });
   status = res.status;
+  // Count complete lines only: network chunks don't keep the server's write
+  // boundaries, so a field like "event:" can be split across two reads.
   const dec = new TextDecoder();
+  let buf = '';
+  const countLine = (line) => {
+    if (line.startsWith('event:')) events++;
+    else if (line.startsWith(': hb')) heartbeats++;
+  };
   for await (const chunk of res.body) {
-    const text = dec.decode(chunk, { stream: true });
-    events += (text.match(/^event:/gm) || []).length;
-    heartbeats += (text.match(/^: hb/gm) || []).length;
+    buf += dec.decode(chunk, { stream: true }).replace(/\r\n/g, '\n');
+    let i;
+    while ((i = buf.indexOf('\n')) >= 0) {
+      countLine(buf.slice(0, i));
+      buf = buf.slice(i + 1);
+    }
   }
+  countLine(buf);
 } catch (e) {
   end = ctrl.signal.aborted ? `still open at ${maxS} s (client stopped)` : `error: ${e.cause?.code ?? e.name}`;
 }

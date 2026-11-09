@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { Button, Card, TextInput } from '../../ui';
 import { DEFAULT_LINKS, LINK_LABELS, LINKS_STORAGE_KEY, readOpsLinks, safeOpsLink, type OpsLinks } from './links';
 
 export function ObservabilityLinks() {
@@ -27,7 +28,7 @@ export function ObservabilityLinks() {
     }
   };
   return (
-    <section className="ops-observability" aria-labelledby="ops-observability-title">
+    <Card as="section" className="ops-observability" aria-labelledby="ops-observability-title">
       <div>
         <span className="ops-eyebrow">The same room, through OpenTelemetry</span>
         <h2 id="ops-observability-title">From conference to infrastructure</h2>
@@ -52,23 +53,20 @@ export function ObservabilityLinks() {
         <form onSubmit={save}>
           <p>Leave a link blank to use the conference default.</p>
           {keys.map((key) => (
-            <label key={key} htmlFor={`ops-link-${key}`}>
-              {LINK_LABELS[key]}
-              <input
+              <TextInput key={key} label={LINK_LABELS[key]}
                 id={`ops-link-${key}`}
                 type="url"
                 value={draft[key]}
                 placeholder="https://app.dash0.com/…"
                 onChange={(event) => setDraft({ ...draft, [key]: event.target.value })}
               />
-            </label>
           ))}
-          <button type="submit">Save links</button>
+          <Button type="submit">Save links</Button>
         </form>
         <p role="status" aria-live="polite">
           {notice}
         </p>
       </details>
-    </section>
+    </Card>
   );
 }

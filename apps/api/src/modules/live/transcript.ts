@@ -27,6 +27,9 @@ const SEQ_MAX = `local c = tonumber(redis.call('GET', KEYS[1]) or '0')
 if tonumber(ARGV[1]) > c then redis.call('SET', KEYS[1], ARGV[1]) end
 return 1`;
 
+/** Demo-engine caption ledger lifetime (WS4's sim runs are well under this). */
+const SYNTHETIC_LEDGER_TTL_S = 2 * 3600;
+
 /** Lag above this is a client clock problem, not a pipeline one: don't record it. */
 const MAX_PLAUSIBLE_LAG_MS = 60_000;
 
@@ -106,7 +109,7 @@ export function registerTranscript(app: FastifyInstance): void {
         await r
           .multi()
           .sadd(keys.syntheticChunks(claims.sub), chunk.id)
-          .expire(keys.syntheticChunks(claims.sub), 24 * 3600)
+          .expire(keys.syntheticChunks(claims.sub), SYNTHETIC_LEDGER_TTL_S)
           .exec();
       const fanout = (async () => {
         await getBus().publish(

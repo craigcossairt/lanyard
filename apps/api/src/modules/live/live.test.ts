@@ -30,6 +30,7 @@ test('live routes: auth, roles and validation (ES and Valkey unconfigured)', asy
     ['POST', '/api/questions/q1/vote'],
     ['PATCH', '/api/questions/q1'],
     ['POST', '/api/sessions/s1/signals'],
+    ['POST', '/api/sessions/s1/catch-up'],
   ] as const) {
     assert.equal((await app.inject({ method, url })).statusCode, 401, url);
   }

@@ -7,11 +7,15 @@ import { getNowNext, getRooms } from '../../core/events';
 export const alertKey = (eventId: string) => `ops:${eventId}:alerts`;
 export type OpsReading = { snapshot: OpsSnapshot; attendees: Map<string, number> };
 
-export function opsUnavailable(ctx: ModuleContext, event: string, message: string): never {
+export function recordOpsError(ctx: ModuleContext, event: string, message: string): void {
   const span = trace.getActiveSpan();
   span?.recordException({ name: 'OpsStateError', message });
   span?.setStatus({ code: SpanStatusCode.ERROR });
   ctx.logger.warn({ event }, message);
+}
+
+export function opsUnavailable(ctx: ModuleContext, event: string, message: string): never {
+  recordOpsError(ctx, event, message);
   throw new HttpError(503, 'ops_unavailable', message);
 }
 

@@ -38,8 +38,12 @@ export function createOpsModule(read = readOps) {
         async (req) => {
           const roomId = parse(Id, req.params.roomId);
           if (!ctx.kv) throw new HttpError(503, 'ops_unavailable', 'Live state is not configured');
-          const raw = await ctx.kv.lrange(historyKey(req.params.eventId, roomId), 0, 179);
-          return RoomHistory.parse({ points: raw.reverse().map((point) => JSON.parse(point)) });
+          try {
+            const raw = await ctx.kv.lrange(historyKey(req.params.eventId, roomId), 0, 179);
+            return RoomHistory.parse({ points: raw.reverse().map((point) => JSON.parse(point)) });
+          } catch {
+            opsUnavailable(ctx, req.params.eventId, 'Room history is temporarily unavailable');
+          }
         },
       );
     },

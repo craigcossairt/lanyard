@@ -41,6 +41,8 @@ test('ops opens/resolves at rule boundaries, fences a lost lease, and records on
   assert.equal(evaluateAlerts('cnh-demos', [room], resolved.alerts, at).transitions.length, 2);
 
   let allowCommit = false;
+  let allowPublish = false;
+  const outbox = new Map<string, unknown>();
   const published: RealtimeMessage[] = [];
   const updates: string[] = [];
   let saved: Alert[] = [];
@@ -50,11 +52,20 @@ test('ops opens/resolves at rule boundaries, fences a lost lease, and records on
         if (numkeys === 1) return String(args[0]).includes('cnh-demos') ? 'OK' : null;
         if (!allowCommit) return 0;
         saved = JSON.parse(String(args[numkeys + 1]));
+        for (const [id, message] of Object.entries(JSON.parse(String(args[numkeys + 2]))))
+          outbox.set(id, message);
         return 1;
+      },
+      async hscan() {
+        return ['0', [...outbox].flatMap(([id, message]) => [id, JSON.stringify(message)])];
+      },
+      async hdel(_key: string, id: string) {
+        outbox.delete(id);
       },
     },
     bus: {
       async publish(_channel: string, message: RealtimeMessage) {
+        if (!allowPublish) throw new Error('timeout');
         published.push(message);
       },
     },
@@ -79,8 +90,13 @@ test('ops opens/resolves at rule boundaries, fences a lost lease, and records on
   assert.equal(updates.length, 0);
   allowCommit = true;
   await loop.tick();
+  assert.equal(published.length, 0);
+  assert.equal(outbox.size, 2);
+  assert.equal(updates.length, 1);
+  allowPublish = true;
   await loop.tick();
   assert.equal(published.length, 2);
+  assert.equal(outbox.size, 0);
   assert.deepEqual(updates, ['cnh-demos', 'cnh-demos']);
   await loop.close();
 });

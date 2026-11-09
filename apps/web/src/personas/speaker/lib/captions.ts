@@ -124,7 +124,8 @@ export function useSpeechCaptions(sessionId: string, lang = 'en-US'): CaptionsAp
           setError('Recognition stopped. Press Start captions to resume.');
         }
       } else if (rec.current === r) {
-        setState('idle');
+        // Chrome fires onend after an error too: keep 'blocked' and 'error' visible.
+        setState((st) => (st === 'blocked' || st === 'error' ? st : 'idle'));
       }
     };
     rec.current = r;

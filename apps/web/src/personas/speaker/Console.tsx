@@ -35,6 +35,13 @@ function Console({ id }: { id: string }) {
   });
   const [notes, setNotes] = useState('');
   const [notesError, setNotesError] = useState<string | null>(null);
+  const [answerError, setAnswerError] = useState<string | null>(null);
+  const toggleAnswered = (clusterId: string, answered: boolean) => {
+    setAnswerError(null);
+    void live.setAnswered(clusterId, answered).catch((err: unknown) => {
+      setAnswerError(err instanceof Error ? err.message : 'Could not update that question.');
+    });
+  };
 
   useEffect(() => {
     try {
@@ -43,6 +50,12 @@ function Console({ id }: { id: string }) {
       // Per-visit only.
     }
   }, [stage]);
+
+  // The session ending hides the caption controls, so stop the mic ourselves.
+  const stopCaptions = captions.stop;
+  useEffect(() => {
+    if (live.ended) stopCaptions();
+  }, [live.ended, stopCaptions]);
 
   const clusters = useMemo(
     () => buildClusterViews(live.questions, live.clusters),
@@ -60,7 +73,7 @@ function Console({ id }: { id: string }) {
     setNotesError(null);
     try {
       await captions.postTyped(t);
-      setNotes('');
+      setNotes((cur) => (cur.trim() === t ? '' : cur));
     } catch {
       setNotesError('Could not send that line. Check the connection and try again.');
     }
@@ -154,6 +167,10 @@ function Console({ id }: { id: string }) {
               'Captions are off. Attendees see them the moment you start.'}
             {captions.state === 'blocked' && 'Microphone blocked.'}
           </p>
+          {/* Screen readers hear each published caption once; interim text stays silent. */}
+          <div className="at-sr-only" aria-live="polite" aria-atomic="true">
+            {captions.recent[captions.recent.length - 1] ?? ''}
+          </div>
           <div className="sp-captions" aria-label="What attendees see">
             {captions.recent.map((line, i) => (
               <p key={`${i}-${line.slice(0, 12)}`} className="sp-captions__final">
@@ -203,6 +220,11 @@ function Console({ id }: { id: string }) {
           <div aria-live="polite" className="at-sr-only">
             {openClusters.length} open questions
           </div>
+          {answerError && (
+            <p role="alert" className="sp-banner sp-banner--warn">
+              {answerError}
+            </p>
+          )}
           {openClusters.length === 0 ? (
             <p className="sp-muted">
               No open questions. Attendees ask from their phones; similar ones merge here.
@@ -230,7 +252,7 @@ function Console({ id }: { id: string }) {
                     className="sp-btn"
                     aria-pressed={false}
                     disabled={!canSpeak}
-                    onClick={() => void live.setAnswered(c.cluster.id, true)}
+                    onClick={() => toggleAnswered(c.cluster.id, true)}
                   >
                     Answered
                   </button>
@@ -254,7 +276,7 @@ function Console({ id }: { id: string }) {
                       className="sp-btn sp-btn--sm"
                       aria-pressed
                       disabled={!canSpeak}
-                      onClick={() => void live.setAnswered(c.cluster.id, false)}
+                      onClick={() => toggleAnswered(c.cluster.id, false)}
                     >
                       ✓ Answered
                     </button>

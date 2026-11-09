@@ -147,14 +147,29 @@ export function useSpeakerConsole(sessionId: string): ConsoleApi {
   const setAnswered = useCallback(
     async (clusterId: string, answered: boolean) => {
       const status: QuestionStatus = answered ? 'answered' : 'open';
-      const ids = state.questions
-        .filter((q) => q.clusterId === clusterId && q.status !== 'hidden')
-        .map((q) => q.id);
-      // Optimistic; the stream's question.updated confirms.
-      ids.forEach((id) => dispatch({ type: 'status', questionId: id, status }));
-      await Promise.all(
-        ids.map((id) => api.patch(`/questions/${encodeURIComponent(id)}`, { status })),
+      const targets = state.questions.filter(
+        (q) => q.clusterId === clusterId && q.status !== 'hidden',
       );
+      // Optimistic; the stream's question.updated confirms. Each failure rolls back its own
+      // question, so a partial failure never leaves a phantom "answered" row.
+      targets.forEach((q) => dispatch({ type: 'status', questionId: q.id, status }));
+      const results = await Promise.allSettled(
+        targets.map((q) => api.patch(`/questions/${encodeURIComponent(q.id)}`, { status })),
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      results.forEach((r, i) => {
+        const q = targets[i];
+        if (r.status === 'rejected' && q) {
+          dispatch({ type: 'status', questionId: q.id, status: q.status });
+        }
+      });
+      if (failed > 0) {
+        throw new Error(
+          failed === targets.length
+            ? 'Could not update that question. Check the connection and try again.'
+            : `${failed} of ${targets.length} merged questions could not be updated. Try again.`,
+        );
+      }
     },
     [state.questions],
   );

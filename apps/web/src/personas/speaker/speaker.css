@@ -186,6 +186,14 @@
 [data-motion='reduce'] .sp-dot {
   animation: none;
 }
+@media (prefers-reduced-motion: reduce) {
+  .sp-dot {
+    animation: none;
+  }
+  .sp-meter__fill {
+    transition: none;
+  }
+}
 @keyframes sp-pulse {
   50% {
     opacity: 0.4;

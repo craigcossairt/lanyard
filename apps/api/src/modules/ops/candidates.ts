@@ -62,7 +62,8 @@ export async function findDestinations(
               { range: { startsAt: { lte: new Date(now.getTime() + 30 * 60_000).toISOString() } } },
             ],
             must_not: [{ term: { roomId: source.room.id } }, { term: { status: 'ended' } }],
-            should: [{ semantic: { field: 'semantic', query: session.title } }],
+            // Rerouting is ordered by start time and physical distance below.
+            // Optional semantic inference must not delay finding available seats.
           },
         },
       },

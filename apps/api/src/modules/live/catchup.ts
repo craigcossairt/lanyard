@@ -48,7 +48,9 @@ async function generate(
     await sleep(POLL_MS);
     const hit = await r.get(key);
     if (hit) return JSON.parse(hit) as CatchUpResponse;
-    if (!(await r.exists(lock))) break; // it finished without caching (empty or failed)
+    // Released with nothing cached: the owner found no captions (or failed); either way
+    // there is nothing to wait for.
+    if (!(await r.exists(lock))) return { summary: '', fromSeq: 0, toSeq: 0 };
   }
   throw new HttpError(503, 'catchup_busy', 'Catch-up is being prepared; retry shortly');
 }

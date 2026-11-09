@@ -3,8 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lanyard · grill-design · Speaker console, round 1</title>
-<!-- Snapshot of apps/web/src/ui/tokens.css + styles.css (design/ui-system @ cd54098), inlined so this file
+<title>Lanyard · grill-design · Speaker console, round 2</title>
+<!--
+Round 1 verdict (user): the speaker console is a PRIVATE presenter view for the person at the podium.
+The audience has its own view (attendee live session); the projector shows slides. Notes take most of
+the screen, room cues stay visible, questions are reachable (sometimes via a moderator/host).
+Dead: A Room screen, E Question wall (audience-facing), D Timeline (analysis; post-talk digest instead).
+Carried: B Cockpit (speaker-only), C's nudge-only-when-needed and separate Q&A mode.
+Round 2 question: where do the speaker's notes live, and how do questions reach them?
+-->
+<!-- Snapshot of apps/web/src/ui/tokens.css + styles.css (design/ui-system @ cd54098 (incl. review fixes)), inlined so this file
      renders on its own. Regenerate if the tokens change. Variants may not override tokens. -->
 <style>
 /*
@@ -1155,165 +1163,139 @@ body{background:#2a2d35;color:#eef1f6;margin:0}
 .h-belief b{color:#c9b8ff}
 .h-stage{display:flex;justify-content:center;padding:20px 12px 60px}
 .h-fit{position:relative;flex:none}
-.h-far-note{position:absolute;left:0;right:0;bottom:-28px;text-align:center;font:12px system-ui,sans-serif;color:#9aa}
-.frame{position:absolute;top:0;left:0;transform-origin:top left;overflow:hidden;background:var(--color-bg);color:var(--color-text);container-type:size;box-shadow:0 0 0 6px #111,0 20px 60px #0008;
-  --stage-size:clamp(1.75rem,3.6cqw,5.5rem)}
+.frame{position:absolute;top:0;left:0;transform-origin:top left;overflow:hidden;background:var(--color-bg);color:var(--color-text);container-type:size;box-shadow:0 0 0 6px #111,0 20px 60px #0008}
 .frame.phone{border-radius:28px;box-shadow:0 0 0 10px #111,0 20px 60px #0008}
 .frame *{box-sizing:border-box}
-.frame.far{filter:blur(.6px)}
 
 /* ============ SHARED PROTOTYPE PIECES (identical in every variant) ============ */
-.p-qr{background:#fff;padding:10px;border-radius:var(--radius-md);display:inline-block;line-height:0}
-.p-qr svg{display:block}
+.p-top{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2) var(--space-4);background:var(--color-surface);border-bottom:var(--border-w) solid var(--color-border);flex-wrap:wrap}
+.p-top .t{flex:1;min-width:0;font-weight:700;font-size:var(--text-sm);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:var(--color-text-muted)}
+.p-time{display:flex;align-items:baseline;gap:8px;font-variant-numeric:tabular-nums}
+.p-time b{font-size:var(--text-2xl)}
+.p-time span{font-size:var(--text-sm);color:var(--color-text-muted)}
+.p-time.low b{color:var(--color-warn)}
 .p-kbd{font:700 .75em var(--font-mono);border:var(--border-w) solid var(--color-border);border-radius:4px;padding:0 5px;color:var(--color-text-muted);margin-left:6px}
-.p-big{font-size:var(--stage-size);line-height:1.15;font-weight:700}
-.p-label{font-size:var(--text-sm);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-muted)}
-.p-clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.p-notes{display:flex;gap:8px}
-.p-notes .ly-input{min-height:44px}
+.p-label{font-size:var(--text-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-muted)}
+.p-notes{font-size:var(--notes-size,2rem);line-height:1.4}
+.p-notes ul{margin:0;padding-left:1.1em;display:grid;gap:.45em}
+.p-notes li::marker{color:var(--color-text-muted)}
+.p-slide-h{display:flex;align-items:baseline;gap:var(--space-3);margin:0 0 var(--space-4)}
+.p-slide-h b{font-size:var(--text-xl)}
+.p-slide-h span{color:var(--color-text-muted);font-size:var(--text-md);font-variant-numeric:tabular-nums}
+.p-next{border-top:var(--border-w) dashed var(--color-border);padding-top:var(--space-3);color:var(--color-text-muted);font-size:var(--text-lg)}
+.p-cue{display:flex;gap:var(--space-3);align-items:flex-start;padding:var(--space-3);border-radius:var(--radius-md);border:calc(var(--border-w)*2) solid currentColor}
+.p-cue .ly-icon{width:32px;height:32px;margin-top:2px}
+.p-cue b{display:block;font-size:var(--text-xl);color:var(--color-text)}
+.p-cue span{display:block;font-size:var(--text-md);color:var(--color-text)}
+.p-cue.crit{color:var(--color-crit);background:var(--color-crit-bg)}
+.p-cue.warn{color:var(--color-warn);background:var(--color-warn-bg)}
+.p-cue.ok{color:var(--color-ok);background:var(--color-ok-bg)}
+.p-cue.info{color:var(--color-info);background:var(--color-info-bg)}
+.p-mini{display:flex;flex-wrap:wrap;gap:6px}
+.p-qmini{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.p-qmini li{padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);background:var(--color-surface);border:var(--border-w) solid var(--color-border)}
+.p-qmini b{display:block;font-size:var(--text-md)}
+.p-qmini span{font-size:var(--text-sm);color:var(--color-text-muted)}
+.p-slide{aspect-ratio:16/9;border-radius:var(--radius-sm);background:#f3f1ea;color:#1b1b1f;padding:6%;display:flex;flex-direction:column;gap:8%;overflow:hidden;border:var(--border-w) solid var(--color-border)}
+.p-slide b{font:700 clamp(10px,2.4cqw,28px)/1.15 Georgia,serif}
+.p-slide i{display:block;height:7%;background:#c9c4b6;border-radius:3px}
+.p-slide i:nth-child(3){width:80%}.p-slide i:nth-child(4){width:60%}
+.p-notesin{display:flex;gap:8px}
+.p-notesin .ly-input{min-height:44px}
+.p-qa{display:grid;gap:var(--space-3);align-content:start}
+.p-qa h2{margin:0;font-size:var(--text-2xl);line-height:1.2}
 
-/* ============ VARIANT A: Room screen ============ */
-.sa{height:100%;display:grid;grid-template-columns:1fr 32%;grid-template-rows:auto auto 1fr auto;grid-template-areas:'bn bn' 'hd hd' 'caps side' 'ctl ctl';background:var(--color-caption-bg)}
-.sa>.ly-banner{grid-area:bn}
-.sa-empty{grid-area:caps/caps/side/side}
-.sa-hd{grid-area:hd;display:flex;align-items:center;gap:var(--space-4);padding:var(--space-3) var(--space-5);background:var(--color-bg);border-bottom:var(--border-w) solid var(--color-border)}
-.sa-title{flex:1;min-width:0;margin:0;font-size:var(--text-xl);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.sa-att{font-size:var(--text-2xl);font-weight:700;display:flex;gap:8px;align-items:center}
-.sa-att .ly-icon{width:32px;height:32px}
-.sa-caps{grid-area:caps;display:flex;flex-direction:column;min-height:0}
-.sa-side{grid-area:side;display:flex;flex-direction:column;gap:var(--space-5);padding:var(--space-5);background:var(--color-bg);border-left:var(--border-w) solid var(--color-border);overflow:hidden}
-.sa-join{display:flex;gap:var(--space-4);align-items:center}
-.sa-join p{margin:0;font-size:var(--text-xl);font-weight:700;line-height:1.25}
-.sa-join small{display:block;font-size:var(--text-md);color:var(--color-text-muted);font-weight:400;margin-top:4px}
-.sa-top{border-top:var(--border-w) solid var(--color-border);padding-top:var(--space-4)}
-.sa-top h2{margin:6px 0;font-size:calc(var(--stage-size)*.62);line-height:1.15}
-.sa-top .meta{font-size:var(--text-lg);color:var(--color-text-muted)}
-.sa-sig{display:flex;flex-wrap:wrap;gap:8px}
-.sa-sig .ly-pill{font-size:var(--text-lg);padding:6px 14px}
-.sa-sig .ly-pill .ly-icon{width:22px;height:22px}
-.sa-ctl{grid-area:ctl;display:flex;gap:var(--space-2);align-items:center;padding:var(--space-2) var(--space-4);background:var(--color-bg);border-top:var(--border-w) solid var(--color-border)}
-.sa-ctl .ly-btn{min-height:40px;font-size:var(--text-sm)}
-.sa-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-5);height:100%;text-align:center;padding:var(--space-6)}
-.sa-empty .p-big{max-width:18ch}
-@container (max-width:700px){.sa{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto 1fr auto auto;grid-template-areas:'bn' 'hd' 'caps' 'side' 'ctl'}.sa-empty{grid-area:caps/caps/side/side}.sa-side{border-left:0;border-top:var(--border-w) solid var(--color-border);padding:var(--space-3);gap:var(--space-3)}.sa-join{display:none}.sa-top h2{font-size:var(--text-lg)}.sa-att{font-size:var(--text-md)}.sa-att .ly-icon{width:20px;height:20px}.sa-title{font-size:var(--text-sm)}.sa-ctl{flex-wrap:wrap}.sa-ctl .p-kbd{display:none}}
+/* ============ VARIANT A: Notes + rail ============ */
+.ra{height:100%;display:grid;grid-template-rows:auto auto 1fr;}
+.ra-body{min-height:0;display:grid;grid-template-columns:1fr 340px}
+.ra-body.qa{grid-template-columns:1fr 1.1fr}
+.ra-notes{min-height:0;overflow:auto;padding:var(--space-6) var(--space-7);display:flex;flex-direction:column;gap:var(--space-5)}
+.ra-notes .p-notes{flex:1}
+.ra-rail{min-height:0;overflow:auto;border-left:var(--border-w) solid var(--color-border);background:var(--color-bg);padding:var(--space-4);display:grid;gap:var(--space-5);align-content:start}
+.ra-rail section{display:grid;gap:var(--space-2)}
+@container (max-width:700px){.ra-body,.ra-body.qa{grid-template-columns:minmax(0,1fr);grid-template-rows:1fr auto}.ra-notes{padding:var(--space-4)}.ra-rail{border-left:0;border-top:var(--border-w) solid var(--color-border);max-height:45cqh}}
 
-/* ============ VARIANT B: Podium cockpit ============ */
-.sb{height:100%;display:flex;flex-direction:column}
-.sb-hd{display:flex;align-items:center;gap:var(--space-4);padding:var(--space-3) var(--space-4);background:var(--color-surface);border-bottom:var(--border-w) solid var(--color-border);flex-wrap:wrap}
-.sb-hd h1{flex:1;min-width:200px;margin:0;font-size:var(--text-lg);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.sb-stat{display:grid;line-height:1.1}
-.sb-stat b{font-size:var(--text-2xl);font-variant-numeric:tabular-nums}
-.sb-stat span{font-size:var(--text-xs);color:var(--color-text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
-.sb-up{color:var(--color-ok);font-size:var(--text-sm);font-weight:700}
-.sb-grid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(240px,.8fr) 1.3fr 1fr}
-.sb-col{min-height:0;overflow:auto;padding:var(--space-4);border-right:var(--border-w) solid var(--color-border)}
-.sb-col:last-child{border-right:0}
-.sb-col h2{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 var(--space-3);font-size:var(--text-md)}
-.sb-col h2 span{font-weight:400;font-size:var(--text-sm);color:var(--color-text-muted)}
-.sb-meters{display:grid;gap:var(--space-4)}
-.sb-caps{display:flex;flex-direction:column;padding:0;background:var(--color-caption-bg)}
-.sb-caps h2{padding:var(--space-4) var(--space-4) 0}
-.sb-caps .ly-caps{font-size:1.25rem;padding:var(--space-3) var(--space-4)}
-.sb-caps .ly-caps__line{max-width:none}
-.sb-filter{display:flex;gap:6px;margin-bottom:var(--space-3)}
-.sb-filter .ly-btn{min-height:36px;font-size:var(--text-sm)}
-@container (max-width:700px){.sb-grid{grid-template-columns:minmax(0,1fr);grid-auto-rows:max-content;overflow:auto}.sb-col{min-height:auto;border-right:0;border-bottom:var(--border-w) solid var(--color-border);overflow:visible}.sb-caps .ly-caps{max-height:220px}}
+/* ============ VARIANT B: Script follows your voice ============ */
+.rb{height:100%;display:grid;grid-template-rows:auto auto auto 1fr auto}
+.rb-cue{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2) var(--space-5);font-weight:700;font-size:var(--text-lg);border-bottom:var(--border-w) solid currentColor;flex-wrap:wrap}
+.rb-cue.crit{color:var(--color-crit);background:var(--color-crit-bg)}
+.rb-cue.warn{color:var(--color-warn);background:var(--color-warn-bg)}
+.rb-cue.ok{color:var(--color-ok);background:var(--color-ok-bg)}
+.rb-cue span{color:var(--color-text)}
+.rb-cue .grow{flex:1}
+.rb-script{min-height:0;overflow:hidden;position:relative}
+.rb-roll{position:absolute;left:var(--space-8);right:var(--space-8);font-size:calc(var(--notes-size,2rem)*1.15);line-height:1.45;max-width:36ch}
+.rb-roll p{margin:0 0 .6em}
+.rb-past{color:var(--color-text-muted)}
+.rb-now{background:var(--color-surface-2);box-shadow:0 0 0 .15em var(--color-surface-2);border-radius:4px;border-bottom:3px solid var(--color-accent)}
+.rb-marker{position:absolute;left:var(--space-4);top:33%;width:0;height:0;border:10px solid transparent;border-left:14px solid var(--color-accent)}
+.rb-match{position:absolute;right:var(--space-4);bottom:var(--space-3)}
+.rb-qa{padding:var(--space-6);overflow:auto}
+@container (max-width:700px){.rb-roll{left:var(--space-6);right:var(--space-4)}.rb-cue{font-size:var(--text-sm);padding:var(--space-2) var(--space-3)}}
 
-/* ============ VARIANT C: Two modes ============ */
-.sc{height:100%;display:flex;flex-direction:column;background:var(--color-bg)}
-.sc-hd{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-5);color:var(--color-text-muted);font-size:var(--text-lg)}
-.sc-hd .grow{flex:1}
-.sc-talk{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-5);padding:var(--space-5);text-align:center}
-.sc-nudge{display:flex;flex-direction:column;align-items:center;gap:var(--space-3);padding:var(--space-6) var(--space-7);border-radius:var(--radius-lg);border:calc(var(--border-w)*2) solid currentColor;max-width:90%}
-.sc-nudge .ly-icon{width:calc(var(--stage-size)*1.1);height:calc(var(--stage-size)*1.1)}
-.sc-nudge .p-big{color:var(--color-text)}
-.sc-nudge p{margin:0;font-size:calc(var(--stage-size)*.45);color:var(--color-text)}
-.sc-nudge.crit{color:var(--color-crit);background:var(--color-crit-bg)}
-.sc-nudge.warn{color:var(--color-warn);background:var(--color-warn-bg)}
-.sc-nudge.ok{color:var(--color-ok);background:var(--color-ok-bg)}
-.sc-take{font-size:calc(var(--stage-size)*.5);min-height:calc(var(--stage-size)*1.5);padding:0 var(--space-6);border-radius:var(--radius-lg)}
-.sc-take .ly-icon{width:1.1em;height:1.1em}
-.sc-tick{background:var(--color-caption-bg);color:var(--color-caption-text);padding:var(--space-4) var(--space-6);border-top:var(--border-w) solid var(--color-border);font-size:calc(var(--stage-size)*.6);line-height:1.3}
-.sc-tick p{margin:0}
-.sc-qa{flex:1;min-height:0;display:grid;grid-template-columns:1fr 30%;}
-.sc-cur{display:flex;flex-direction:column;justify-content:center;gap:var(--space-5);padding:var(--space-6) var(--space-7)}
-.sc-cur h2{margin:0;font-size:calc(var(--stage-size)*1.1);line-height:1.12;max-width:20ch}
-.sc-cur .meta{font-size:calc(var(--stage-size)*.45);color:var(--color-text-muted)}
-.sc-cur .acts{display:flex;gap:var(--space-3);flex-wrap:wrap}
-.sc-cur .acts .ly-btn{font-size:var(--text-xl);min-height:64px;padding:0 var(--space-5)}
-.sc-next{padding:var(--space-5);border-left:var(--border-w) solid var(--color-border);background:var(--color-surface);overflow:hidden}
-.sc-next ol{list-style:none;margin:var(--space-3) 0 0;padding:0;display:grid;gap:var(--space-3)}
-.sc-next li{font-size:var(--text-lg);font-weight:700;padding:var(--space-3);border-radius:var(--radius-md);border:var(--border-w) solid var(--color-border);background:var(--color-bg)}
-.sc-next li span{display:block;font-weight:400;font-size:var(--text-sm);color:var(--color-text-muted)}
-@container (max-width:700px){.sc-qa{grid-template-columns:1fr}.sc-next{display:none}.sc-cur{padding:var(--space-4)}.sc-nudge{padding:var(--space-4)}.sc-hd{font-size:var(--text-sm);padding:var(--space-2) var(--space-3)}}
+/* ============ VARIANT C: Companion strip ============ */
+.rc{position:relative;height:100%;display:grid;grid-template-columns:minmax(0,1fr) 340px;background:#1e1e20}
+.rc-key{display:grid;grid-template-rows:auto auto 1fr;gap:12px;padding:16px 16px 36px;font-family:-apple-system,system-ui,sans-serif;color:#e8e8ea;letter-spacing:normal;word-spacing:normal;min-height:0}
+.rc-key .bar{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:#a0a0a6}
+.rc-key .bar b{font-size:22px;color:#fff;font-variant-numeric:tabular-nums}
+.rc-key .slides{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:start}
+.rc-key .slides small{display:block;font-size:12px;color:#a0a0a6;margin-bottom:4px}
+.rc-key .knotes{background:#2a2a2d;border-radius:8px;padding:14px 18px;font-size:24px;line-height:1.4;overflow:hidden}
+.rc-key .knotes ul{margin:0;padding-left:1.1em}
+.rc-tag{position:absolute;left:16px;bottom:10px;font:12px system-ui;color:#8a8a90}
+.rc-strip{display:grid;grid-template-rows:auto 1fr auto;background:var(--color-bg);border-left:4px solid #000;min-height:0}
+.rc-strip .hd{display:flex;align-items:center;gap:8px;padding:var(--space-2) var(--space-3);border-bottom:var(--border-w) solid var(--color-border);font-size:var(--text-sm)}
+.rc-strip .bd{min-height:0;overflow:auto;padding:var(--space-3);display:grid;gap:var(--space-4);align-content:start}
+.rc-strip .ft{padding:var(--space-2) var(--space-3);border-top:var(--border-w) solid var(--color-border);display:flex;gap:6px}
+.rc-strip .ft .ly-btn{flex:1;min-height:40px;font-size:var(--text-sm)}
+.rc-big{font-size:var(--text-3xl);font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+@container (max-width:700px){.rc{grid-template-columns:minmax(0,1fr)}.rc-key,.rc-tag{display:none}}
 
-/* ============ VARIANT D: Timeline ============ */
-.sd{height:100%;display:flex;flex-direction:column}
-.sd-hd{display:flex;align-items:center;gap:var(--space-4);padding:var(--space-3) var(--space-4);border-bottom:var(--border-w) solid var(--color-border);background:var(--color-surface)}
-.sd-hd h1{flex:1;margin:0;font-size:var(--text-lg);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.sd-main{flex:1;min-height:0;display:grid;grid-template-columns:1fr 32%}
-.sd-chart{padding:var(--space-4);overflow:auto}
-.sd-row{display:grid;grid-template-columns:150px 1fr;align-items:center;gap:var(--space-3);border-bottom:var(--border-w) solid var(--color-border);padding:6px 0}
-.sd-rl{display:grid;gap:2px}
-.sd-rl b{display:flex;align-items:center;gap:6px;font-size:var(--text-sm)}
-.sd-rl b .ly-icon{width:18px;height:18px}
-.sd-rl span{font-size:var(--text-xs);color:var(--color-text-muted)}
-.sd-rl .now{font-size:var(--text-xl);font-weight:700;font-variant-numeric:tabular-nums}
-.sd-svg{width:100%;height:64px;display:block;overflow:visible;cursor:crosshair}
-.sd-axis{display:grid;grid-template-columns:150px 1fr;gap:var(--space-3);font-size:var(--text-xs);color:var(--color-text-muted);padding-top:4px}
-.sd-axis div{display:flex;justify-content:space-between}
-.sd-side{border-left:var(--border-w) solid var(--color-border);padding:var(--space-4);overflow:auto;display:grid;gap:var(--space-4);align-content:start;background:var(--color-bg)}
-.sd-at{background:var(--color-caption-bg);color:var(--color-caption-text);border-radius:var(--radius-md);padding:var(--space-4);font-size:var(--text-lg);line-height:1.4}
-.sd-tick{padding:var(--space-3) var(--space-4);background:var(--color-caption-bg);color:var(--color-caption-text);border-top:var(--border-w) solid var(--color-border);font-size:var(--text-xl)}
-.sd-tick p{margin:0}
-.sd-line{fill:none;stroke:var(--color-text-muted);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
-.sd-line.hot{stroke:var(--color-crit);stroke-width:3}
-.sd-line.warm{stroke:var(--color-warn);stroke-width:3}
-.sd-line.acc{stroke:var(--color-accent)}
-.sd-thr{stroke:var(--color-text-muted);stroke-dasharray:3 4;stroke-width:1}
-.sd-cur{stroke:var(--color-focus);stroke-width:2}
-.sd-dot{fill:var(--color-accent);stroke:var(--color-bg);stroke-width:2}
-.sd-svg text{font:700 11px var(--font-sans);fill:var(--color-text)}
-@container (max-width:700px){.sd-main{grid-template-columns:1fr;overflow:auto}.sd-side{border-left:0}.sd-row,.sd-axis{grid-template-columns:96px 1fr}.sd-rl span{display:none}}
+/* ============ VARIANT D: Host handoff ============ */
+.rd{height:100%;display:grid;grid-template-rows:auto auto 1fr}
+.rd-body{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 360px}
+.rd-notes{min-height:0;overflow:auto;padding:var(--space-6) var(--space-7);display:flex;flex-direction:column;gap:var(--space-5)}
+.rd-notes .p-notes{flex:1}
+.rd-side{min-height:0;border-left:var(--border-w) solid var(--color-border);padding:var(--space-4);display:grid;gap:var(--space-4);align-content:start;overflow:auto}
+.rd-host{border:calc(var(--border-w)*2) solid var(--color-accent);border-radius:var(--radius-lg);padding:var(--space-4);background:var(--color-surface);display:grid;gap:var(--space-3)}
+.rd-host h2{margin:0;font-size:var(--text-xl);line-height:1.25}
+.rd-msg{display:flex;gap:8px;align-items:center;font-weight:700;padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);background:var(--color-info-bg);color:var(--color-info)}
+.rd-msg span{color:var(--color-text)}
+.rd-hostview{min-height:0;display:grid;grid-template-columns:1.2fr 1fr}
+.rd-hostview>section{min-height:0;overflow:auto;padding:var(--space-4);border-right:var(--border-w) solid var(--color-border);display:grid;gap:var(--space-3);align-content:start}
+@container (max-width:700px){.rd-body,.rd-hostview{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 1fr}.rd-side{border-left:0;order:-1;border-bottom:var(--border-w) solid var(--color-border)}.rd-notes{padding:var(--space-4)}}
 
-/* ============ VARIANT E: Question wall ============ */
-.se{height:100%;display:flex;flex-direction:column;background:var(--color-bg)}
-.se-hd{display:flex;align-items:center;gap:var(--space-4);padding:var(--space-4) var(--space-5)}
-.se-hd h1{flex:1;margin:0;font-size:calc(var(--stage-size)*.55);line-height:1.15}
-.se-hd .p-qr{padding:6px}
-.se-hd small{display:block;font-size:var(--text-md);font-weight:400;color:var(--color-text-muted)}
-.se-wall{flex:1;min-height:0;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:1fr 1fr auto;gap:var(--space-3);padding:0 var(--space-5) var(--space-4)}
-.se-card{display:flex;flex-direction:column;justify-content:space-between;gap:var(--space-2);padding:var(--space-4);border-radius:var(--radius-lg);background:var(--color-surface);border:var(--border-w) solid var(--color-border);overflow:hidden}
-.se-card h2{margin:0;font-size:calc(var(--stage-size)*.42);line-height:1.15}
-.se-card .meta{font-size:var(--text-lg);color:var(--color-text-muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.se-card.top{grid-column:span 2;grid-row:span 2;border-color:var(--color-accent);box-shadow:inset 4px 0 0 var(--color-accent)}
-.se-card.top h2{font-size:calc(var(--stage-size)*.9)}
-.se-card.done{background:var(--color-surface-2);border-style:dashed}
-.se-sub{background:#000;color:#fff;padding:var(--space-3) var(--space-6);font-size:calc(var(--stage-size)*.5);line-height:1.3;text-align:center}
-[data-theme=light] .se-sub{background:#000;color:#fff}
-.se-sub p{margin:0}
-@container (max-width:700px){.se-wall{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-auto-rows:max-content;overflow:auto}.se-card{overflow:visible}.se-card.top{grid-column:auto;grid-row:auto}.se-card.top h2{font-size:var(--text-xl)}.se-card h2{font-size:var(--text-lg)}.se-hd .p-qr{display:none}.se-hd h1{font-size:var(--text-lg)}.se-sub{font-size:var(--text-md)}}
+/* ============ VARIANT E: Presenter replacement ============ */
+.re{height:100%;display:grid;grid-template-rows:auto auto 1fr}
+.re-body{min-height:0;display:grid;grid-template-columns:1.25fr 1fr 300px;grid-template-rows:auto minmax(0,1fr);gap:var(--space-4);padding:var(--space-4)}
+.re-cur{grid-column:1;grid-row:1}
+.re-nxt{grid-column:2;grid-row:1;align-self:start}
+.re-notes{grid-column:1/3;grid-row:2;min-height:0;overflow:auto;background:var(--color-surface);border-radius:var(--radius-md);padding:var(--space-4) var(--space-5);--notes-size:1.6rem}
+.re-rail{grid-column:3;grid-row:1/3;min-height:0;overflow:auto;display:grid;gap:var(--space-3);align-content:start}
+.re-up{display:flex;gap:var(--space-2);align-items:center;padding:var(--space-2) var(--space-3);border:var(--border-w) dashed var(--color-border);border-radius:var(--radius-md);font-size:var(--text-sm);color:var(--color-text-muted)}
+@container (max-width:700px){.re-body{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-auto-rows:max-content;overflow:auto}.re-cur,.re-nxt,.re-notes,.re-rail{grid-column:auto;grid-row:auto}.re-nxt{display:none}}
 </style>
 </head>
 <body>
 <form class="h-bar" id="ctl" aria-label="Prototype controls">
   <fieldset><legend>Variant</legend>
-    <label><input type="radio" name="v" value="a" checked>A Room screen</label>
-    <label><input type="radio" name="v" value="b">B Cockpit</label>
-    <label><input type="radio" name="v" value="c">C Two modes</label>
-    <label><input type="radio" name="v" value="d">D Timeline</label>
-    <label><input type="radio" name="v" value="e">E Question wall</label>
+    <label><input type="radio" name="v" value="a" checked>A Notes + rail</label>
+    <label><input type="radio" name="v" value="b">B Script follows voice</label>
+    <label><input type="radio" name="v" value="c">C Companion strip</label>
+    <label><input type="radio" name="v" value="d">D Host handoff</label>
+    <label><input type="radio" name="v" value="e">E Presenter replacement</label>
   </fieldset>
   <fieldset><legend>State</legend>
     <label><input type="radio" name="s" value="live" checked>Live</label>
+    <label><input type="radio" name="s" value="qa">Q&amp;A time</label>
     <label><input type="radio" name="s" value="empty">Not started</label>
     <label><input type="radio" name="s" value="loading">Loading</label>
     <label><input type="radio" name="s" value="error">No speech API</label>
     <label><input type="radio" name="s" value="lots">Too much</label>
   </fieldset>
   <fieldset><legend>Screen</legend>
-    <label><input type="radio" name="w" value="projector" checked>Projector 1920</label>
-    <label><input type="radio" name="w" value="laptop">Laptop 1280</label>
+    <label><input type="radio" name="w" value="laptop" checked>Laptop 1440</label>
+    <label><input type="radio" name="w" value="monitor">Confidence monitor 1920</label>
     <label><input type="radio" name="w" value="phone">Phone</label>
   </fieldset>
   <fieldset><legend>Theme</legend>
@@ -1321,200 +1303,171 @@ body{background:#2a2d35;color:#eef1f6;margin:0}
     <label><input type="radio" name="t" value="light">Light</label>
     <label><input type="radio" name="t" value="contrast">High contrast</label>
   </fieldset>
-  <fieldset><legend>View</legend>
-    <label><input type="checkbox" name="far">From 10 m</label>
-  </fieldset>
 </form>
 <div class="h-belief" id="belief"></div>
 <div class="h-stage"><div class="h-fit" id="fit"><div class="frame" id="frame"></div></div></div>
 
 <script>
 const BELIEFS={
- a:"<b>A · Room screen.</b> The console <i>is</i> the room's screen. One projected view serves the speaker, the room and deaf attendees: huge captions, the join QR, the single most-asked question, and only the signals that need action. Speaker controls are a small keyboard-driven strip.",
- b:"<b>B · Cockpit.</b> The console is a private instrument panel on the podium laptop; the projector shows slides. Show everything at once, densely: signal meters, every question cluster with answered toggles, attendance trend, and a caption monitor to check recognition.",
- c:"<b>C · Two modes.</b> A speaker can't read a dashboard mid-sentence. While presenting, show nothing but one nudge when the room needs something; then switch to Q&amp;A, one big question at a time with Answered → next.",
- d:"<b>D · Timeline.</b> Context beats a snapshot. Plot signals, attendance and questions against time, so the speaker sees <i>when</i> they lost the room and what they were saying then. (Pushback candidate: analysis, not live.)",
- e:"<b>E · Question wall.</b> The merged question is the demo's moment, so project the room's questions as the hero, sized by votes, with captions as a TV subtitle bar. (Pushback candidate: demotes captions and projects audience text unmoderated.)"
+ a:"<b>A · Notes + rail.</b> Lanyard is the presenter view. Paste your notes per slide; they fill the screen in big type. A narrow rail shows only room cues that need action, plus a question count. Q&amp;A time widens the rail into the queue. You step notes with ← →. A clicker drives Keynote, not this window, so notes can drift from the slides.",
+ b:"<b>B · Script follows your voice.</b> Paste a script; the live captions find your place in it, so nothing needs advancing and the clicker stays with Keynote. Room cues appear as one band, only when needed. Q&amp;A time replaces the script with the queue.",
+ c:"<b>C · Companion strip.</b> Your notes already live in Keynote's presenter display; don't rebuild it. Lanyard is a slim window beside it: time left, the one cue that matters, attendance, and the top question. (Shown next to a mock Keynote presenter display.)",
+ d:"<b>D · Host handoff.</b> During the talk the speaker never browses questions. A host curates the queue and sends one question, or a note like \"5 min left\", to a single card on the speaker's screen. Notes fill the rest. (The toggle in the top bar shows the host's screen.)",
+ e:"<b>E · Presenter replacement.</b> Lanyard owns the deck: upload a PDF and present from it. Current and next slide, notes, cues and questions in one tool, so captions and questions line up with slides. (Pushback candidate: rebuilds Keynote's presenter view and widens scope.)"
 };
-const IC={slower:'M12 14l-4-4|M3.3 17A9 9 0 1 1 20.7 17',louder:'M11 5 6 9H2v6h4l5 4V5z|M15.5 8.5a5 5 0 0 1 0 7|M19 5a10 10 0 0 1 0 14',cant_see:'m3 3 18 18|M10.6 10.6a2 2 0 0 0 2.8 2.8|M9.9 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.2 4|M6.6 6.6C3.8 8.4 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 5.4-1.6',lost:'M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20|M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3|M12 17h.01',thumbs_up:'M7 10v12|M15 5.9 14 10h5.8a2 2 0 0 1 1.9 2.6l-2.3 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.8a2 2 0 0 0 1.8-1.1L12 2a3.1 3.1 0 0 1 3 3.9z',people:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M9 3a4 4 0 1 0 0 8a4 4 0 1 0 0-8|M22 21v-2a4 4 0 0 0-3-3.9|M16 3.1a4 4 0 0 1 0 7.8',mic:'M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z|M19 10v2a7 7 0 0 1-14 0v-2|M12 19v3',check:'M20 6 9 17l-5-5',warn:'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z|M12 9v4|M12 17h.01',crit:'M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9z|M15 9l-6 6|m9 9 6 6',list:'M8 6h13|M8 12h13|M8 18h13|M3 6h.01|M3 12h.01|M3 18h.01',next:'M5 12h14|m12 5 7 7-7 7',back:'M19 12H5|m12 19-7-7 7-7',offline:'m2 2 20 20|M8.5 16.5a5 5 0 0 1 7 0|M2 8.8a15 15 0 0 1 4.2-2.7|M10.7 5.1a15 15 0 0 1 11.3 3.7|M5 12.9a10 10 0 0 1 5.2-2.8|M12 20h.01',stop:'M6 6h12v12H6z',up:'M12 19V5|m5 12 7-7 7 7'};
+const IC={slower:'M12 14l-4-4|M3.3 17A9 9 0 1 1 20.7 17',louder:'M11 5 6 9H2v6h4l5 4V5z|M15.5 8.5a5 5 0 0 1 0 7|M19 5a10 10 0 0 1 0 14',cant_see:'m3 3 18 18|M10.6 10.6a2 2 0 0 0 2.8 2.8|M9.9 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.2 4|M6.6 6.6C3.8 8.4 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 5.4-1.6',lost:'M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20|M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3|M12 17h.01',thumbs_up:'M7 10v12|M15 5.9 14 10h5.8a2 2 0 0 1 1.9 2.6l-2.3 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.8a2 2 0 0 0 1.8-1.1L12 2a3.1 3.1 0 0 1 3 3.9z',people:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M9 3a4 4 0 1 0 0 8a4 4 0 1 0 0-8|M22 21v-2a4 4 0 0 0-3-3.9|M16 3.1a4 4 0 0 1 0 7.8',mic:'M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z|M19 10v2a7 7 0 0 1-14 0v-2|M12 19v3',check:'M20 6 9 17l-5-5',warn:'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z|M12 9v4|M12 17h.01',crit:'M7.9 2h8.2L22 7.9v8.2L16.1 22H7.9L2 16.1V7.9z|M15 9l-6 6|m9 9 6 6',list:'M8 6h13|M8 12h13|M8 18h13|M3 6h.01|M3 12h.01|M3 18h.01',next:'M5 12h14|m12 5 7 7-7 7',up:'M12 19V5|m5 12 7-7 7 7',send:'m22 2-7 20-4-9-9-4z|M22 2 11 13',info:'M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20|M12 16v-4|M12 8h.01',clock:'M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20|M12 6v6l4 2',upload:'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4|m17 8-5-5-5 5|M12 3v12'};
 const ic=(n,c='')=>`<svg class="ly-icon ${c}" viewBox="0 0 24 24" aria-hidden="true">${IC[n].split('|').map(d=>`<path d="${d}"/>`).join('')}</svg>`;
-const esc=s=>s;
 
 /* ---------- Fixture ---------- */
-const CAPS=["So the first thing to understand is that eBPF lets you run sandboxed programs inside the kernel without changing kernel source.","For security folks, that means you can observe every exec, every file open, every network connection, at very low overhead.","The classic mistake is treating it like a firewall. It isn't. It's a sensor first.","Tetragon can also enforce, by killing the process in-kernel before the syscall returns.","Now, the overhead question. We measured under two percent CPU on a busy node with about forty policies loaded.","So the pattern we recommend: start in observe-only, baseline a week, then promote the noisy rules to enforcement one at a time."];
-const CL=[
- {label:"Overhead on large clusters?",n:14,v:31},
- {label:"Kernel version requirements",n:6,v:12},
- {label:"Running alongside a service mesh",n:3,v:7},
- {label:"Tetragon vs Falco: when to pick which?",n:5,v:6},
- {label:"Getting started on EKS",n:1,v:2},
- {label:"Can enforcement break running workloads?",n:2,v:2},
+const SLIDES=[
+ {t:"Title",n:["Thank the organisers. Ask: who has run eBPF in production?"]},
+ {t:"Why security folks should care",n:["Every exec, file open, connection.","Low overhead: we'll prove it later."]},
+ {t:"A sensor, not a firewall",n:["The classic mistake.","Story: the team that blocked their own kubectl."]},
+ {t:"Anatomy of a hook",n:["Kprobe vs LSM hook: one sentence each.","Don't go deeper than the diagram."]},
+ {t:"Live trace: compromised pod",n:["Point at the shell spawn, then the outbound IP.","Pause. Let them read it."]},
+ {t:"Tetragon vs Falco",n:["Tetragon enforces in-kernel; Falco alerts.","Same hooks underneath: not a religious choice."]},
+ {t:"Overhead, measured",n:["Under 2% CPU, ~40 policies, busy node.","Methodology is in the repo: don't read the table out.","If asked about 500+ nodes: we tested 300, say so."]},
+ {t:"Tuning: the part people skip",n:["Default rules page you for every kubectl exec.","Show the noisy-rule chart."]},
+ {t:"The rollout pattern",n:["Observe-only, baseline a week.","Promote noisy rules to enforcement one at a time."]},
+ {t:"Policy example",n:["Selector: binary path + namespace label together."]},
+ {t:"What to take away",n:["Sensor first, enforcement second, always baseline."]},
+ {t:"Questions",n:["Take 3, then point to the repo."]},
 ];
-const LONG={label:"How do you structure ownership, review and audit of runtime policies across forty tenant teams without letting a tenant weaken the security baseline?",n:213,v:1204};
-// Per-minute series for a talk at minute 24 of 30.
-const NOW=24;
-const LOST=[0,0,1,1,0,1,2,2,3,4,9,23,18,6,3,2,2,1,2,4,5,3,2,3,4];
-const SLOW=[0,0,0,1,1,0,0,1,1,2,3,5,4,2,1,1,2,3,6,9,8,5,3,2,8];
-const GOT=[0,1,2,3,5,6,6,8,9,8,5,2,4,10,14,18,20,22,19,15,17,24,30,36,41];
-const ATT=[38,52,71,88,96,104,110,114,118,121,124,126,127,129,131,133,134,136,137,138,139,140,141,141,142];
-const QAT=[{m:3,i:1},{m:9,i:0},{m:11,i:0},{m:12,i:3},{m:12,i:5},{m:17,i:2},{m:21,i:0},{m:23,i:4}];
-const SAID={11:"Tetragon can also enforce, by killing the process in-kernel before the syscall returns. The hook sits on the LSM layer…",19:"Now, the overhead question. We measured under two percent CPU on a busy node…",24:CAPS[5]};
+const SCRIPT=[
+ "Now, the overhead question, because someone always asks it.",
+ "We measured under two percent CPU on a busy node with about forty policies loaded.",
+ "The methodology is in the repo, so I won't read the table out.",
+ "And if you're wondering about five hundred nodes and up: we tested three hundred, and I'll be honest about that.",
+ "Which brings us to the part people skip: tuning.",
+ "Default rules will page you about every kubectl exec your own SREs run.",
+ "The pattern we recommend: start in observe-only, baseline a week, then promote the noisy rules to enforcement one at a time.",
+];
+const QS=[
+ {l:"Overhead on large clusters?",n:14,v:31},
+ {l:"Kernel version requirements",n:6,v:12},
+ {l:"Running alongside a service mesh",n:3,v:7},
+ {l:"Tetragon vs Falco: when to pick which?",n:5,v:6},
+ {l:"Getting started on EKS",n:1,v:2},
+ {l:"Can enforcement break running workloads?",n:2,v:2},
+];
+const LONGQ={l:"How do you structure ownership, review and audit of runtime policies across forty tenant teams without letting a tenant weaken the security baseline?",n:213,v:1204};
 
-const S={v:'a',s:'live',w:'projector',t:'dark',far:false,bare:false,mode:'talk',answered:{},cur:0,sel:11,capsOn:true,filter:'open'};
-
+const S={v:'a',s:'live',w:'laptop',t:'dark',bare:false,slide:6,host:false,answered:{}};
 function data(){
  const lots=S.s==='lots',empty=S.s==='empty';
  const att=lots?2184:empty?37:142;
- const sig=empty?{slower:0,louder:0,cant_see:0,lost:0,thumbs_up:0}:lots?{slower:212,louder:40,cant_see:18,lost:1332,thumbs_up:96}:{slower:8,louder:2,cant_see:0,lost:23,thumbs_up:41};
- let cl=empty||S.s==='loading'?[]:lots?[LONG,...CL.map(c=>({...c,n:c.n*9,v:c.v*11}))]:CL;
- if(lots)for(let i=0;i<33;i++)cl=cl.concat({label:`Question cluster ${i+8}`,n:3,v:2});
+ const sig=empty?{slower:0,lost:0,louder:0,cant_see:0,thumbs_up:0}:lots?{slower:212,lost:1332,louder:40,cant_see:18,thumbs_up:96}:S.s==='qa'?{slower:0,lost:2,louder:9,cant_see:0,thumbs_up:58}:{slower:8,lost:23,louder:2,cant_see:0,thumbs_up:41};
+ let qs=empty||S.s==='loading'?[]:lots?[LONGQ,...QS.map(q=>({...q,n:q.n*9,v:q.v*11}))]:QS;
+ if(lots)for(let i=0;i<33;i++)qs=qs.concat({l:`Question cluster ${i+8}`,n:3,v:2});
+ qs=qs.filter(q=>!S.answered[q.l]);
  const title=lots?"eBPF for Security Folks: Tracing Without Tears, Enforcing Without Fear, and Everything We Learned Running Tetragon at Scale Across 4,000 Nodes":"eBPF for Security Folks: Tracing Without Tears";
- const caps=empty?[]:S.s==='error'?["(typed) Sensor first, enforcement second.","(typed) Overhead: under 2% CPU with ~40 policies."]:CAPS;
- return {att,sig,cl,title,caps,lots,empty};
+ const time=empty?{e:'0:00',left:'Starts in 4 min',low:false}:S.s==='qa'?{e:'27:40',left:'2:20 left',low:true}:lots?{e:'28:50',left:'1:10 left',low:true}:{e:'24:10',left:'5:50 left',low:false};
+ const slide=empty?0:S.s==='qa'?11:S.slide;
+ return {lots,empty,att,sig,qs,title,time,slide,qa:S.s==='qa'};
 }
 const SIGL={slower:'Slower',louder:'Louder',cant_see:"Can't see",lost:'Lost me',thumbs_up:'Got it'};
-// Thresholds as a share of the room in the last 60 s. "Got it" is never an alert.
-function sigTone(k,n,att){if(k==='thumbs_up')return null;const r=n/Math.max(att,1);return r>=.15?'crit':r>=.05?'warn':null}
-function nudge(d){
- const order=['lost','slower','louder','cant_see'];let best=null;
- for(const k of order){const t=sigTone(k,d.sig[k],d.att);if(t&&(!best||(t==='crit'&&best.t!=='crit')))best={k,t}}
- return best;
-}
-const NUDGE_TIP={lost:'Recap the last point, or take a question.',slower:'Breathe. Pause on the next slide.',louder:'Move closer to the mic.',cant_see:'Zoom in, or read the slide out.'};
+const TIP={lost:'Recap the last point.',slower:'Pause on this slide.',louder:'Closer to the mic.',cant_see:'Read the slide out.'};
+function tone(k,n,att){if(k==='thumbs_up')return null;const r=n/Math.max(att,1);return r>=.15?'crit':r>=.05?'warn':null}
+function cues(d){return ['lost','slower','louder','cant_see'].map(k=>({k,t:tone(k,d.sig[k],d.att),n:d.sig[k]})).filter(c=>c.t).sort((a,b)=>(a.t==='crit'?0:1)-(b.t==='crit'?0:1))}
+const fmt=n=>n.toLocaleString();
 
 /* ---------- Shared pieces ---------- */
-function qr(px){let x=0x2f6a91;const r=()=>(x=(x*1103515245+12345)&0x7fffffff)%7<3;const N=25,c=px/N;let s='';
- const fin=(a,b)=>a<7&&b<7;
- for(let i=0;i<N;i++)for(let j=0;j<N;j++){
-  const inF=fin(i,j)||fin(i,N-1-j)||fin(N-1-i,j);let on;
-  if(inF){const ii=i<7?i:N-1-i,jj=j<7?j:N-1-j;const m=Math.max(Math.abs(ii-3),Math.abs(jj-3));on=m!==2}else on=r();
-  if(on)s+=`<rect x="${j*c}" y="${i*c}" width="${c+.3}" height="${c+.3}"/>`}
- return `<span class="p-qr" role="img" aria-label="QR code: lanyard.cnh.radarhq.io/j/K8S"><svg width="${px}" height="${px}" fill="#000">${s}</svg></span>`}
-function capsHTML(d,cls='ly-caps--stage',n){
- if(S.s==='loading')return `<div class="ly-caps ${cls}" aria-busy="true"><span class="ly-sr-only">Connecting</span>${[90,70,85].map(w=>`<span class="ly-skeleton" style="width:${w}%"></span>`).join('')}</div>`;
- const lines=n?d.caps.slice(-n):d.caps;
- return `<div class="ly-caps ${cls}" role="region" aria-label="Captions, scrollable" tabindex="0"><ol class="ly-caps__log" role="log" aria-live="polite">${lines.map((t,i)=>`<li class="ly-caps__line">${i===0&&!n&&S.s!=='error'?'<span class="ly-caps__speaker">Priya Raman</span>':''}${t}</li>`).join('')}</ol>${S.s==='live'||S.s==='lots'?'<p class="ly-caps__interim" aria-hidden="true">and the rule here is that…</p>':''}</div>`}
-function lastLine(d){return d.caps.length?d.caps[d.caps.length-1]:''}
-function errBanner(){return S.s==='error'?`<div class="ly-banner" role="status">${ic('mic')}<span>This browser can't caption speech. Use Chrome, or type live notes below.</span></div>`:''}
-function notes(){return S.s==='error'?`<form class="p-notes" data-form="notes"><label class="ly-sr-only" for="ln">Live note</label><input id="ln" class="ly-input" placeholder="Type a live note, Enter to send"><button class="ly-btn ly-btn--primary" type="submit">Send</button></form>`:''}
-function capBtn(big){const on=S.capsOn&&S.s!=='empty';return S.s==='error'?'':`<button class="ly-btn ${on?'':'ly-btn--primary'} ${big?'ly-btn--lg':''}" data-act="caps">${ic(on?'stop':'mic')}${on?'Stop captions':'Start captions'}${big?'':'<span class="p-kbd">C</span>'}</button>`}
-function meter(k,n,att,lg){const t=sigTone(k,n,att);const pct=Math.min(1,n/Math.max(att,1));return `<div class="ly-meter ${t?'ly-meter--'+t:''} ${lg?'ly-meter--lg':''}"><div class="ly-meter__head"><span class="ly-meter__label" style="display:flex;gap:6px;align-items:center">${ic(k)}${SIGL[k]}${t?` <span class="ly-pill ly-pill--${t}" style="font-size:var(--text-xs);padding:1px 8px">${ic(t)}${t==='crit'?'Act now':'Watch'}</span>`:''}</span><span class="ly-meter__value">${n} ${n===1?'person':'people'}</span></div><div class="ly-meter__track" role="meter" aria-valuemin="0" aria-valuemax="${att}" aria-valuenow="${n}" aria-label="${SIGL[k]}"><div class="ly-meter__fill" style="width:${pct*100}%"></div></div></div>`}
-function qItem(c,i,size){const done=!!S.answered[c.label];return `<li class="ly-q ${done?'ly-q--answered':''} ${size==='stage'?'ly-q--stage':''}"><span class="ly-q__rank ly-num">${i+1}</span><div><p class="ly-q__label">${c.label}</p><div class="ly-q__meta"><span class="ly-muted">${c.n} ${c.n===1?'person':'people'} asked</span><span class="ly-muted ly-num">${c.v} votes</span>${done?'<span class="ly-pill ly-pill--ok">'+ic('check')+'Answered</span>':''}<button class="ly-btn" style="min-height:36px;font-size:var(--text-sm)" aria-pressed="${done}" data-ans="${i}">${done?'Undo':'Answered'}</button></div></div></li>`}
-const openQs=d=>d.cl.filter(c=>!S.answered[c.label]);
-function emptyQs(){return `<div class="ly-empty"><strong class="ly-empty__title">No questions yet</strong><p class="ly-empty__body">They appear here as the room asks. Similar ones merge automatically.</p></div>`}
+function topBar(d,extra=''){return `<header class="p-top">${d.empty?'<span class="ly-pill">Not started</span>':'<span class="ly-pill ly-pill--live">LIVE</span>'}<span class="t">${d.title}</span><span class="p-time ${d.time.low?'low':''}"><b>${d.time.e}</b><span>${d.time.left}</span></span>${extra}</header>`}
+function capBtn(d){if(S.s==='error')return `<span class="ly-pill ly-pill--warn">${ic('mic')}Typed notes</span>`;return d.empty?`<button class="ly-btn ly-btn--primary" data-act="start">${ic('mic')}Start captions<span class="p-kbd">C</span></button>`:`<span class="ly-pill">${ic('mic')}Captions on</span>`}
+function banner(){return S.s==='error'?`<div class="ly-banner" role="status">${ic('mic')}<span>This browser can't caption speech. Use Chrome, or type short live notes; the room sees them as captions.</span></div>`:'<div></div>'}
+function typed(){return S.s==='error'?`<form class="p-notesin" data-form="n"><label class="ly-sr-only" for="tn">Live note</label><input id="tn" class="ly-input" placeholder="Live note for the room, Enter to send"><button class="ly-btn ly-btn--primary" type="submit">Send</button></form>`:''}
+function cueCard(c){return `<div class="p-cue ${c.t}" role="status">${ic(c.k)}<div><b>${SIGL[c.k]} · ${fmt(c.n)}</b><span>${TIP[c.k]}</span></div></div>`}
+function calm(d){return d.empty?`<div class="p-cue info">${ic('people')}<div><b>${d.att} joined</b><span>Cues appear here when the room needs something.</span></div></div>`:`<div class="p-cue ok">${ic('thumbs_up')}<div><b>Room's with you</b><span>${d.sig.thumbs_up} got it in the last minute</span></div></div>`}
+function notesBlock(d,i=d.slide){const s=SLIDES[i];if(S.s==='loading')return `<div aria-busy="true">${[80,65,90].map(w=>`<span class="ly-skeleton" style="width:${w}%;height:1.6em;margin-bottom:.6em"></span>`).join('')}</div>`;
+ const extra=d.lots?["Extra: if they push on 4,000 nodes, the per-node cost stays flat; the control plane is what grows.","Mention the ring-buffer sizing gotcha and the kernel 5.8 requirement for BPF ring buffers.","Do NOT promise numbers for Windows nodes."]:[];
+ return `<div><div class="p-slide-h"><b>${s.t}</b><span>Slide ${i+1} of ${SLIDES.length}</span></div><div class="p-notes"><ul>${s.n.concat(extra).map(x=>`<li>${x}</li>`).join('')}</ul></div></div>`}
+function nextBlock(i){const n=SLIDES[i+1];return n?`<div class="p-next">Next: <b>${n.t}</b></div>`:''}
+function qList(d,limit,act){if(S.s==='loading')return '<span class="ly-skeleton" style="height:120px"></span>';if(!d.qs.length)return `<p class="ly-muted" style="margin:0">No questions yet.</p>`;return `<ul class="p-qmini">${d.qs.slice(0,limit).map(q=>`<li><b>${q.l}</b><span>${fmt(q.n)} asked · ${fmt(q.v)} votes</span></li>`).join('')}</ul>${d.qs.length>limit?`<p class="ly-muted" style="margin:6px 0 0;font-size:var(--text-sm)">+ ${d.qs.length-limit} more</p>`:''}`}
+function qaPanel(d,big){const q=d.qs[0];if(!q)return `<div class="ly-empty"><strong class="ly-empty__title">No open questions</strong></div>`;
+ return `<div class="p-qa"><span class="p-label">Question 1 of ${d.qs.length} · most votes</span><h2 style="font-size:${big?'var(--text-3xl)':'var(--text-2xl)'}">${q.l}</h2><span class="ly-muted">${fmt(q.n)} people asked · ${fmt(q.v)} votes</span><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="ly-btn ly-btn--primary" data-act="answered">${ic('check')}Answered, next<span class="p-kbd">A</span></button><button class="ly-btn" data-act="skip">${ic('next')}Skip<span class="p-kbd">N</span></button><button class="ly-btn ly-btn--ghost" data-act="qa">Back to notes<span class="p-kbd">Q</span></button></div><span class="p-label" style="margin-top:var(--space-3)">Up next</span>${qList({...d,qs:d.qs.slice(1)},4)}</div>`}
+function slideThumb(i){const s=SLIDES[Math.min(i,SLIDES.length-1)];return `<div class="p-slide" role="img" aria-label="Slide ${i+1}: ${s.t}"><b>${s.t}</b><i></i><i></i><i></i></div>`}
 
 /* ---------- Variants ---------- */
 const V={
- a(d){
-  const top=openQs(d)[0];const hot=['lost','slower','louder','cant_see'].map(k=>[k,sigTone(k,d.sig[k],d.att)]).filter(x=>x[1]);
-  if(d.empty)return `<div class="sa">${errBanner()}<header class="sa-hd"><span class="ly-pill">Starts 10:30</span><h1 class="sa-title">${d.title}</h1><span class="sa-att">${ic('people')}${d.att}</span></header><div class="sa-empty">${qr(Math.min(360,280))}<p class="p-big">Scan to follow along. Captions, questions, all anonymous.</p><p style="margin:0;font-size:var(--text-xl);color:var(--color-text-muted)">lanyard.cnh.radarhq.io/j/K8S</p></div><div class="sa-ctl">${capBtn(false)}<span class="ly-muted" style="font-size:var(--text-sm)">Captions start when you press C. People who joined see them instantly.</span></div></div>`;
-  return `<div class="sa">${errBanner()}<header class="sa-hd"><span class="ly-pill ly-pill--live">LIVE</span><h1 class="sa-title">${d.title}</h1><span class="ly-muted" style="font-size:var(--text-lg)">24:10</span><span class="sa-att" aria-label="${d.att} people here">${ic('people')}${d.att.toLocaleString()}</span></header>
-  <main class="sa-caps">${capsHTML(d)}${S.s==='error'?`<div style="padding:var(--space-3) var(--space-5)">${notes()}</div>`:''}</main>
-  <aside class="sa-side" aria-label="Room">
-   <div class="sa-join">${qr(150)}<p>Scan to follow along<small>Captions on your phone. Ask anonymously.<br>lanyard.cnh.radarhq.io/j/K8S</small></p></div>
-   <div class="sa-top">${top?`<span class="p-label">Most asked · ${openQs(d).length} open</span><h2 class="p-clamp2" style="-webkit-line-clamp:3">${top.label}</h2><div class="meta">${top.n.toLocaleString()} people asked · ${top.v.toLocaleString()} votes</div>`:S.s==='loading'?'<span class="ly-skeleton" style="height:120px"></span>':`<span class="p-label">Questions</span><h2 style="font-size:var(--text-xl)">None yet. Ask from your phone.</h2>`}</div>
-   ${hot.length?`<div><span class="p-label">The room says</span><div class="sa-sig" style="margin-top:8px">${hot.map(([k,t])=>`<span class="ly-pill ly-pill--${t}">${ic(k)}${SIGL[k]} · ${d.sig[k].toLocaleString()}</span>`).join('')}</div></div>`:`<div><span class="p-label">The room says</span><div class="sa-sig" style="margin-top:8px"><span class="ly-pill ly-pill--ok">${ic('check')}All good · ${d.sig.thumbs_up} got it</span></div></div>`}
-  </aside>
-  <nav class="sa-ctl" aria-label="Speaker controls">${capBtn(false)}<button class="ly-btn" data-act="ans-top" ${top?'':'disabled'}>${ic('check')}Answered<span class="p-kbd">A</span></button><button class="ly-btn" data-act="skip" ${top?'':'disabled'}>${ic('next')}Next question<span class="p-kbd">N</span></button><span style="flex:1"></span><span class="ly-muted" style="font-size:var(--text-sm)">Room screen · projected</span></nav></div>`},
+ a(d){const cs=cues(d);
+  const rail=d.qa?`<aside class="ra-rail" aria-label="Q&amp;A">${qaPanel(d)}</aside>`:`<aside class="ra-rail" aria-label="Room">
+   <section><span class="p-label">Room</span>${cs.length?cs.map(cueCard).join(''):calm(d)}<div class="p-mini"><span class="ly-pill">${ic('people')}${fmt(d.att)} here</span></div></section>
+   <section><span class="p-label">Questions · ${d.qs.length}</span>${qList(d,3)}${d.qs.length?`<button class="ly-btn" data-act="qa">${ic('list')}Take questions<span class="p-kbd">Q</span></button>`:''}</section></aside>`;
+  return `<div class="ra">${banner()}${topBar(d,capBtn(d))}<div class="ra-body ${d.qa?'qa':''}"><main class="ra-notes" aria-label="Your notes">${notesBlock(d)}${typed()}${nextBlock(d.slide)}<div class="ly-muted" style="font-size:var(--text-sm)">← → step notes · Your clicker drives Keynote, not this window</div></main>${rail}</div></div>`},
 
- b(d){
-  const qs=S.filter==='open'?openQs(d):d.cl.filter(c=>S.answered[c.label]);
-  return `<div class="sb">${errBanner()}<header class="sb-hd">${d.empty?'<span class="ly-pill">Not started</span>':'<span class="ly-pill ly-pill--live">LIVE</span>'}<h1>${d.title}</h1>
-  <div class="sb-stat"><span>Elapsed</span><b>${d.empty?'0:00':'24:10'}</b></div>
-  <div class="sb-stat"><span>Here now</span><b>${d.att.toLocaleString()} ${d.empty?'':'<span class="sb-up">▲ 8 in 5 min</span>'}</b></div>
-  <div class="sb-stat"><span>Questions</span><b>${openQs(d).length}</b></div>
-  ${capBtn(d.empty)}</header>
-  <div class="sb-grid">
-   <section class="sb-col" aria-label="Signals"><h2>Signals <span>last 60 s</span></h2>${S.s==='loading'?'<span class="ly-skeleton" style="height:240px"></span>':`<div class="sb-meters">${Object.keys(SIGL).map(k=>meter(k,d.sig[k],d.att)).join('')}</div>`}</section>
-   <section class="sb-col" aria-label="Questions"><h2>Questions <span>ranked by votes and size</span></h2><div class="sb-filter" role="group" aria-label="Filter"><button class="ly-btn" aria-pressed="${S.filter==='open'}" data-filter="open">Open ${openQs(d).length}</button><button class="ly-btn" aria-pressed="${S.filter==='done'}" data-filter="done">Answered ${d.cl.length-openQs(d).length}</button></div>${S.s==='loading'?'<span class="ly-skeleton" style="height:300px"></span>':qs.length?`<ul class="ly-qlist">${qs.map((c,i)=>qItem(c,d.cl.indexOf(c))).join('')}</ul>`:emptyQs()}</section>
-   <section class="sb-col sb-caps" aria-label="Caption monitor"><h2>Caption monitor <span>${S.s==='error'?'typed notes':'Chrome · en-US'}</span></h2>${d.empty?`<div class="ly-empty"><strong class="ly-empty__title">Captions are off</strong><p class="ly-empty__body">Press Start captions when you begin. ${d.att} people have joined.</p></div>`:capsHTML(d,'')}${S.s==='error'?`<div style="padding:var(--space-3)">${notes()}</div>`:''}</section>
-  </div></div>`},
+ b(d){const cs=cues(d);const c=cs[0];
+  const band=d.empty?`<div class="rb-cue" style="color:var(--color-text-muted);background:var(--color-surface)">${ic('people')}<span>${d.att} joined. The script starts following you when captions start.</span></div>`
+   :c?`<div class="rb-cue ${c.t}" role="status">${ic(c.k)}${SIGL[c.k]} · ${fmt(c.n)} <span>${TIP[c.k]}</span><span class="grow"></span><span class="ly-muted" style="font-weight:400">${fmt(d.qs.length)} questions waiting · Q</span></div>`
+   :`<div class="rb-cue ok" role="status">${ic('thumbs_up')}<span>Room's with you</span><span class="grow"></span><span class="ly-muted" style="font-weight:400">${d.qs.length} questions waiting · Q</span></div>`;
+  if(d.qa)return `<div class="rb">${banner()}${topBar(d,'')}${band}<main class="rb-qa">${qaPanel(d,true)}</main><div></div></div>`;
+  const nowI=d.empty?0:2;const manual=S.s==='error';
+  const paras=SCRIPT.map((t,i)=>`<p class="${i<nowI?'rb-past':''}">${i===nowI&&!d.empty?`<span class="rb-now">${t}</span>`:t}</p>`).join('');
+  const body=S.s==='loading'?'<div style="padding:var(--space-6)"><span class="ly-skeleton" style="height:3em;margin-bottom:1em"></span><span class="ly-skeleton" style="height:3em;width:70%"></span></div>'
+   :`<span class="rb-marker" aria-hidden="true"></span><div class="rb-roll" data-roll data-now="${nowI}">${paras}</div><div class="rb-match">${manual?`<span class="ly-pill ly-pill--warn">${ic('warn')}Can't follow your voice here: ↑ ↓ to scroll</span>`:d.empty?'<span class="ly-pill">Waiting for captions</span>':`<span class="ly-pill ly-pill--info">${ic('mic')}Following your voice</span>`}</div>`;
+  return `<div class="rb">${banner()}${topBar(d,capBtn(d))}${band}<main class="rb-script" aria-label="Your script">${body}</main>${typed()?`<div style="padding:var(--space-3) var(--space-5)">${typed()}</div>`:'<div></div>'}</div>`},
 
- c(d){
-  const hd=`<header class="sc-hd">${d.empty?'<span class="ly-pill">Not started</span>':'<span class="ly-pill ly-pill--live">LIVE</span>'}<span>${d.empty?'':'24:10'}</span><span class="grow"></span><span>${ic('people')} ${d.att.toLocaleString()} here</span>${S.mode==='qa'?'':capBtn(false)}</header>`;
-  if(S.mode==='qa'&&!d.empty){const q=openQs(d);const c=q[0];
-   return `<div class="sc">${hd}<div class="sc-qa"><section class="sc-cur" aria-label="Current question">${c?`<span class="p-label" style="font-size:var(--text-lg)">Question 1 of ${q.length}</span><h2 class="p-clamp2" style="-webkit-line-clamp:4">${c.label}</h2><div class="meta">${c.n.toLocaleString()} people asked · ${c.v.toLocaleString()} votes</div><div class="acts"><button class="ly-btn ly-btn--primary" data-act="ans-top">${ic('check')}Answered, next</button><button class="ly-btn" data-act="skip">${ic('next')}Skip</button><button class="ly-btn ly-btn--ghost" data-act="mode">${ic('back')}Back to talk</button></div>`:`<h2>All questions answered</h2><div class="acts"><button class="ly-btn ly-btn--primary" data-act="mode">${ic('back')}Back to talk</button></div>`}</section><aside class="sc-next" aria-label="Up next"><span class="p-label">Up next</span><ol>${q.slice(1,5).map(c=>`<li><span class="p-clamp2">${c.label}</span><span>${c.n} asked · ${c.v} votes</span></li>`).join('')}</ol></aside></div></div>`}
-  const n=nudge(d);const qn=openQs(d).length;
-  const body=d.empty?`<div class="sc-nudge ok" style="border-style:dashed;color:var(--color-text-muted);background:none">${ic('mic')}<span class="p-big">Ready when you are</span><p>${d.att} people have joined. Press Start captions as you begin.</p></div>${capBtn(true)}`
-   :S.s==='loading'?`<span class="ly-skeleton" style="width:60%;height:40%"></span>`
-   :n?`<div class="sc-nudge ${n.t}" role="status">${ic(n.k)}<span class="p-big">${SIGL[n.k]} · ${d.sig[n.k].toLocaleString()} people</span><p>${NUDGE_TIP[n.k]}</p></div>`
-   :`<div class="sc-nudge ok" role="status">${ic('thumbs_up')}<span class="p-big">The room's with you</span><p>${d.sig.thumbs_up} got it in the last minute</p></div>`;
-  return `<div class="sc">${errBanner()}${hd}<main class="sc-talk">${body}${!d.empty&&S.s!=='loading'?`<button class="ly-btn ly-btn--primary sc-take" data-act="mode" ${qn?'':'disabled'}>${ic('list')}Take questions · ${qn} waiting</button>`:''}${notes()}</main>${d.caps.length?`<div class="sc-tick" aria-label="Latest caption"><p class="p-clamp2">${lastLine(d)}</p></div>`:''}</div>`},
+ c(d){const cs=cues(d);const s=SLIDES[d.slide];
+  const key=`<section class="rc-key" aria-label="Keynote presenter display (mock)"><div class="bar"><span>Keynote · Presenter Display (mock)</span><span><b>${d.time.e}</b> elapsed</span></div><div class="slides"><div><small>Current slide</small>${slideThumb(d.slide)}</div><div><small>Next</small>${slideThumb(d.slide+1)}</div></div><div class="knotes"><ul>${s.n.map(x=>`<li>${x}</li>`).join('')}</ul></div></section>`;
+  const strip=`<aside class="rc-strip" aria-label="Lanyard"><div class="hd">${d.empty?'<span class="ly-pill">Not started</span>':'<span class="ly-pill ly-pill--live">LIVE</span>'}<b style="flex:1">Lanyard</b>${S.s==='error'?`<span class="ly-pill ly-pill--warn">${ic('mic')}No captions</span>`:''}</div>
+   <div class="bd">${S.s==='error'?`<div class="ly-banner">${ic('mic')}<span>Can't caption in this browser. Use Chrome.</span></div>`:''}
+    <div><span class="p-label">Time left</span><div class="rc-big" style="${d.time.low?'color:var(--color-warn)':''}">${d.time.left.replace(' left','')}</div></div>
+    ${cs.length?cueCard(cs[0]):calm(d)}${cs.length>1?`<div class="p-mini">${cs.slice(1).map(c=>`<span class="ly-pill ly-pill--${c.t}">${ic(c.k)}${SIGL[c.k]} · ${fmt(c.n)}</span>`).join('')}</div>`:''}
+    <div><span class="p-label">${d.qa?'Answering now':'Top question'} · ${d.qs.length} open</span>${S.s==='loading'?'<span class="ly-skeleton" style="height:60px;margin-top:6px"></span>':d.qs[0]?`<p style="margin:6px 0 2px;font-size:${d.qa?'var(--text-2xl)':'var(--text-lg)'};font-weight:700;line-height:1.25">${d.qs[0].l}</p><span class="ly-muted" style="font-size:var(--text-sm)">${fmt(d.qs[0].n)} asked · ${fmt(d.qs[0].v)} votes</span>`:`<p class="ly-muted" style="margin:6px 0 0">None yet.</p>`}</div>
+    <div class="p-mini"><span class="ly-pill">${ic('people')}${fmt(d.att)} here</span></div>${typed()}</div>
+   <div class="ft">${d.empty?`<button class="ly-btn ly-btn--primary" data-act="start">${ic('mic')}Start captions</button>`:`<button class="ly-btn" data-act="answered" ${d.qs.length?'':'disabled'}>${ic('check')}Answered</button><button class="ly-btn" data-act="skip" ${d.qs.length?'':'disabled'}>${ic('next')}Next</button>`}</div></aside>`;
+  return `<div class="rc">${key}${strip}<span class="rc-tag">Two windows side by side on the speaker's laptop: Keynote (mock, left) and Lanyard (right)</span></div>`},
 
- d(d){
-  const W=600,H=56,x=m=>m/30*W;
-  const row=(label,icon,arr,max,opts={})=>{const y=v=>H-(v/max)*H;const pts=arr.map((v,m)=>`${x(m).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-   const thr=opts.thr!=null?y(opts.thr):null;let hot='';
-   if(thr!=null){arr.forEach((v,m)=>{if(m&&(v>opts.thr||arr[m-1]>opts.thr))hot+=`<polyline class="sd-line ${opts.cls}" points="${x(m-1)},${y(arr[m-1])} ${x(m)},${y(v)}"/>`});}
-   const peak=arr.reduce((b,v,m)=>v>arr[b]?m:b,0);
-   const tone=opts.thr!=null&&arr[peak]>opts.thr?opts.cls:null;
-   return `<div class="sd-row"><div class="sd-rl"><b>${ic(icon)}${label}</b><span class="now">${opts.now??arr[arr.length-1]}</span><span>${opts.sub||''}</span></div><svg class="sd-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${label} per minute, peak ${arr[peak]} at minute ${peak}">${thr!=null?`<line class="sd-thr" x1="0" x2="${W}" y1="${thr}" y2="${thr}"/>`:''}<polyline class="sd-line ${opts.acc?'acc':''}" points="${pts}"/>${hot}<line class="sd-cur" x1="${x(S.sel)}" x2="${x(S.sel)}" y1="-4" y2="${H+4}"/>${tone?`<text x="${x(peak)+6}" y="10">${opts.cls==='hot'?'▲':'△'} ${arr[peak]} at ${peak}:00</text>`:''}</svg></div>`};
-  const qrow=`<div class="sd-row"><div class="sd-rl"><b>${ic('list')}Questions</b><span class="now">${d.cl.length}</span><span>merged clusters</span></div><svg class="sd-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Questions over time">${QAT.map(q=>`<circle class="sd-dot" cx="${x(q.m)}" cy="${H/2}" r="7"/>`).join('')}<line class="sd-cur" x1="${x(S.sel)}" x2="${x(S.sel)}" y1="-4" y2="${H+4}"/></svg></div>`;
-  const said=SAID[S.sel]||Object.entries(SAID).reduce((b,[m,t])=>Math.abs(m-S.sel)<Math.abs(b[0]-S.sel)?[+m,t]:b,[99,''])[1];
-  const askedThen=QAT.filter(q=>Math.abs(q.m-S.sel)<=1).map(q=>CL[q.i].label);
-  if(d.empty||S.s==='loading')return `<div class="sd">${errBanner()}<header class="sd-hd">${d.empty?'<span class="ly-pill">Not started</span>':'<span class="ly-pill ly-pill--live">LIVE</span>'}<h1>${d.title}</h1>${capBtn(d.empty)}</header><div class="ly-empty" style="margin:auto"><strong class="ly-empty__title">${d.empty?'The timeline starts with your talk':'Connecting…'}</strong><p class="ly-empty__body">${d.att} people have joined so far.</p></div></div>`;
-  return `<div class="sd">${errBanner()}<header class="sd-hd"><span class="ly-pill ly-pill--live">LIVE</span><h1>${d.title}</h1><span class="ly-muted">24:10 of 30:00</span>${capBtn(false)}</header>
-  <div class="sd-main"><section class="sd-chart" aria-label="Talk timeline" data-chart>
-   ${row('Here','people',ATT.map(v=>d.lots?v*15:v),d.lots?2200:150,{acc:true,now:d.att.toLocaleString(),sub:'+104 since start'})}
-   ${row('Lost me','lost',d.lots?LOST.slice(0,-1).map(v=>v*15).concat(d.sig.lost):LOST,d.lots?1400:30,{thr:Math.round(d.att*.05),cls:'hot',sub:'per minute',now:d.sig.lost.toLocaleString()})}
-   ${row('Slower','slower',d.lots?SLOW.slice(0,-1).map(v=>v*15).concat(d.sig.slower):SLOW,d.lots?1400:30,{thr:Math.round(d.att*.05),cls:'warm',sub:'per minute',now:d.sig.slower.toLocaleString()})}
-   ${row('Got it','thumbs_up',d.lots?GOT.slice(0,-1).map(v=>v*15).concat(d.sig.thumbs_up):GOT,d.lots?1400:45,{sub:'per minute',now:d.sig.thumbs_up.toLocaleString()})}
-   ${qrow}
-   <div class="sd-axis"><span></span><div><span>0:00</span><span>10:00</span><span>20:00</span><span>30:00</span></div></div>
-   <p class="ly-muted" style="font-size:var(--text-sm)">Dashed line: alert threshold (5% of the room). Click the chart to move the cursor.</p>
-  </section>
-  <aside class="sd-side" aria-label="At the cursor"><div><span class="p-label">At ${S.sel}:00 you were saying</span><div class="sd-at" style="margin-top:8px">${said}</div></div><div><span class="p-label">Asked around then</span>${askedThen.length?`<ul style="margin:8px 0 0;padding-left:1.1em;display:grid;gap:6px">${askedThen.map(l=>`<li>${l}</li>`).join('')}</ul>`:'<p class="ly-muted">Nothing.</p>'}</div><div><span class="p-label">Top open questions</span><ul class="ly-qlist" style="margin-top:8px">${openQs(d).slice(0,3).map((c,i)=>qItem(c,d.cl.indexOf(c))).join('')}</ul></div></aside></div>
-  ${notes()?`<div style="padding:var(--space-3)">${notes()}</div>`:''}<div class="sd-tick"><p class="p-clamp2">${lastLine(d)}</p></div></div>`},
+ d(d){const cs=cues(d);
+  const toggle=`<button class="ly-btn" data-act="host" aria-pressed="${S.host}" style="min-height:36px;font-size:var(--text-sm)">${S.host?'Host screen':'Show host screen'}</button>`;
+  if(S.host){
+   return `<div class="rd">${banner()}${topBar(d,toggle)}<div class="rd-hostview"><section aria-label="Queue"><span class="p-label">Host · question queue · ${d.qs.length}</span>${S.s==='loading'?'<span class="ly-skeleton" style="height:200px"></span>':`<ul class="p-qmini">${d.qs.slice(0,6).map((q,i)=>`<li style="display:flex;gap:8px;align-items:center"><div style="flex:1"><b>${q.l}</b><span>${fmt(q.n)} asked · ${fmt(q.v)} votes</span></div><button class="ly-btn ${i===0&&d.qa?'ly-btn--primary':''}" style="min-height:36px;font-size:var(--text-sm)">${ic('send')}${i===0&&d.qa?'Sent':'Send'}</button></li>`).join('')}</ul>`}</section><section aria-label="Room and messages"><span class="p-label">Room</span>${cs.length?cs.map(cueCard).join(''):calm(d)}<span class="p-label">Message the speaker</span><div class="p-mini">${['5 min left','Wrap up','Louder please','Slow down'].map(m=>`<button class="ly-btn" style="min-height:36px;font-size:var(--text-sm)">${m}</button>`).join('')}</div><form class="p-notesin"><label class="ly-sr-only" for="hm">Message</label><input id="hm" class="ly-input" placeholder="Custom message"><button class="ly-btn ly-btn--primary" type="button">Send</button></form></section></div></div>`}
+  const hostQ=d.qa||d.lots?d.qs[0]:null;
+  const msg=d.lots?`<div class="rd-msg">${ic('clock')}<span>Host: 1 min left, take one question</span></div>`:S.s==='live'?`<div class="rd-msg">${ic('info')}<span>Host: 5 min left</span></div>`:'';
+  return `<div class="rd">${banner()}${topBar(d,capBtn(d)+toggle)}<div class="rd-body"><main class="rd-notes" aria-label="Your notes">${notesBlock(d)}${typed()}${nextBlock(d.slide)}</main><aside class="rd-side" aria-label="From your host and the room">
+   <div class="rd-host" role="status"><span class="p-label">From your host · Sam</span>${hostQ?`<h2>${hostQ.l}</h2><span class="ly-muted">${fmt(hostQ.n)} people asked</span><button class="ly-btn ly-btn--primary" data-act="answered">${ic('check')}Done, ready for next</button>`:`<p style="margin:0;font-size:var(--text-lg)">${d.empty?'Sam is hosting. Questions come through Sam.':'Sam is holding questions until Q&amp;A.'}</p><span class="ly-muted">${d.qs.length} in the queue</span>`}</div>
+   ${msg}${cs.length?cueCard(cs[0]):calm(d)}<div class="p-mini"><span class="ly-pill">${ic('people')}${fmt(d.att)} here</span></div></aside></div></div>`},
 
- e(d){
-  const qs=d.cl.slice(0,5);const more=d.cl.length-qs.length;
-  const hd=`<header class="se-hd">${qr(96)}<h1>${d.empty?'Ask anything, anonymously':'You asked. We merged.'}<small>${d.empty?'Scan to join. Similar questions merge into one.':`${d.cl.reduce((a,c)=>a+c.n,0).toLocaleString()} questions from ${d.att.toLocaleString()} people, merged into ${d.cl.length}`}</small></h1>${capBtn(false)}</header>`;
-  const wall=S.s==='loading'?`<div class="se-wall">${[1,2,3,4,5].map((_,i)=>`<span class="ly-skeleton ${i?'':'se-card top'}" style="height:auto"></span>`).join('')}</div>`
-   :qs.length?`<div class="se-wall">${qs.map((c,i)=>`<article class="se-card ${i===0?'top':''} ${S.answered[c.label]?'done':''}"><h2 class="p-clamp2" style="-webkit-line-clamp:${i?3:4}">${c.label}</h2><div class="meta"><span>${c.n.toLocaleString()} asked</span><span>${ic('up')}${c.v.toLocaleString()}</span>${S.answered[c.label]?'<span class="ly-pill ly-pill--ok">'+ic('check')+'Answered</span>':''}</div></article>`).join('')}${more?`<p class="ly-muted" style="grid-column:1/-1;margin:0;font-size:var(--text-lg)">+ ${more} more questions on your phones</p>`:''}</div>`
-   :`<div class="se-wall" style="grid-template-columns:1fr"><div class="ly-empty" style="margin:auto"><strong class="ly-empty__title" style="font-size:var(--text-2xl)">Questions appear here as you ask them</strong></div></div>`;
-  return `<div class="se">${errBanner()}${hd}${wall}${notes()?`<div style="padding:0 var(--space-5) var(--space-3)">${notes()}</div>`:''}${d.caps.length?`<div class="se-sub" aria-label="Latest caption"><p class="p-clamp2">${lastLine(d)}</p></div>`:''}</div>`},
+ e(d){const cs=cues(d);
+  if(d.empty)return `<div class="re">${banner()}${topBar(d,capBtn(d))}<div style="display:grid;place-items:center;padding:var(--space-6)"><div class="ly-empty" style="max-width:520px">${ic('upload','ly-empty__icon')}<strong class="ly-empty__title">Drop your deck here (PDF)</strong><p class="ly-empty__body">Lanyard opens a stage window for the projector and keeps your notes, the room and questions in sync with each slide. Paste your notes per slide afterwards: PDFs don't reliably carry speaker notes.</p><div class="ly-empty__action"><button class="ly-btn ly-btn--primary">${ic('upload')}Choose PDF</button></div></div></div></div>`;
+  return `<div class="re">${banner()}${topBar(d,capBtn(d))}<div class="re-body"><div class="re-cur"><span class="p-label">On the projector · ${d.slide+1}/${SLIDES.length}</span>${slideThumb(d.slide)}</div><div class="re-nxt"><span class="p-label">Next</span>${slideThumb(d.slide+1)}<div class="re-up" style="margin-top:var(--space-3)">${ic('next')}Clicker and → advance slides and notes together</div></div>
+   <main class="re-notes" aria-label="Notes">${notesBlock(d)}${typed()}</main>
+   <aside class="re-rail" aria-label="Room">${d.qa?qaPanel(d):`${cs.length?cs.map(cueCard).join(''):calm(d)}<span class="p-label">Asked during this slide</span>${qList({...d,qs:d.qs.slice(0,2)},2)}<button class="ly-btn" data-act="qa">${ic('list')}All ${d.qs.length} questions<span class="p-kbd">Q</span></button>`}<div class="p-mini"><span class="ly-pill">${ic('people')}${fmt(d.att)} here</span></div></aside></div></div>`},
 };
 
 /* ---------- Render ---------- */
-const SIZES={projector:[1920,1080],laptop:[1280,800],phone:[390,800]};
+const SIZES={laptop:[1440,900],monitor:[1920,1080],phone:[390,800]};
 const fitEl=document.getElementById('fit'),frame=document.getElementById('frame');
 function render(){
  document.documentElement.dataset.theme=S.t;
- const [w,h]=SIZES[S.w];
- const avail=Math.max(320,window.innerWidth-40);
- let k=Math.min(1,avail/w);if(S.far)k*=0.35;
+ const [w,h]=SIZES[S.w];const k=Math.min(1,Math.max(320,window.innerWidth-40)/w);
  frame.style.width=w+'px';frame.style.height=h+'px';frame.style.transform=`scale(${k})`;
- frame.className='frame'+(S.w==='phone'?' phone':'')+(S.far?' far':'');
+ frame.className='frame'+(S.w==='phone'?' phone':'');
+ frame.style.setProperty('--notes-size',S.w==='monitor'?'2.6rem':S.w==='phone'?'1.35rem':'2rem');
  fitEl.style.width=w*k+'px';fitEl.style.height=h*k+'px';
- fitEl.querySelector('.h-far-note')?.remove();
- if(S.far)fitEl.insertAdjacentHTML('beforeend','<div class="h-far-note">About how a 3 m projected screen looks from the back row (10 m)</div>');
  document.getElementById('belief').innerHTML=BELIEFS[S.v];
  frame.innerHTML=V[S.v](data());
- const sc=frame.querySelector('.ly-caps');if(sc)sc.scrollTop=sc.scrollHeight;
+ // Script variant: put the current sentence on the marker line (a third of the way down).
+ const roll=frame.querySelector('[data-roll]');
+ if(roll){const now=roll.children[+roll.dataset.now];const box=roll.parentElement;roll.style.top=(box.clientHeight*0.33-(now?now.offsetTop:0)-8)+'px'}
 }
-document.getElementById('ctl').addEventListener('change',e=>{const f=e.target;S[f.name]=f.type==='checkbox'?f.checked:f.value;if(f.name==='s')S.capsOn=f.value!=='empty';render()});
+document.getElementById('ctl').addEventListener('change',e=>{const f=e.target;S[f.name]=f.value;S.host=false;render()});
 window.addEventListener('resize',render);
-function act(a){const d=data();const top=openQs(d)[0];
- if(a==='caps'){if(S.s==='empty'){S.s='live';syncCtl()}else S.capsOn=!S.capsOn}
- if(a==='ans-top'&&top)S.answered[top.label]=true;
- if(a==='skip'&&top){const i=d.cl.indexOf(top);CL.push(CL.splice(i,1)[0])}
- if(a==='mode')S.mode=S.mode==='qa'?'talk':'qa';
+function act(a){const d=data();
+ if(a==='start'){S.s='live';syncCtl()}
+ if(a==='qa'){S.s=S.s==='qa'?'live':'qa';syncCtl()}
+ if(a==='answered'&&d.qs[0])S.answered[d.qs[0].l]=true;
+ if(a==='skip'&&d.qs[0]){const i=QS.findIndex(q=>q.l===d.qs[0].l);if(i>=0)QS.push(QS.splice(i,1)[0])}
+ if(a==='host')S.host=!S.host;
+ if(a==='prev')S.slide=Math.max(0,S.slide-1);
+ if(a==='next')S.slide=Math.min(SLIDES.length-2,S.slide+1);
  render()}
-frame.addEventListener('click',e=>{
- const svg=e.target.closest('.sd-svg');if(svg){const r=svg.getBoundingClientRect();S.sel=Math.max(0,Math.min(NOW,Math.round((e.clientX-r.left)/r.width*30)));render();return}
- const b=e.target.closest('[data-act],[data-ans],[data-filter]');if(!b)return;
- if(b.dataset.act)return act(b.dataset.act);
- if(b.dataset.ans){const c=data().cl[+b.dataset.ans];S.answered[c.label]=!S.answered[c.label]}
- if(b.dataset.filter)S.filter=b.dataset.filter;
- render()});
-frame.addEventListener('submit',e=>{e.preventDefault();const i=frame.querySelector('#ln');if(i&&i.value){CAPS.push(i.value);}render()});
-document.addEventListener('keydown',e=>{if(e.target.closest('input,textarea'))return;const k=e.key.toLowerCase();if(k==='c')act('caps');if(k==='a')act('ans-top');if(k==='n')act('skip');if(k==='q'&&S.v==='c')act('mode')});
-function syncCtl(){const c=document.getElementById('ctl');for(const k of ['v','s','w','t']){const i=c.querySelector(`input[name=${k}][value="${S[k]}"]`);if(i)i.checked=true}c.far.checked=S.far}
-// Deep link: grill-speaker.html#v=c&s=lots&w=laptop&t=light&mode=qa&far=true&bare=true
-for(const [k,v] of new URLSearchParams(location.hash.slice(1)))S[k]=v==='true'?true:v==='false'?false:k==='sel'?+v:v;
-if(S.s==='empty')S.capsOn=false;
-if(S.bare)document.documentElement.dataset.motion='reduce'; // static screenshots
-if(S.bare){document.querySelector('.h-bar').style.display='none';document.getElementById('belief').style.display='none';document.querySelector('.h-stage').style.padding='20px'}
+frame.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b)act(b.dataset.act)});
+frame.addEventListener('submit',e=>{e.preventDefault()});
+document.addEventListener('keydown',e=>{if(e.target.closest('input,textarea'))return;const k=e.key.toLowerCase();if(k==='arrowright')act('next');if(k==='arrowleft')act('prev');if(k==='q')act('qa');if(k==='a')act('answered');if(k==='n')act('skip');if(k==='c'&&S.s==='empty')act('start')});
+function syncCtl(){const c=document.getElementById('ctl');for(const k of ['v','s','w','t']){const i=c.querySelector(`input[name=${k}][value="${S[k]}"]`);if(i)i.checked=true}}
+// Deep link: grill-speaker.html#v=d&s=qa&w=monitor&t=light&host=true&bare=true
+for(const [k,v] of new URLSearchParams(location.hash.slice(1)))S[k]=v==='true'?true:v==='false'?false:k==='slide'?+v:v;
+if(S.bare){document.documentElement.dataset.motion='reduce';document.querySelector('.h-bar').style.display='none';document.getElementById('belief').style.display='none';document.querySelector('.h-stage').style.padding='20px'}
 syncCtl();render();
 </script>
 </body>

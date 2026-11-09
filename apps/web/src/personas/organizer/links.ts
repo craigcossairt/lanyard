@@ -30,7 +30,7 @@ export function readOpsLinks(): OpsLinks {
     return Object.fromEntries(
       Object.keys(DEFAULT_LINKS).map((key) => [
         key,
-        safeOpsLink(saved[key] ?? DEFAULT_LINKS[key as keyof OpsLinks]),
+        safeOpsLink(saved[key]) || DEFAULT_LINKS[key as keyof OpsLinks],
       ]),
     ) as OpsLinks;
   } catch {

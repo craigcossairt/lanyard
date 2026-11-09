@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { LINK_LABELS, LINKS_STORAGE_KEY, readOpsLinks, safeOpsLink, type OpsLinks } from './links';
+import { DEFAULT_LINKS, LINK_LABELS, LINKS_STORAGE_KEY, readOpsLinks, safeOpsLink, type OpsLinks } from './links';
 
 export function ObservabilityLinks() {
   const [links, setLinks] = useState(readOpsLinks);
@@ -15,8 +15,10 @@ export function ObservabilityLinks() {
         setNotice('Use a valid HTTPS link without embedded credentials.');
         return;
       }
+      cleaned[key] ||= DEFAULT_LINKS[key];
     }
     setLinks(cleaned);
+    setDraft(cleaned);
     try {
       localStorage.setItem(LINKS_STORAGE_KEY, JSON.stringify(cleaned));
       setNotice('Observability links saved on this device.');
@@ -48,6 +50,7 @@ export function ObservabilityLinks() {
       <details>
         <summary>Configure observability links</summary>
         <form onSubmit={save}>
+          <p>Leave a link blank to use the conference default.</p>
           {keys.map((key) => (
             <label key={key} htmlFor={`ops-link-${key}`}>
               {LINK_LABELS[key]}

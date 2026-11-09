@@ -4,7 +4,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { OpsSnapshot } from '@lanyard/contracts';
 import { RoomCard, roomHealth } from './RoomCard';
-import { safeOpsLink } from './links';
+import { DEFAULT_LINKS, readOpsLinks, safeOpsLink } from './links';
 import { SimulationNotice } from './SimulationControls';
 
 test('organizer room exposes health, occupancy and stale state without relying on color', () => {
@@ -47,4 +47,14 @@ test('organizer room exposes health, occupancy and stale state without relying o
   assert.match(simulation, /40 virtual attendees/);
   assert.match(simulation, /auto-stop 2:00 PM/);
   assert.match(simulation, /Virtual activity is included/);
+  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  try {
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
+      getItem: () => JSON.stringify({ dashboard: '', slo: 'https://example.com/custom-slo', agent0: '   ' }),
+    } });
+    assert.deepEqual(readOpsLinks(), { ...DEFAULT_LINKS, slo: 'https://example.com/custom-slo' });
+  } finally {
+    if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage);
+    else Reflect.deleteProperty(globalThis, 'localStorage');
+  }
 });

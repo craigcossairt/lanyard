@@ -23,11 +23,13 @@ PAYLOAD=$(cat 2>/dev/null || true)
 if command -v jq >/dev/null 2>&1; then
   printf '%s' "$PAYLOAD" | jq -r '
     .tool_input.file_path // .tool_input.filePath //
+    .tool_input.notebook_path //
     .toolInput.file_path  // .toolInput.filePath  //
     .tool_response.filePath // .tool_input.path //
     .file_path // .filePath // empty' 2>/dev/null
 else
   OUT=$(printf '%s' "$PAYLOAD" | sed -n 's/.*"file_path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
   [ -n "$OUT" ] || OUT=$(printf '%s' "$PAYLOAD" | sed -n 's/.*"filePath"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+  [ -n "$OUT" ] || OUT=$(printf '%s' "$PAYLOAD" | sed -n 's/.*"notebook_path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
   printf '%s' "$OUT"
 fi

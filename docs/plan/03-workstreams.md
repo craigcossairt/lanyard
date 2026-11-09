@@ -24,7 +24,7 @@ Every agent starts on `fastMode: false` unless the orchestrator sees it idling o
 ---
 
 ## Common preamble (paste at the top of every brief)
-> You are one of about 8 parallel agents building **Lanyard** for the Cloud Native Hackathon. The hard deadline is 17:30 MT, so ship working vertical slices fast.
+> You are one of about 8 parallel agents building **Lanyard** for the Cloud Native Hackathon. The hard deadline is 17:15 MT (submission; demos start 17:30) and code freeze is 16:30, so ship working vertical slices fast.
 >
 > **Read first:** `AGENTS.md`, `docs/plan/01-PRD.md`, `docs/plan/02-contracts.md`, and your brief below. The contracts are the source of truth. If you need a contract change, make it in a tiny separate PR that updates `packages/contracts` **and** `docs/plan/02-contracts.md`, and tell the orchestrator.
 >

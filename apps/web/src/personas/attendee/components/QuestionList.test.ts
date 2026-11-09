@@ -36,6 +36,32 @@ test('clusters rank by votes then size, hidden questions drop out', () => {
   assert.equal(views[1]?.size, 2);
 });
 
+test('a cluster whose only known questions are hidden does not render', () => {
+  const clusters: QuestionCluster[] = [
+    {
+      id: 'c1',
+      sessionId: 's1',
+      label: 'Moderated',
+      size: 1,
+      votes: 0,
+      representativeQuestionId: 'q1',
+    },
+    {
+      id: 'c2',
+      sessionId: 's1',
+      label: 'Pending',
+      size: 1,
+      votes: 0,
+      representativeQuestionId: 'q2',
+    },
+  ];
+  const views = buildClusterViews([q('q1', 'c1', 0, 'hidden')], clusters);
+  assert.deepEqual(
+    views.map((v) => v.cluster.id),
+    ['c2'],
+  );
+});
+
 test('a question with no cluster yet still shows', () => {
   const views = buildClusterViews([q('q9', 'cX', 2)], []);
   assert.equal(views.length, 1);

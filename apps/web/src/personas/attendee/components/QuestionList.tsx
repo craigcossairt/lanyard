@@ -23,8 +23,15 @@ export function buildClusterViews(
   clusters: QuestionCluster[],
 ): ClusterView[] {
   const byCluster = new Map<string, Question[]>();
+  // Clusters whose questions we know about but which are all hidden must not render,
+  // even via the cluster label; clusters whose questions haven't arrived yet still may.
+  const allHidden = new Set<string>();
   for (const q of questions) {
-    if (q.status === 'hidden') continue;
+    if (q.status === 'hidden') {
+      if (!byCluster.has(q.clusterId)) allHidden.add(q.clusterId);
+      continue;
+    }
+    allHidden.delete(q.clusterId);
     const list = byCluster.get(q.clusterId) ?? [];
     list.push(q);
     byCluster.set(q.clusterId, list);
@@ -34,6 +41,7 @@ export function buildClusterViews(
   for (const c of clusters) {
     const qs = byCluster.get(c.id) ?? [];
     seen.add(c.id);
+    if (allHidden.has(c.id)) continue;
     const rep = qs.find((q) => q.id === c.representativeQuestionId) ?? qs[0];
     if (!rep && qs.length === 0 && !c.label) continue;
     const votes = Math.max(

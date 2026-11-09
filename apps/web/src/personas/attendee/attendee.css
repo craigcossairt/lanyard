@@ -373,6 +373,11 @@
 [data-motion='reduce'] .at-captions__box {
   scroll-behavior: auto;
 }
+@media (prefers-reduced-motion: reduce) {
+  .at-captions__box {
+    scroll-behavior: auto;
+  }
+}
 .at-captions__box--stale {
   opacity: 0.7;
 }

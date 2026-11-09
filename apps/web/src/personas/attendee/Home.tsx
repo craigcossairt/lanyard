@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router';
 import type { Session } from '@lanyard/contracts';
+import { useI18n } from '../../i18n/useI18n';
 import { SessionCard } from './components/SessionCard';
 import { AttendeeHeader } from './components/AttendeeHeader';
 import { roomById, useEventView } from './lib/event';
@@ -10,6 +11,7 @@ import { useEventId, useSession } from './lib/session';
 const MAX_NOW = 6;
 
 export default function Home() {
+  const { t } = useI18n();
   const eventId = useEventId();
   const me = useSession();
   const { view, error, loading, reload } = useEventView(eventId);
@@ -40,31 +42,31 @@ export default function Home() {
   return (
     <div className="at-page">
       <AttendeeHeader eventName={view?.event.name} handle={me?.handle} />
-      <main id="main" className="at-main">
+      <main id="main" tabIndex={-1} className="at-main">
         <form className="at-search" role="search" onSubmit={onSearch}>
           <label htmlFor="home-q" className="at-sr-only">
-            Search talks
+            {t('searchTalks')}
           </label>
           <input
             id="home-q"
             name="q"
             type="search"
             className="at-input"
-            placeholder="Find a talk: “eBPF for security folks”"
+            placeholder={t('searchPlaceholder')}
             autoComplete="off"
             enterKeyHint="search"
           />
           <button type="submit" className="at-btn at-btn--primary">
-            Search
+            {t('search')}
           </button>
         </form>
 
-        <nav className="at-quick" aria-label="Shortcuts">
+        <nav className="at-quick" aria-label={t('shortcuts')}>
           <Link className="at-quick__item" to="/a/plan">
-            <span aria-hidden="true">✨</span> Plan my day
+            <span aria-hidden="true">✨</span> {t('planDay')}
           </Link>
           <Link className="at-quick__item" to="/a/settings">
-            <span aria-hidden="true">Aa</span> Display &amp; access
+            <span aria-hidden="true">Aa</span> {t('displayAccess')}
           </Link>
         </nav>
 
@@ -78,9 +80,9 @@ export default function Home() {
         )}
 
         <section aria-labelledby="now-h" className="at-section">
-          <h2 id="now-h">Happening now</h2>
-          {loading && !view && <p className="at-muted">Loading the schedule…</p>}
-          {view && view.now.length === 0 && <p className="at-muted">Nothing is live right now.</p>}
+          <h2 id="now-h">{t('happeningNow')}</h2>
+          {loading && !view && <p className="at-muted">{t('loadingSchedule')}</p>}
+          {view && view.now.length === 0 && <p className="at-muted">{t('nothingLive')}</p>}
           <div className="at-list">
             {view?.now.slice(0, MAX_NOW).map((s) => (
               <SessionCard
@@ -95,15 +97,15 @@ export default function Home() {
           </div>
           {view && view.now.length > MAX_NOW && (
             <p className="at-muted">
-              {view.now.length - MAX_NOW} more live talks.{' '}
-              <Link to="/a/search">Search to find yours.</Link>
+              {t('moreLive', { count: view.now.length - MAX_NOW })}{' '}
+              <Link to="/a/search">{t('searchToFind')}</Link>
             </p>
           )}
         </section>
 
         <section aria-labelledby="next-h" className="at-section">
-          <h2 id="next-h">Up next</h2>
-          {view && view.next.length === 0 && <p className="at-muted">No more talks today.</p>}
+          <h2 id="next-h">{t('upNext')}</h2>
+          {view && view.next.length === 0 && <p className="at-muted">{t('noMoreTalks')}</p>}
           <div className="at-list">
             {view?.next.slice(0, MAX_NOW).map((s) => (
               <SessionCard
@@ -119,11 +121,10 @@ export default function Home() {
         </section>
 
         <section aria-labelledby="mine-h" className="at-section">
-          <h2 id="mine-h">My schedule</h2>
+          <h2 id="mine-h">{t('mySchedule')}</h2>
           {mine.length === 0 ? (
             <p className="at-muted">
-              Nothing saved yet. Tap “My schedule” on a talk, or{' '}
-              <Link to="/a/plan">let us plan your day</Link>.
+              {t('nothingSaved')} <Link to="/a/plan">{t('planYourDay')}</Link>.
             </p>
           ) : (
             <div className="at-list">

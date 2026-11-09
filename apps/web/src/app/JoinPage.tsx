@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { EVENT_IDS } from '@lanyard/contracts';
+import { LanguageSelect, useI18n } from '../i18n/useI18n';
 import { Button, TextInput } from '../ui';
 import { ApiError, api } from './api';
 import { homeFor, saveToken } from './auth';
@@ -11,6 +12,7 @@ import { useSession } from './session';
 
 export function JoinPage() {
   const session = useSession();
+  const { t } = useI18n();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [eventId, setEventId] = useState(params.get('event') ?? EVENT_IDS.cnhDemos);
@@ -36,7 +38,9 @@ export function JoinPage() {
       setError(
         err instanceof ApiError && (err.status === 404 || err.status === 400)
           ? 'We couldn’t find that event or join code. Check it and try again.'
-          : 'Couldn’t join just now. Check your connection and try again.',
+          : err instanceof ApiError
+            ? err.message
+            : t('joinFail'),
       );
     } finally {
       setBusy(false);
@@ -50,10 +54,11 @@ export function JoinPage() {
           <Wordmark />
         </Link>
       </header>
-      <h1>Join an event</h1>
+      <h1>{t('joinTitle')}</h1>
+      <LanguageSelect id="join-lang" />
       <form onSubmit={submit} className="stack">
         <label className="join__label">
-          Event
+          {t('joinEvent')}
           <select value={eventId} onChange={(e) => setEventId(e.target.value)}>
             {Object.entries(EVENT_NAMES).map(([id, name]) => (
               <option key={id} value={id}>
@@ -63,14 +68,14 @@ export function JoinPage() {
           </select>
         </label>
         <TextInput
-          label="Or a join code"
+          label={t('joinCode')}
           hint="Printed on the room screen. Leave empty to join the event above."
           value={code}
           onChange={(e) => setCode(e.target.value)}
           autoComplete="off"
         />
         <Button type="submit" variant="primary" size="lg" disabled={busy}>
-          {busy ? 'Joining…' : 'Join anonymously'}
+          {busy ? t('joinBusy') : t('joinSubmit')}
         </Button>
         {error && (
           <p role="alert" className="error">
@@ -78,7 +83,7 @@ export function JoinPage() {
           </p>
         )}
       </form>
-      <p className="page__foot muted">No sign-up and no personal data: you get a random handle.</p>
+      <p className="page__foot muted">{t('joinNote')}</p>
     </main>
   );
 }

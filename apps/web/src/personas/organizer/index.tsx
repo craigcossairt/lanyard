@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { EVENT_IDS, formatTime } from '@lanyard/contracts';
+import { useI18n } from '../../i18n/useI18n';
 import { useSession } from '../../app/session';
 import { Alerts } from './Alerts';
 import { AskConference } from './AskConference';
@@ -38,7 +39,9 @@ function Board({ eventId }: { eventId: string }) {
               : 'Stream reconnecting · polling every 10 seconds'}{' '}
         <span>Updated {formatTime(at, view.event.timezone)}</span>
       </p>
-      {eventId === EVENT_IDS.cnhDemos && <SimulationControls eventId={eventId} timezone={view.event.timezone} />}
+      {eventId === EVENT_IDS.cnhDemos && (
+        <SimulationControls eventId={eventId} timezone={view.event.timezone} />
+      )}
       <dl className="ops-summary">
         <div>
           <dt>People in rooms</dt>
@@ -95,39 +98,47 @@ function Board({ eventId }: { eventId: string }) {
 }
 
 export default function Organizer() {
+  const { t } = useI18n();
   const session = useSession();
   const [selected, setSelected] = useState<string>();
   const eventId = selected ?? session?.claims.eventId ?? EVENT_IDS.cnhDemos;
   return (
-    <main className="ops-page">
-      <header className="ops-header">
-        <div>
-          <span className="ops-eyebrow">Lanyard / organizer</span>
-          <h1>
-            Conference operations<span>.</span>
-          </h1>
-          <p>Rooms are services. Attendees are traffic.</p>
-        </div>
-        <label className="ops-event">
-          Event
-          <select value={eventId} onChange={(event) => setSelected(event.target.value)}>
-            <option value={EVENT_IDS.cnhDemos}>CNH Demos</option>
-            <option value={EVENT_IDS.kubecon}>KubeCon NA 2026</option>
-            {![...Object.values(EVENT_IDS)].includes(eventId as typeof EVENT_IDS.cnhDemos) && (
-              <option value={eventId}>{eventId}</option>
-            )}
-          </select>
-        </label>
-      </header>
-      {session?.claims.role !== 'organizer' || eventId !== session.claims.eventId ? (
-        <section className="ops-empty">
-          <h2>Open this event’s organizer link</h2>
-          <p>Each organizer link grants access to one event.</p>
-          <Link to="/join">Open an organizer link to continue</Link>
-        </section>
-      ) : (
-        <Board key={`${eventId}:${session.claims.sub}:${session.claims.iat}`} eventId={eventId} />
-      )}
-    </main>
+    <>
+      <a href="#main" className="skip-link">
+        {t('skip')}
+      </a>
+      <div className="ops-page">
+        <header className="ops-header">
+          <div>
+            <span className="ops-eyebrow">Lanyard / organizer</span>
+            <h1>
+              Conference operations<span>.</span>
+            </h1>
+            <p>Rooms are services. Attendees are traffic.</p>
+          </div>
+          <label className="ops-event">
+            Event
+            <select value={eventId} onChange={(event) => setSelected(event.target.value)}>
+              <option value={EVENT_IDS.cnhDemos}>CNH Demos</option>
+              <option value={EVENT_IDS.kubecon}>KubeCon NA 2026</option>
+              {![...Object.values(EVENT_IDS)].includes(eventId as typeof EVENT_IDS.cnhDemos) && (
+                <option value={eventId}>{eventId}</option>
+              )}
+            </select>
+          </label>
+        </header>
+        <main id="main" tabIndex={-1}>
+          {session?.claims.role !== 'organizer' || eventId !== session.claims.eventId ? (
+            <section className="ops-empty">
+              <h2>Open this event’s organizer link</h2>
+              <p>Each organizer link grants access to one event.</p>
+              <Link to="/join">Open an organizer link to continue</Link>
+            </section>
+          ) : (
+            <Board key={`${eventId}:${session.claims.sub}:${session.claims.iat}`} eventId={eventId} />
+          )}
+        </main>
+      </div>
+    </>
   );
 }

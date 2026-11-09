@@ -1,11 +1,15 @@
 // Attendee persona: mounted by the WS0 shell under /a (default export renders the routes).
 import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router';
-import { DisplayPrefsProvider, ToastProvider } from '../../ui';
+import { ToastProvider } from '../../ui';
+import { applyPrefs } from './lib/prefs';
 // The design system's stylesheet. The shell can import it once in main.tsx instead;
 // importing it here too is harmless (Vite dedupes the module).
 import '../../ui/styles.css';
 import './attendee.css';
+
+// Saved display prefs (the shell's store) take effect before the first screen paints.
+applyPrefs();
 
 const Home = lazy(() => import('./Home'));
 const Search = lazy(() => import('./Search'));
@@ -23,19 +27,17 @@ function Loading() {
 
 export default function AttendeeRoutes() {
   return (
-    <DisplayPrefsProvider>
-      <ToastProvider>
-        <Suspense fallback={<Loading />}>
-          <Routes>
-            <Route index element={<Home />} />
-            <Route path="search" element={<Search />} />
-            <Route path="s/:id" element={<SessionLive />} />
-            <Route path="plan" element={<PlanMyDay />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="*" element={<Home />} />
-          </Routes>
-        </Suspense>
-      </ToastProvider>
-    </DisplayPrefsProvider>
+    <ToastProvider>
+      <Suspense fallback={<Loading />}>
+        <Routes>
+          <Route index element={<Home />} />
+          <Route path="search" element={<Search />} />
+          <Route path="s/:id" element={<SessionLive />} />
+          <Route path="plan" element={<PlanMyDay />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="*" element={<Home />} />
+        </Routes>
+      </Suspense>
+    </ToastProvider>
   );
 }

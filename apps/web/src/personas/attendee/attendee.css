@@ -376,3 +376,24 @@ select.at-input {
   margin: 0;
   flex: none;
 }
+
+/* Compact nav inside the caption stage (banner slot) */
+.at-stage-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-4);
+  font-size: var(--text-sm);
+}
+.at-stage-nav a {
+  color: var(--color-text);
+  text-decoration: none;
+  font-weight: 700;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.at-stage-nav a:hover {
+  text-decoration: underline;
+}

@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import type { CatchUpResponse, Recommendation, Session, SignalType } from '@lanyard/contracts';
 import {
   Banner,
   Button,
   CaptionStage,
   CaptionStream,
-  DisplaySettings,
   QuestionItem,
   QuestionList,
   Sheet,
@@ -15,12 +14,13 @@ import {
   useToast,
   type AttendeeSignal,
 } from '../../ui';
+import { DisplayPrefsPanel } from './components/DisplayPrefsPanel';
 import { buildClusterViews } from './components/QuestionList';
 import { api, ApiError } from './lib/api';
 import { useEventView } from './lib/event';
 import { useLiveSession } from './lib/live';
 import { cachedSessions } from './lib/schedule';
-import { useEventId } from './lib/session';
+import { useEventId, useSession } from './lib/session';
 
 type SheetName = 'ask' | 'questions' | 'react' | 'catchup' | 'display' | 'reroute' | null;
 const CATCH_UP_MINUTES = 10;
@@ -47,6 +47,7 @@ export default function SessionLiveRoute() {
 
 function SessionLive({ id }: { id: string }) {
   const eventId = useEventId();
+  const me = useSession();
   const { view } = useEventView(eventId);
   const known = useMemo<Session | null>(() => {
     const fromView = [...(view?.now ?? []), ...(view?.next ?? [])].find((s) => s.id === id);
@@ -135,9 +136,21 @@ function SessionLive({ id }: { id: string }) {
         count={live.attendance?.count}
         onDisplaySettings={() => setSheet('display')}
         banner={
-          live.stream === 'reconnecting' && (
-            <Banner icon="offline">Reconnecting… captions catch up automatically.</Banner>
-          )
+          <>
+            {/* CaptionStage has no back slot yet; a compact nav keeps a way home from a direct link. */}
+            <nav className="at-stage-nav" aria-label="Session">
+              <Link to="/a">‹ Home</Link>
+              {me?.handle && (
+                <span className="ly-muted">
+                  <span className="ly-sr-only">You are </span>
+                  {me.handle}
+                </span>
+              )}
+            </nav>
+            {live.stream === 'reconnecting' && (
+              <Banner icon="offline">Reconnecting… captions catch up automatically.</Banner>
+            )}
+          </>
         }
         captions={
           <CaptionStream
@@ -218,7 +231,7 @@ function SessionLive({ id }: { id: string }) {
       <CatchUpSheet open={sheet === 'catchup'} onClose={closeIf('catchup')} sessionId={id} />
 
       <Sheet open={sheet === 'display'} onClose={closeIf('display')} title="Display">
-        <DisplaySettings />
+        <DisplayPrefsPanel />
       </Sheet>
 
       <RerouteSheet

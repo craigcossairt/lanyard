@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { decodeClaims } from './auth';
-import { parseSse } from './sse';
+import { parseSse, reconnectDelay } from './sse';
 
 test('parseSse handles heartbeats, multi-line data and partial frames', () => {
   const seen: [string, string][] = [];
@@ -27,4 +27,18 @@ test('decodeClaims reads unexpired claims and rejects junk', () => {
   const body = Buffer.from(JSON.stringify(claims)).toString('base64url');
   assert.equal(decodeClaims(`${body}.sig`)?.sub, 'a1');
   assert.equal(decodeClaims('nope'), undefined);
+});
+
+test('parseSse surfaces ids; first reconnect is immediate, then backoff', () => {
+  const seen: [string, string | undefined][] = [];
+  parseSse(
+    'id: 17-0\nevent: caption.appended\ndata: {}\n\nevent: reconnect\ndata: {}\nretry: 0\n\n',
+    (e, _d, id) => seen.push([e, id]),
+  );
+  assert.deepEqual(seen, [
+    ['caption.appended', '17-0'],
+    ['reconnect', undefined],
+  ]);
+  assert.equal(reconnectDelay(0, 2000), 0);
+  assert.ok(reconnectDelay(1, 2000) >= 1500);
 });

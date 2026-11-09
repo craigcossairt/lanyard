@@ -13,6 +13,9 @@ export type CleanupSynthetic = (records: SyntheticRecords) => Promise<unknown>;
 const EVENT = 'cnh-demos';
 const PLAN = demoActions();
 const key = (run: Crowd, suffix: string) => `ops:cnh-demos:simulation:${run.id}:${suffix}`;
+class ActionError extends Error {
+  constructor(readonly status: number) { super('Demo action failed'); }
+}
 
 /** Separate bounded lanes keep moderation from delaying captions. Persisted
  * dispatch markers prevent duplicate question/caption writes after failover. */
@@ -36,7 +39,7 @@ export function createDemoRunner(app: FastifyInstance, ctx: ModuleContext, clean
     }, 600).token;
     const response = await app.inject({ method: 'POST', url: `/api${path}`,
       headers: { authorization: `Bearer ${token}` }, payload, signal: AbortSignal.timeout(7500) });
-    if (response.statusCode >= 400) throw new Error('Demo action failed');
+    if (response.statusCode >= 400) throw new ActionError(response.statusCode);
     return response.json();
   }
   function launch(id: string, task: () => Promise<void>) {
@@ -61,8 +64,9 @@ export function createDemoRunner(app: FastifyInstance, ctx: ModuleContext, clean
       await kv().sadd(key(run, 'questions'), result.question.id);
       // Vote through the normal deduplicated cluster's representative question.
       const questionId = result.cluster.representativeQuestionId ?? result.question.id;
-      if (active && now() < Date.parse(run.endsAt)) await Promise.all([1, 2].map(offset =>
-        request(run, (action.actor + offset) % run.attendees, `/questions/${encodeURIComponent(questionId)}/vote`, {})));
+      const voters = [0, 1].map(offset => 12 + action.actor * 2 + offset);
+      if (active && now() < Date.parse(run.endsAt)) await Promise.all(voters.map(voter =>
+        request(run, voter, `/questions/${encodeURIComponent(questionId)}/vote`, {})));
     }
   }
   function detach() {
@@ -87,6 +91,7 @@ export function createDemoRunner(app: FastifyInstance, ctx: ModuleContext, clean
   }
   return {
     async step(run: Crowd) {
+      if (run.attendees !== 40) throw new Error('Demo requires exactly 40 simulated attendees');
       active = true;
       await subscribe(run);
       const elapsed = now() - Date.parse(run.startedAt);
@@ -111,11 +116,18 @@ export function createDemoRunner(app: FastifyInstance, ctx: ModuleContext, clean
         const id = `accept-${actor}`;
         if (work.has(id) || work.size >= 8) continue;
         launch(id, async () => {
-          const offer = JSON.parse(raw) as { suggestionId: string };
-          const result = RerouteAcceptResponse.parse(await request(run, Number(actor), `/events/${EVENT}/reroute/accept`, { suggestionId: offer.suggestionId }));
-          if (!run.sessions.includes(result.sessionId)) throw new Error('Unexpected demo destination');
-          await request(run, Number(actor), `/sessions/${encodeURIComponent(result.sessionId)}/presence`, { kind: 'join' });
-          await kv().hdel(key(run, 'offers'), actor);
+          try {
+            const offer = JSON.parse(raw) as { suggestionId: string };
+            const result = RerouteAcceptResponse.parse(await request(run, Number(actor), `/events/${EVENT}/reroute/accept`, { suggestionId: offer.suggestionId }));
+            if (!run.sessions.includes(result.sessionId)) throw new ActionError(400);
+            await request(run, Number(actor), `/sessions/${encodeURIComponent(result.sessionId)}/presence`, { kind: 'join' });
+            await kv().hdel(key(run, 'offers'), actor);
+          } catch (error) {
+            if (error instanceof ActionError && error.status >= 400 && error.status < 500 && error.status !== 429) {
+              await kv().hdel(key(run, 'offers'), actor);
+            }
+            throw error;
+          }
         });
       }
     },

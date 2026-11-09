@@ -28,8 +28,9 @@ test('demo uses role routes, retries arrivals, waits for reroute, and records sc
   };
   const app = Fastify(); const bus = createBus(undefined); const secret = 'local-smoke-key';
   const occupants = new Map<string, string>();
+  const voters = new Set<string>();
   const counts = { caption: 0, question: 0, vote: 0, signal: 0, accept: 0 };
-  let failArrival = true; let warnings = 0; let cleaned: SyntheticRecords | undefined;
+  let failArrival = true; let warnings = 0; let badAccepts = 0; let cleaned: SyntheticRecords | undefined;
   const start = Date.now(); let now = start;
   const run = { ...createCrowd('smoke', ['main', 'side'], 40, start), endsAt: new Date(start + 150_000).toISOString() };
   app.addHook('preHandler', async req => {
@@ -53,12 +54,19 @@ test('demo uses role routes, retries arrivals, waits for reroute, and records sc
       clusterId: 'c_1', votes: 0, status: 'open', at: new Date(now).toISOString() },
     cluster: { id: 'c_1', sessionId: 'main', label: 'SIMULATED', size: counts.question, votes: 0, representativeQuestionId: 'q_1' }, merged: counts.question > 1 };
   });
-  app.post('/api/questions/:id/vote', async () => { counts.vote++; return {}; });
-  app.post('/api/events/cnh-demos/reroute/accept', async () => { counts.accept++; return { accepted: true, sessionId: 'side' }; });
+  app.post('/api/questions/:id/vote', async req => {
+    const voter = verifyToken(secret, req.headers.authorization!.slice(7)).sub;
+    if (!voters.has(voter)) { voters.add(voter); counts.vote++; } return {};
+  });
+  app.post<{ Body: { suggestionId: string } }>('/api/events/cnh-demos/reroute/accept', async (req, reply) => {
+    if (req.body.suggestionId === 'expired') { badAccepts++; return reply.code(404).send({}); }
+    counts.accept++; return { accepted: true, sessionId: 'side' };
+  });
   await app.ready();
   const ctx = { kv, bus, config: { tokenSigningKey: secret }, logger: { warn() { warnings++; } } } as unknown as ModuleContext;
   const runner = createDemoRunner(app, ctx, async records => { cleaned = records; }, async () => true, () => now);
   try {
+    await assert.rejects(runner.step({ ...run, attendees: 20 }), /exactly 40/);
     for (let second = 0; second < 150; second++) {
       now = start + second * 1000; await runner.step(run); await runner.drain();
       if (second === 59) {
@@ -73,9 +81,14 @@ test('demo uses role routes, retries arrivals, waits for reroute, and records sc
           },
         });
       }
+      if (second === 100) await bus.publish(channels.user(actorId(run, 39)), {
+        type: 'reroute.suggested', at: new Date(now).toISOString(), payload: {
+          anonId: actorId(run, 39), sessionId: 'side', suggestionId: 'expired', reason: 'SIMULATED',
+        },
+      });
     }
     await runner.cleanup(run);
-    assert.equal(warnings, 1); // The injected arrival failure was retried.
+    assert.equal(warnings, 2); assert.equal(badAccepts, 1); // Retry arrival; drop expired offer.
     assert.deepEqual(counts, { caption: 30, question: 12, vote: 24, signal: 5, accept: 34 });
     assert.equal([...occupants.values()].filter(id => id === 'side').length, 40);
     assert.equal(cleaned?.questionIds.length, 12); assert.equal(cleaned?.chunkIds.length, 30);

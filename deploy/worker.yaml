@@ -1,0 +1,115 @@
+# worker: the same image as app, started with ROLE=worker. Runs LLM jobs,
+# question clustering, seed ingestion and the crowd simulator. app triggers
+# jobs over HTTP through the in-cluster `worker` Service (WORKER_URL), so
+# traces propagate app -> worker. Not public: no route points at it.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  labels:
+    app: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: worker
+          image: app
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            # Secrets: only what the worker needs (ES, LLMs, OTLP), one
+            # secretKeyRef each from app-credentials (kept outside git). No
+            # TOKEN_SIGNING_KEY or RUM token: the worker serves no clients.
+            # Recheck against WS0's config schema before this ships.
+            - name: ES_URL
+              valueFrom:
+                secretKeyRef: {name: app-credentials, key: ES_URL}
+            - name: ES_API_KEY
+              valueFrom:
+                secretKeyRef: {name: app-credentials, key: ES_API_KEY}
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef: {name: app-credentials, key: OPENAI_API_KEY}
+            - name: TYPESAFE_API_KEY
+              valueFrom:
+                secretKeyRef: {name: app-credentials, key: TYPESAFE_API_KEY}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              valueFrom:
+                secretKeyRef: {name: app-credentials, key: OTEL_EXPORTER_OTLP_ENDPOINT}
+            - name: OTEL_EXPORTER_OTLP_HEADERS
+              valueFrom:
+                secretKeyRef: {name: app-credentials, key: OTEL_EXPORTER_OTLP_HEADERS}
+            # Non-secret config.
+            - name: ROLE
+              value: "worker"
+            - name: PORT
+              value: "8080"
+            - name: PUBLIC_BASE_URL
+              value: "https://lanyard.cnh.radarhq.io"
+            - name: EVENT_TZ
+              value: "America/Denver"
+            - name: VALKEY_URL
+              value: "redis://valkey:6379"
+            - name: LLM_MODEL_CHAT
+              value: "gpt-6.1-sol"
+            - name: LLM_MODEL_FAST
+              value: "gpt-5.4-mini"
+            - name: DASH0_RUM_ENDPOINT
+              value: "https://ingress.us-west-2.aws.dash0.com"
+            - name: OTEL_SERVICE_NAME
+              value: "lanyard-worker"
+            # Set by kustomize from the image tag (the git SHA).
+            - name: SERVICE_VERSION
+              value: "dev"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "deployment.environment=hackathon,service.version=$(SERVICE_VERSION)"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: 500m
+              memory: 768Mi
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker
+  labels:
+    app: worker
+spec:
+  type: ClusterIP
+  selector:
+    app: worker
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

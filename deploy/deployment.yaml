@@ -5,9 +5,7 @@ metadata:
   labels:
     app: app
 spec:
-  # Remove this line when you turn on the HPA (examples/hpa), or Argo CD and
-  # the autoscaler will keep resetting each other.
-  replicas: 2
+  # No `replicas`: the HPA in hpa.yaml owns the count (min 2, max 4).
   selector:
     matchLabels:
       app: app
@@ -63,6 +61,8 @@ spec:
               value: "America/Denver"
             - name: VALKEY_URL
               value: "redis://valkey:6379"
+            - name: WORKER_URL
+              value: "http://worker"
             - name: LLM_MODEL_CHAT
               value: "gpt-6.1-sol"
             - name: LLM_MODEL_FAST

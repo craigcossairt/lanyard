@@ -1,0 +1,33 @@
+# Scales app on CPU. The app Deployment has no `replicas` field, so Argo CD
+# and the autoscaler don't fight over it.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: app
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: app
+  minReplicas: 2
+  # 4 pods x 500m CPU limit = 2 of the team's 4 CPU of limits, which leaves
+  # room for the worker, valkey, a rollout surge pod and a load-test Job.
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 30
+    scaleDown:
+      # Hold capacity for 3 minutes after a surge so a demo room that
+      # reconnects doesn't land on freshly removed pods.
+      stabilizationWindowSeconds: 180

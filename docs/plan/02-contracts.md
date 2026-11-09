@@ -133,6 +133,7 @@ WS2 writes live state; WS4 reads it through the core `ctx.kv` client (500 ms tim
 - WS2 treats an SSE disconnect as leave after a 30 s grace.
 - WS4 stores suggestions as `reroute:{suggestionId}` HASH `{anonId, alertId, fromRoomId, toSessionId}`, TTL 15 min.
 - WS4 owns `ops:cnh-demos:simulation` (bounded run metadata retained until cleanup), its `:lease` (20-second elected runner lease), and `:stop:{runId}` (24-hour stop request). These keys contain no tokens. Persisted actor IDs use a `sim_` prefix and are never metric labels or logged.
+- Demo runs also own `ops:cnh-demos:simulation:{runId}:dispatched` (SET of fixed script action IDs), `:questions` and `:chunks` (SETs of returned synthetic record IDs), and `:offers` (HASH actor index to reroute suggestion). These bounded ledgers survive restarts and are removed only after scoped WS2 cleanup succeeds. They contain no tokens or transcript/question text.
 
 The ops rules open an overflow alert at occupancy ≥90%, and a signal-spike alert at ≥5 `lost` or `louder` signals within the rolling 60-second window. Acceptance increments `conf.reroute.accepted` once per suggestion; normal presence handles the subsequent session move.
 

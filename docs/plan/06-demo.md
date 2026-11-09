@@ -1,139 +1,103 @@
-# Demo plan: the 3-minute recorded video, incident drills and submission
+# Demo plan: the 3-minute product walkthrough (recorded video)
 
-**The submission is a 3:00 recorded video** (no live demo). Craig records it around 16:35–17:05 and submits by 17:15. Code freeze is 16:30. This file is the shot list, voiceover, rubric map, pre-recording checklist and fallback cut. The old live-demo script is gone; the incident drills and submission checklist at the bottom still apply.
+**The submission is a 3:00 recorded video** (no live demo). It is a **product walkthrough**: the submission form explains how the sponsor tools are used, so the video shows Lanyard working and spends at most one 10-second glance on Dash0 and Radar as proof it is real. Craig records after the 16:30 freeze and submits by 17:15.
 
-Status marks used below, based on a QA pass of https://lanyard.cnh.radarhq.io (version `a4f5e70`, 2026-11-09 15:13–15:21 MT):
+Status marks, from a QA pass of https://lanyard.cnh.radarhq.io on 2026-11-09 (15:13–15:21 MT, version `a4f5e70`) plus the code on `main` at 16:40 MT (`e9f863d`). Mark a beat ⚠️ until someone has watched it work on the live site, and do not say it in the voiceover until then:
 
 - ✅ seen working on the deployed URL
-- ⚠️ not yet seen working; do not claim it in the voiceover until someone has watched it work
-- 🔧 works, but a known bug will show on camera (owner and fix are in the QA bug list the WS10 report sends to the orchestrator)
+- ⚠️ in `main` but not yet seen working by WS10 (re-check in the dry run); the table gives the fallback wording
+- 🔧 worked badly when last seen; re-check, and cut the beat if it still does
 
-## The insight (say it in the first 10 seconds)
+## The insight (the hook, in the first 10 seconds)
 
-> A conference is a distributed system. Rooms are services. Attendees are traffic. A full room is a saturation incident. A confused audience is an error budget burning. Organizers run that system blind; we instrument it like production.
+> A conference is a distributed system. Rooms are services. Attendees are traffic. A full room is an incident. Organizers run it blind; Lanyard gives every person in the building a view of the same live system.
 
-Everything in the video either proves that sentence or proves that every person in the room gets something from it.
+## How to record
 
-## How to record (one screen, two windows)
+- Screen at 1920×1080, Chrome, browser zoom 100%, bookmarks bar hidden, dark theme.
+- **Organizer window on the left, about 1500×1080** (the ops board is built for 1920×1080; if you want it full width, record the phone separately and composite it).
+- **Phone window on the right, 390×844** (Chrome device mode or a real phone mirrored), joined to the room.
+- Record the **demo scenario once, start to finish (150 s)**, with every window visible, then cut into the beats below. The scenario is deterministic, so the cut points are the same every run. Do not try to narrate the scenario live; record the voiceover after.
 
-Record the screen at 1920×1080 with two browser windows side by side, so one take shows both sides of the story:
+### Scenario clock (WS4 measured; `t` = seconds after clicking **Demo scenario**)
 
-- **Laptop window**, 1180×900 CSS px: organizer board, speaker console, Dash0, Radar and GitHub tabs.
-- **Phone window**, 390×844 CSS px (browser device mode or a real phone mirrored): the attendee. Dark theme, default text size until the inclusion beat.
+| t | What happens |
+|---|---|
+| +0 | Click **Demo scenario** on the organizer board (40 simulated people, labelled SIMULATED) |
+| +4.8 s | First scripted caption (then one about every 4 s) |
+| +11.3 s | First paraphrased question; questions merge into clusters ("joined N others") |
+| +36.7 s | Louder alert (five-person burst) |
+| +66.7 s | Main Stage over capacity: card turns red ("Overflow risk"), incident card with **Reroute to nearby seats** |
+| after you click Reroute | Phones get the suggestion; simulated people accept and move to Side Stage. Not timed by WS4 yet, so watch for it in the dry run |
+| +150 s | Scenario auto-stops, then "Cleaning up demo…". A new run is refused until cleanup finishes |
 
-Use Chrome (the speaker console's mic captions need it). Browser zoom 100%. Hide the bookmarks bar.
-
-Record the simulator once as its own clip (150 s) and cut it into the beats below. Do not try to sync a live run to the voiceover.
+**Do not click "Swap rooms…" or "Pre-announce"** on the board; they are placeholders.
 
 ## Shot list (target 2:55)
 
-The SIMULATED run is the `mode: demo` scenario (PR #57 plus WS4's button, still landing at 15:20 MT): 40 virtual attendees, scripted speaker captions every 4 s, four paraphrase groups of questions and 24 votes, one five-person louder burst, Main Stage staged from 20 to 34 people at 60 s (capacity 30), reroute accepted only after the organizer clicks, stop and cleanup. The older `mode: crowd` simulator is ✅: at 15:19 MT it took Main Stage to 34 / 30 (113%, red "Overflow risk"), the incident card offered **Reroute to nearby seats**, and one click showed "Suggestions sent to 34 attendees", then occupancy moved to Side Stage and cleanup brought the board to 0. Use `crowd` mode as the backup if `demo` mode is not ✅ by 16:15.
-
-| Time | Beat | On screen (window, URL) | Voiceover | Proves |
+| Video time | Beat | On screen | Voiceover | Status |
 |---|---|---|---|---|
-| 0:00–0:12 | **Hook and insight** | Laptop: organizer board `/o`, event CNH Demos, simulator stopped, rooms at 0. Title text "Lanyard. Conferences, observable." | "A conference is a distributed system. Rooms are services, attendees are traffic. Organizers run it blind. Lanyard instruments the conference the way you instrument production." | A2 (originality), A1 |
-| 0:12–0:27 | **Semantic search** (Elastic) | Phone: attendee joined to **KubeCon NA 2026** (not CNH Demos, see Gotchas). Search `restrain rogue copilots`, results list, the hit *Agentic Ops: Building Guardrails for Autonomous AI with Policy-as-Code* at rank 2. | "No anonymous sign-up, no app. I type what I mean, not what the title says. 'Restrain rogue copilots' shares no words with the talk, but Elasticsearch finds it: hybrid BM25 plus semantic search, fused with RRF." | E1, E2, A3, A1 |
-| 0:27–0:55 | **Live room: captions, questions, signals** | Start the SIMULATED run (laptop window, organizer board, then switch). Phone window on `/a/s/cnh-demos-opening`: captions scroll, tap **Ask**, send a question, see "N people asked this", tap **Louder**. Cut to speaker console `/s/cnh-demos-opening` for 5 s: the clusters and the Louder meter at 1. Typed note appears as a caption on the phone. | "Now I'm in a room. Captions arrive as the speaker talks, so I don't need to hear it. I ask anonymously, and when twelve of us ask the same thing in different words, Elasticsearch merges them into one question the speaker can answer once. If it's too fast or too quiet, I tap a signal and the speaker sees it." | F1, A1, E2, A3 |
-| 0:55–1:22 | **Ops board: the saturation incident** | Laptop: organizer board. Main Stage turns red ("Overflow risk", 34 / 30, 113%); incident card appears; click **Reroute to nearby seats**; "Suggestions sent to 34 attendees"; cut to phone showing the nearest talk with seats; board: Main Stage back under 90%, Side Stage filling. Label "SIMULATED" stays visible. | "This is the organizer. Main Stage just crossed its SLO: 113%. That's a saturation incident. One click reroutes everyone to the closest talk with seats, chosen by semantic nearest neighbour. These attendees are simulated and labelled as such." | A2, A1, E2, D4/B4/E3 (theme) |
-| 1:22–1:35 | **Ask the conference** | Laptop: scroll to "Ask the conference". Type `What are attendees asking about?`, wait for the cited answer; point at the sources. | "And the organizer can ask the whole conference: RAG over every transcript and question, with citations I can click." | A3, E2 |
-| 1:35–1:50 | **Dash0** (15 s) | Laptop tab: Dash0 "Conference Ops" dashboard (link on the board), then one trace phone → API → ES (→ LLM with tokens), then the "Rooms below 90%" SLO burning, then click **Investigate with Agent0**. | "Every one of those clicks is OpenTelemetry. Room occupancy is a metric, the SLO is in Dash0, and Agent0 answers 'which rooms are above 90% and what is burning the budget'. Browser to worker, one trace." | C1, C2, C3, C4, A3 |
-| 1:50–2:03 | **Radar** (13 s) | Laptop tab: Radar Cloud, cluster `lanyard`: workloads `app`, `worker`, `valkey`, HPA. Then Checks before and after (`docs/evidence/radar-checks-before.png` and the after screenshot). Then the investigation `chat_RjOgOymzUJCDCUUF` and its follow-up change: `startupProbe` in PR #23. | "It runs on Kubernetes with Argo CD, and Radar is how the agents shipped and verified every rollout. A Radar investigation told us the probes fire before the process listens, so we added a startupProbe. Checks before and after." | D1, D2, D3 |
-| 2:03–2:15 | **Gitar** (12 s) | Laptop tab: GitHub PR list (merged count, every PR reviewed), one PR with a Gitar rule comment (e.g. `deploy-budget` on #2), `.gitar/review/` and `.gitar/rules/` files. | "One builder, ten AI agents, every change a pull request, and Gitar reviewed all of them. Its rules encode our conventions: telemetry spans, privacy, UTC, accessibility, the cluster budget." | B1, B2, B3 |
-| 2:15–2:40 | **Inclusion** (25 s) | Phone: `/a/settings` (XXL text, high contrast, reduce motion), back to the live room (large captions), tap **Catch up** ("last 10 minutes, summarised from the captions"). Laptop, 4 s: speaker console, "Start captions" with the browser's mic prompt (allow) or the "Microphone access was blocked" message. | "For anyone who can't hear, can't raise their hand, or had to step out: live captions, anonymous questions, sensory signals, and catch me up. Text size, contrast and motion follow you. Built for deaf and hard-of-hearing attendees, non-native speakers, shy or neurodivergent attendees, and caregivers." | F1, F2, F3, A1 |
-| 2:40–2:55 | **Depth and close** | Laptop: the architecture one-liner as an on-screen card: browser → `app` (HPA) → Valkey → `worker` → Elasticsearch, all traced to Dash0, on a Radar vcluster, shipped by PRs. End card: "Lanyard. Conferences, observable." and the URL. | "Elasticsearch is the only database. Valkey fans out in real time. A worker runs the LLM jobs. Dash0 sees all of it, Radar runs it, Gitar gated it. Lanyard: conferences, observable." | A3, A4, A5 |
+| 0:00–0:10 | **Hook** | Landing page, then the big join QR at `/qr/cnh-demos`. Text: "Lanyard. Conferences, observable." | "A conference is a distributed system. Rooms are services, attendees are traffic. Scan this and you're an attendee." | ⚠️ `/qr/cnh-demos` and the landing page are in `main`; not yet seen |
+| 0:10–0:22 | **Join and semantic search** | Phone (390×844): join with no sign-up (you get a random handle, e.g. "Calm Wren"), search **eBPF but for security folks**, show the top hit *Beyond Harnesses and Sandboxes: Runtime Protection for AI Agents with eBPF*. Optional second query `restrain rogue copilots` (hit *Agentic Ops…* at rank 2, no shared words). | "No sign-up, no app. I type what I mean, not what the title says, and it finds the talk." *(Say "semantic", not "highlighted": the match text just echoes the title.)* | ✅ both searches work **in the KubeCon event** (`/join?again=1&event=kubecon-na-2026`). In CNH Demos (the default join) search returns two irrelevant talks, so join KubeCon for this beat |
+| 0:22–0:28 | **Plan my day** | Phone: `/a/plan`, interests, **Build my day**, then the plan cards. | "Tell it what you care about and it builds a day, and every pick cites a real session." | 🔧 at 15:15 the cards said "Session details are loading" forever, had no titles or add button, and quoted times in UTC. Re-check on the latest deploy; **if it still does, cut this beat** (the walkthrough does not need it) |
+| 0:28–0:55 | **Live session: captions, questions, signals, catch-up** | Phone in the Main Stage room (`/a/s/cnh-demos-opening`) while the scenario runs (t+0 to t+37). Captions stream. Tap **Ask**, send a question. Watch the cluster grow ("joined N others"). Tap **Louder**. Tap **Catch up**. | "Now I'm in the room. Captions arrive as the speaker talks, so I don't need to hear it. I ask anonymously. When others ask the same thing in different words, mine joins theirs, and the speaker answers once. If it's too fast or too quiet, I tap a signal. Stepped out? Catch me up." | ✅ captions, ask, vote, Louder (seen by the speaker) and catch-up work. ⚠️ the exact "joined N others" copy and the scripted merges are not yet seen (I saw "2 people asked this" on a simulated cluster). If the copy differs, read what is on screen |
+| 0:55–1:10 | **Speaker console** | Speaker console on the laptop (`/s/cnh-demos-opening`), then **Stage mode** (the speaker stage window with the slide and join QR): ranked question clusters, the signal meter reacting to the Louder burst, attendance. | "The speaker sees the room: questions ranked by votes and how many people asked, the signals, who's here." | ✅ clusters, signal meter and attendance on the console. ⚠️ the stage window (slide plus QR, PR #58) not yet seen |
+| 1:10–1:45 | **Ops board: the saturation incident** | Organizer board (the scenario you started at the top of the take): **Rooms as services**. Main Stage turns red at about t+66.7 ("Overflow risk", over 100%). Click **Reroute to nearby seats**. Cut to the phone: the suggestion appears; tap accept; you land in Side Stage. Board: Main Stage back under the 90% target, Side Stage filling. SIMULATED stays visible. | "This is the organizer. Main Stage just went over capacity: that's an incident. One click reroutes people to the closest talk with seats. The phone gets the suggestion, and I'm in Side Stage. These attendees are simulated and labelled." | ✅ overflow, red state and Reroute ("Suggestions sent to 34 attendees", occupancy moved to Side Stage, cleanup to 0) with the older crowd simulator. ⚠️ the new **Demo scenario** button, the phone-side accept and the timings are WS4's numbers, not yet seen by WS10 |
+| 1:45–2:00 | **Ask the conference** | Organizer board, **Ask the conference**: type `What are attendees asking about?`, show the answer and its sources. | "And the organizer can ask the whole conference: every transcript and question, with citations." | ✅ answer with 3 sources in under 9 s. After the demo reset it may be less rich; try it in the dry run. The three sources read identically, so do not dwell on them |
+| 2:00–2:30 | **Inclusion** | Phone: `/a/settings`, set text to XXL, high contrast, reduce motion; back to the live room (large captions). Laptop, 3 s: speaker console "Start captions" (allow the mic, say one line so a real caption lands on the phone). Phone: **Meet people** (the opt-in networking screen). | "For anyone who can't hear, can't raise their hand, or had to step out: live captions, anonymous questions, signals, catch me up. Big text, contrast and reduced motion follow you. And networking is opt-in: you choose to be found." | ✅ settings apply instantly with no sideways scroll; the speaker console shows "Microphone access was blocked…" if the mic is denied. ⚠️ a real mic caption and **Meet people** not yet seen |
+| 2:30–2:40 | **Proof it's real** (at most one glance) | Dash0 "Conference Ops" dashboard for 5 s, Radar Cloud workloads for 5 s. No explaining. | "It's real: instrumented in Dash0, running on Kubernetes in Radar." | ⚠️ not seen by WS10 (the Dash0 and Radar tools needed sign-in); Craig opens both tabs first. If either looks wrong, drop the glance and keep the line |
+| 2:40–2:55 | **Close** | End card: "Lanyard. Conferences, observable." and the URL. | "Lanyard. Conferences, observable." | ✅ |
 
 Total 2:55. The video must stay under 3:00 including the end card.
 
-### Sponsor inserts: what to show and what is honest today
+## Pre-recording checklist (16:45–17:00)
 
-| Sponsor | Show | Status at 15:21 MT |
-|---|---|---|
-| **Elastic** (beat 0:12) | Search `restrain rogue copilots`, hit at rank 2 (`docs/evidence/ELASTIC.md`: BM25 finds no match, hybrid ranks it 2). Fallback query `eBPF but for security folks` also works and returns *Beyond Harnesses and Sandboxes: Runtime Protection for AI Agents with eBPF* in the top results. | ✅ both seen working in the KubeCon event. The "Why this matched" line only echoes the title, so say "semantic" in the voiceover, not "highlighted" |
-| **Elastic** (merge) | "N people asked this" on a merged cluster. Hand-written paraphrases often do **not** merge (the cutoff is deliberately 0.848): my own paraphrase of the simulated capacity question stayed separate. Use the simulator's four paraphrase groups, or the calibrated pair in `data/seed/question-pairs.json` ("What happens when a room reaches its capacity?" / "What do you do when the room fills up?"). | ✅ one simulated cluster showed "2 people asked this" on the speaker console; ⚠️ the demo-mode waves are not yet seen |
-| **Dash0** (beat 1:35) | Dashboard, one trace, the SLO, Agent0. The four links are on the organizer board. | ✅ the four links exist on `/o` and RUM posts reach `ingress…dash0.com` from phones. ⚠️ the dashboard content, a specific trace and an Agent0 answer have not been seen by WS10 (the Dash0 MCP needed sign-in). Craig must pre-open and check each tab |
-| **Radar** (beat 1:50) | Cluster `lanyard`, Checks before/after, the investigation and the `startupProbe` change. | ✅ before screenshot, investigation and #23 are in `docs/evidence/RADAR.md`. ⚠️ the "after" screenshot (PR #46) was still open at 15:21 |
-| **Gitar** (beat 2:03) | PR list, a rule firing, the `.gitar` files. | ✅ `docs/evidence/GITAR.md` lists real comments (e.g. `deploy-budget` on #2). ⚠️ no auto-applied CI fix is recorded yet; do not claim B3 unless a PR with an auto-apply commit exists. Do not claim "40+ PRs": as of 15:21 MT there were 63 PRs (47 merged, 15 open, 1 closed); say the real number on the day |
-
-## Pre-recording checklist (16:15–16:35)
-
-1. **Freeze.** Confirm with the orchestrator that nothing deploys during the take. Check `curl https://lanyard.cnh.radarhq.io/healthz` for the version and note it.
-2. **Fresh links.** Mint organizer and speaker links for `cnh-demos` with a TTL of at least 3 hours (`npm run mint-link -- --role organizer --event cnh-demos --ttl-hours 3 --env-file ~/cnh-2026/lanyard/.env`). The links expire: one stored organizer token had only minutes left at 15:19 MT. **Never paste links into chat, files or PRs.** Open each in a clean Chrome profile; the app then strips the token from the URL.
-3. **Two attendee identities.** One incognito phone window joined to KubeCon NA 2026 (for search), one joined to CNH Demos (for the live room). Joining again creates a new handle ("Calm Wren", "Brave Owl"); that is fine.
-4. **Clean slate.** Before the take there were leftovers on `cnh-demos`: 13–15 questions on Main Stage (including ones labelled "SIMULATED"), six `[ws2 verify] caption check` captions in the live feed and three "Resolved" incidents from 2:49 PM. Ask WS2/WS4 to clean up (WS2's `cleanupSynthetic` is PR #60), or accept that a cluster of old questions will be visible. Ask-the-conference answers can mention these, so rerun it after cleanup.
-5. **Simulator reset.** Organizer board shows "Crowd simulator is stopped", Main Stage `0 / 30`, no active incident. Do one dry run of the demo scenario. Leave 10 minutes of headroom: a run auto-stops after 10 minutes and a new run is refused until cleanup finishes.
-6. **Browser.** Chrome, zoom 100%, bookmarks bar hidden, extensions off, dark theme, `prefers-reduced-motion` left alone until the inclusion beat. Phone window 390×844.
-7. **Quiet.** Do Not Disturb on, Slack/Mail/Messages closed, calendar and notification banners off, desktop clean, battery and wifi icons out of frame.
-8. **Mic.** Chrome site permission for `lanyard.cnh.radarhq.io`: allow the microphone once, then say one live line ("Welcome to Lanyard") so a real caption appears on the phone. If the prompt is unwanted, keep the typed-note path (✅ works: a typed note reached the phone as a caption within about 3 seconds) and show the blocked state (✅: "Microphone access was blocked. Allow the mic for this site, then start again.").
-9. **Tabs, in order.** (1) organizer board, (2) speaker console `/s/cnh-demos-opening`, (3) Dash0 dashboard, one trace, the SLO, Agent0, (4) Radar Cloud for `lanyard`, (5) GitHub PR list and one Gitar comment, (6) `docs/evidence` screenshots. Sign in to Dash0 and Radar beforehand.
-10. **Check the gateway.** The platform cuts SSE streams every 15 s. Until PR #59 (clean rotation, Last-Event-ID replay) is deployed, the phone shows "Reconnecting… captions may be behind" and the organizer shows "Stream reconnecting · polling every 10 seconds" for a few seconds at a time. Check at 16:15; if it still shows, cut around it.
-11. **Voiceover.** Read the script twice with a timer. The Dash0, Radar and Gitar inserts are 12–15 s each: rehearse them as one breath each.
-12. **Backups.** Record each beat as its own clip so any one can be re-shot. Keep the raw screen recording and the exported video in two places.
+1. **Freeze and version.** Confirm with the orchestrator that nothing deploys during the take. Note `curl https://lanyard.cnh.radarhq.io/healthz` (`version`).
+2. **Run the demo reset first** (the orchestrator's clean-slate step for `cnh-demos`). Before it, the event had leftovers: 13–15 old questions (some labelled SIMULATED), `[ws2 verify] caption check` captions on the live feed and old resolved incidents. After it, check `/o` shows Main Stage `0 / 30`, no active incident, "Crowd simulator is stopped", and the speaker console shows no old questions.
+3. **Fresh role links, minted locally, never shown on screen.** Mint organizer and speaker links for `cnh-demos` (`npm run mint-link -- --role organizer --event cnh-demos --ttl-hours 3 --env-file ~/cnh-2026/lanyard/.env`, same for `--role speaker`). Open each in a clean Chrome profile **off screen**, so the address bar and history never show `#t=`; the app strips the token from the URL. Never paste a link into chat, a file or a PR. A stored token had only minutes left earlier today, so mint after the reset.
+4. **Two attendee windows or profiles.** One joined to **KubeCon NA 2026** (for search), one to **CNH Demos**, sitting in the Main Stage room (`/a/s/cnh-demos-opening`) before you click Demo scenario. Each join makes a new handle; that is fine.
+5. **Browser.** Chrome, zoom 100%, bookmarks bar hidden, extensions off, dark theme. Phone window exactly 390×844.
+6. **Mic.** Chrome site permission for `lanyard.cnh.radarhq.io`: allow the microphone, then say one line so a real caption appears. Otherwise show the "Microphone access was blocked" state.
+7. **Quiet screen.** Do Not Disturb on, notifications off, Slack, Mail and Messages closed, calendar banners off, desktop clean, clock and battery out of frame.
+8. **Tabs, in order.** Landing and QR, organizer board, speaker console and stage window, Dash0 "Conference Ops" dashboard, Radar Cloud for `lanyard`. Sign in to Dash0 and Radar beforehand.
+9. **Dry run.** Click **Demo scenario**, watch all 150 s on the organizer and the phone (including the phone accepting the reroute), then wait for "Cleaning up demo…" to finish. Write down the three times you will cut on (first question, red Main Stage, accept). Then run the demo reset again before the take.
+10. **Gateway.** The platform cuts SSE streams every 15 s; before the clean-recycle fix is deployed the phone shows "Reconnecting… captions may be behind" for a few seconds. If it shows during the dry run, cut around it or retake the beat.
+11. **Backups.** Record each beat as its own clip so any one can be re-shot. Keep the raw recording and the export in two places.
 
 ## 60-second fallback cut
 
-Use if recording runs late or the full take has a bad section. All clips come from the same recording session; only trim and rejoin them.
+Use if time runs out. All clips come from the same recording session.
 
 | Time | Beat | Voiceover |
 |---|---|---|
-| 0:00–0:08 | Organizer board, title card | "A conference is a distributed system: rooms are services, attendees are traffic. Lanyard instruments it." |
-| 0:08–0:20 | Phone: search `restrain rogue copilots`, hit at rank 2 | "I find talks by meaning, not keywords. Elasticsearch, hybrid search." |
-| 0:20–0:36 | Phone: captions scroll, a merged question, Louder tap; speaker console meter | "Live captions, anonymous questions that merge, signals the speaker can see." |
-| 0:36–0:50 | Board turns red at 113%, click Reroute, phone shows the nearest talk with seats | "Main Stage is full. One click reroutes everyone." |
-| 0:50–1:00 | Three-second cards: Dash0 SLO, Radar Checks, Gitar PR list; end card | "Observed in Dash0, run on Radar, every PR reviewed by Gitar. Lanyard: conferences, observable." |
+| 0:00–0:08 | Join QR | "A conference is a distributed system: rooms are services, attendees are traffic. Scan to join." |
+| 0:08–0:20 | Phone: search `eBPF but for security folks`, top hit | "I find talks by meaning, not keywords." |
+| 0:20–0:36 | Phone: captions, a question that joins others, a Louder tap; speaker console meter | "Live captions, anonymous questions that merge, signals the speaker can see." |
+| 0:36–0:52 | Board turns red, click Reroute, phone shows the suggestion, accept, Side Stage | "Main Stage is full. One click reroutes people to the closest talk with seats." |
+| 0:52–1:00 | End card | "Lanyard. Conferences, observable." |
 
-## Gotchas found in QA (as of 15:21 MT)
+## Gotchas found in QA
 
-- **Search needs the KubeCon event.** An attendee who joins "CNH Demos" (the default) has only two sessions, so `eBPF but for security folks` returns two irrelevant talks. Join via `/join?again=1&event=kubecon-na-2026`.
-- **Do not show `/join` on camera.** It renders as an unstyled browser form (default select and button). Start from the attendee home.
-- **Do not show "Plan my day" yet.** The plan cards say "Session details are loading" forever, have no titles and no add button, and quote times in UTC ("17:43–17:48 UTC", "All times are UTC"), which breaks the Denver-time rule. It is ⚠️ until fixed; plan beats are cut from the main script.
-- **Lazy-load flash.** Hard navigation to `/a/plan` or `/s/...` shows a bare "Loading…" for a moment. Navigate within the app, not by pasting URLs, while recording.
-- **Duplicate text in the DOM is not a bug.** The caption feed has a visible line and an off-screen polite live region with the same text.
-- **Ask-the-conference sources all read "CNH Demos: live demos · audience question"**; they cannot be told apart on screen.
-- **The numbers on the board are not the same thing.** Organizer "Questions 13" counts all questions; the speaker console says "2 open questions".
-
-## Incident drills (real, evidence-producing; 14:30–16:00)
-
-We build v1 the straightforward way, measure it under realistic load, and fix what the tools show us. Nothing is faked. If a different real problem shows up first, use that one instead. Whatever is recorded in `docs/evidence/INCIDENTS.md` and `RADAR.md` before 16:30 feeds the Dash0, Radar and Gitar inserts above. As of 15:21 MT `INCIDENTS.md` is still an empty table.
-
-**Incident A: "Keynote surge"** (Dash0 Agent0 and the Radar AI investigation)
-- Run the load script: 300 attendees join one session, hold SSE open, ask, vote and signal.
-- Likely real bottlenecks in v1: per-client snapshot queries to ES on every reconnect, synchronous duplicate-detection calls inside the request path, CPU throttling at low limits, or Valkey fanout hot spots.
-- Steps:
-  1. Watch the fanout SLO burn.
-  2. Ask Agent0: "Why did question fanout p95 regress during the load test?"
-  3. Run a Radar AI investigation on the app pods (throttling, restarts, HPA behaviour).
-  4. Fix: for example, cache the snapshot, move duplicate detection to an async worker with optimistic UI, tune requests and limits or the HPA.
-  5. Re-run the load and compare.
-- Capture screenshots before and after, and both investigation outputs, in `INCIDENTS.md`.
-
-**Incident B: "Bad release"** (Radar and Argo CD; use whichever happens naturally first)
-- A deploy fails readiness. For example, a new env var isn't in the Secret, or the worker crash-loops.
-- Steps:
-  1. A Radar investigation explains it.
-  2. Roll back or fix through Argo CD.
-  3. Record the Radar timeline.
-
-**Incident C: "CI red"** (Gitar)
-- With about ten agents this will happen on its own: a type error from a contract change.
-- Gitar diagnoses it, auto-apply pushes the fix, and you record the PR link.
-
-**Incident D: "Token burn"** (Dash0 GenAI spans; optional)
-- If catch-up or ask-the-conference shows high token cost in OpenLIT spans, shrink the context through tighter ES retrieval and show the cost drop.
+- **Search needs the KubeCon event.** CNH Demos has only two sessions, so `eBPF but for security folks` finds nothing relevant there. Join via `/join?again=1&event=kubecon-na-2026`.
+- **Don't show `/join` on camera.** At 15:15 it was an unstyled browser form; start from the QR or the attendee home. Re-check.
+- **Navigate in the app, not by pasting URLs** while recording: a hard load shows a bare "Loading…" for a moment.
+- **The hidden duplicate caption is not a bug.** Each caption also lives in an off-screen polite live region for screen readers.
+- **Merging is deliberately strict** (similarity cutoff 0.848): hand-typed paraphrases often stay separate. Rely on the scenario's scripted paraphrases.
+- **"Questions" on the organizer board counts all questions;** the speaker console says "open questions". Don't compare them on screen.
 
 ## Submission checklist (done by 17:15)
+
 - [ ] The 3:00 video is recorded, exported (under 3:00) and uploaded or linked as the form requires. Keep a second copy.
 - [ ] The repo is public. README covers: pitch, screenshots, architecture diagram, track mapping, setup steps, live URL
 - [ ] `docs/AI_USAGE.md`: harnesses and models used, what the humans decided versus what the AI wrote (the rules require disclosure)
-- [ ] `docs/ACCESSIBILITY.md` (PR #52), `docs/evidence/INCIDENTS.md`, `docs/evidence/GITAR.md`, Dash0 and Radar screenshots
-- [ ] Gitleaks scan is clean. No keys or role links in the repo or its history
+- [ ] `docs/ACCESSIBILITY.md`, plus the evidence in `docs/evidence/` (Gitar, Radar, Elastic, incidents) the form refers to
+- [ ] Gitleaks scan is clean. No keys or role links in the repo, the video or its history
 - [ ] Submission form sent. Note the confirmation
 
 ## Craig must be able to explain (rule 6)
+
 - The architecture (one image, three Deployments, ES, Valkey, the OTel pipeline).
 - Why ES is the data layer.
-- How duplicate detection works (semantic top-1 plus a threshold of 0.848, deliberately conservative).
+- How duplicate detection works (semantic top-1 plus a 0.848 threshold, deliberately conservative).
 - How reroute picks alternatives.
 - How the role tokens work.
-- What each incident was and how it was fixed.
-
-The orchestrator prepares a 1-page cheat sheet, `docs/plan/CHEATSHEET.md`, at G4.

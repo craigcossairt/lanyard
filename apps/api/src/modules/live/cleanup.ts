@@ -5,14 +5,12 @@
 // attendance.updated and signals.window. No text is logged or published.
 import { channels, ES_INDICES, EVENT_IDS, realtime } from '@lanyard/contracts';
 import type { Redis } from 'ioredis';
-import { getBus } from '../../core/context';
+import type { ModuleContext } from '../../core/context';
 import { HttpError } from '../../core/errors';
 import { es } from '../../core/es';
-import { logger } from '../../core/logger';
 import {
   getLiveSession,
   keys,
-  kv,
   readQuestions,
   readSignalWindow,
   SIGNAL_TYPES,
@@ -22,67 +20,114 @@ import {
   type LiveSession,
 } from './store';
 
+/** What the helper needs from the app context (WS4 passes its ModuleContext). */
+export type AppContext = Pick<ModuleContext, 'kv' | 'bus' | 'logger'>;
+type Bus = AppContext['bus'];
+
 export interface CleanupInput {
-  eventId: string;
+  eventId: 'cnh-demos';
   sessionIds: string[];
   questionIds?: string[];
   chunkIds?: string[];
-  anonIds?: string[];
+  anonIds: string[];
 }
 
 export interface CleanupResult {
   removed: {
-    questions: number; // Valkey question records
-    esQuestions: number;
-    esTranscripts: number;
-    captions: number; // caption tail entries
-    clusters: number; // clusters emptied and deleted
-    presence: number; // set memberships removed
-    signals: number; // zset entries removed
+    questions: number; // distinct questions removed (Valkey or ES)
+    chunks: number; // transcript chunks removed (ES or caption tail)
+    members: number; // room/session set memberships removed
+    signals: number; // signal zset entries removed
+    votes: number; // sim votes taken off surviving questions
   };
 }
 
 const MAX_IDS = 5_000;
 const label = (t: string) => (t.length > 80 ? `${t.slice(0, 77)}…` : t);
 
-async function esDeleteByIds(
+/** ES delete scoped to these sessions in CNH Demos: (ids OR, for questions, anonIds). */
+async function esDelete(
   index: typeof ES_INDICES.questions | typeof ES_INDICES.transcripts,
-  ids: string[],
   sessionIds: string[],
+  ids: string[],
+  anonIds: string[] = [],
 ): Promise<number> {
-  let deleted = 0;
-  for (let i = 0; i < ids.length; i += 500) {
-    const batch = ids.slice(i, i + 500);
-    // ids AND session AND event: a wrong id can't touch another event's data.
-    const res = await es(index, 'delete_by_query', (c, o) =>
-      c.deleteByQuery(
-        {
-          index,
-          conflicts: 'proceed',
-          query: {
-            bool: {
-              filter: [
-                { ids: { values: batch } },
-                { terms: { sessionId: sessionIds } },
-                { term: { eventId: EVENT_IDS.cnhDemos } },
-              ],
-            },
+  const should: object[] = [];
+  if (ids.length) should.push({ ids: { values: ids } });
+  if (anonIds.length) should.push({ terms: { anonId: anonIds } });
+  if (should.length === 0) return 0;
+  const res = await es(index, 'delete_by_query', (c, o) =>
+    c.deleteByQuery(
+      {
+        index,
+        conflicts: 'proceed',
+        query: {
+          bool: {
+            filter: [
+              { terms: { sessionId: sessionIds } },
+              { term: { eventId: EVENT_IDS.cnhDemos } },
+            ],
+            should,
+            minimum_should_match: 1,
           },
         },
-        o,
-      ),
-    );
-    deleted += res.deleted ?? 0;
+      },
+      o,
+    ),
+  );
+  return res.deleted ?? 0;
+}
+
+/**
+ * Questions by these anonIds, from Valkey (the route writes it first) and ES (covers a
+ * Valkey hash that expired), scoped to the listed sessions.
+ */
+async function discoverQuestions(
+  r: Redis,
+  sessionIds: string[],
+  anonIds: string[],
+): Promise<string[]> {
+  const anon = new Set(anonIds);
+  const found: string[] = [];
+  for (const sid of sessionIds) {
+    const ids = await r.lrange(keys.questions(sid), 0, -1);
+    if (ids.length === 0) continue;
+    const p = r.pipeline();
+    ids.forEach((id) => p.hget(keys.question(id), 'anonId'));
+    const owners = (await p.exec()) ?? [];
+    ids.forEach((id, i) => {
+      if (anon.has(String(owners[i]?.[1] ?? ''))) found.push(id);
+    });
   }
-  return deleted;
+  const res = await es(ES_INDICES.questions, 'search', (c, o) =>
+    c.search(
+      {
+        index: ES_INDICES.questions,
+        size: MAX_IDS,
+        _source: false,
+        query: {
+          bool: {
+            filter: [
+              { terms: { sessionId: sessionIds } },
+              { term: { eventId: EVENT_IDS.cnhDemos } },
+              { terms: { anonId: anonIds } },
+            ],
+          },
+        },
+      },
+      o,
+    ),
+  );
+  for (const h of res.hits.hits) if (h._id) found.push(h._id);
+  return found;
 }
 
 async function removeQuestions(
   r: Redis,
+  bus: Bus,
   sessions: Map<string, LiveSession>,
   questionIds: string[],
-): Promise<{ questions: number; clusters: number }> {
-  const bus = getBus();
+): Promise<number> {
   const removedBySession = new Map<string, number>();
   const touched = new Map<string, Set<string>>(); // clusterId -> removed question ids
   for (const qid of questionIds) {
@@ -115,14 +160,12 @@ async function removeQuestions(
     if (left < 0) await r.set(keys.questionCount(sid), 0);
   }
 
-  let clusters = 0;
   for (const [cid, gone] of touched) {
     const h = await r.hgetall(keys.cluster(cid));
     const c = toCluster(h);
     if (!c) continue;
     if (c.size <= 0) {
       await r.multi().del(keys.cluster(cid)).srem(keys.clusters(c.sessionId), cid).exec();
-      clusters++;
       await bus.publish(
         channels.session(c.sessionId),
         realtime('cluster.updated', { clusterId: cid, label: '', size: 0, votes: 0 }),
@@ -153,8 +196,7 @@ async function removeQuestions(
       realtime('cluster.updated', { clusterId: cid, label: c.label, size: c.size, votes: c.votes }),
     );
   }
-  const questions = [...removedBySession.values()].reduce((a, b) => a + b, 0);
-  return { questions, clusters };
+  return [...removedBySession.values()].reduce((a, b) => a + b, 0);
 }
 
 async function removeCaptions(r: Redis, sessionIds: string[], chunkIds: string[]) {
@@ -176,19 +218,19 @@ async function removeCaptions(r: Redis, sessionIds: string[], chunkIds: string[]
 
 async function removeAttendees(
   r: Redis,
+  bus: Bus,
   sessions: Map<string, LiveSession>,
   anonIds: string[],
-): Promise<{ presence: number; signals: number }> {
+): Promise<{ members: number; signals: number }> {
   const anon = new Set(anonIds);
-  const bus = getBus();
-  let presence = 0;
+  let members = 0;
   let signals = 0;
   for (const s of sessions.values()) {
     const m = r.multi();
     m.srem(keys.sessionMembers(s.id), ...anonIds);
     m.srem(keys.roomMembers(s.roomId), ...anonIds);
     const res = (await m.exec()) ?? [];
-    presence += res.reduce((n, [, v]) => n + Number(v ?? 0), 0);
+    members += res.reduce((n, [, v]) => n + Number(v ?? 0), 0);
 
     for (const type of SIGNAL_TYPES) {
       const key = keys.signals(s.id, type);
@@ -226,18 +268,100 @@ async function removeAttendees(
     for (const s of sessions.values()) for (const t of SIGNAL_TYPES) m.del(keys.rate(s.id, a, t));
     await m.exec();
   }
-  return { presence, signals };
+  return { members, signals };
 }
 
-/** Remove the listed synthetic CNH Demos records. Throws for any other event. */
-export async function cleanupSynthetic(input: CleanupInput): Promise<CleanupResult> {
-  if (input.eventId !== EVENT_IDS.cnhDemos)
+/**
+ * Take sim votes off surviving (real) questions. KEYS: voters, question, cluster. ARGV:
+ * anonIds. Returns {removedVotes, questionVotes, clusterVotes} (cluster -1 if absent).
+ */
+const UNVOTE = `local n = redis.call('SREM', KEYS[1], unpack(ARGV))
+if n == 0 then return {0, 0, -1} end
+local qv = redis.call('HINCRBY', KEYS[2], 'votes', -n)
+local cv = -1
+if redis.call('HGET', KEYS[2], 'status') ~= 'hidden' and redis.call('EXISTS', KEYS[3]) == 1 then
+  cv = redis.call('HINCRBY', KEYS[3], 'votes', -n)
+end
+return {n, qv, cv}`;
+
+async function removeVotes(
+  r: Redis,
+  bus: Bus,
+  sessionIds: string[],
+  anonIds: string[],
+): Promise<number> {
+  let removed = 0;
+  for (const sid of sessionIds) {
+    for (const qid of await r.lrange(keys.questions(sid), 0, -1)) {
+      const h = await r.hgetall(keys.question(qid));
+      const q = toQuestion(h);
+      if (!q) continue;
+      const [n, qv, cv] = (await r.eval(
+        UNVOTE,
+        3,
+        keys.voters(qid),
+        keys.question(qid),
+        keys.cluster(q.clusterId),
+        ...anonIds,
+      )) as [number, number, number];
+      if (n === 0) continue;
+      removed += n;
+      await bus.publish(
+        channels.session(sid),
+        realtime('question.updated', {
+          questionId: q.id,
+          clusterId: q.clusterId,
+          votes: Math.max(0, qv),
+          status: q.status,
+          text: q.status === 'hidden' ? undefined : q.text,
+        }),
+      );
+      if (cv >= 0) {
+        const c = toCluster(await r.hgetall(keys.cluster(q.clusterId)));
+        if (c)
+          await bus.publish(
+            channels.session(sid),
+            realtime('cluster.updated', {
+              clusterId: c.id,
+              label: c.label,
+              size: c.size,
+              votes: Math.max(0, c.votes),
+            }),
+          );
+      }
+    }
+  }
+  return removed;
+}
+
+/**
+ * Remove the listed synthetic CNH Demos records, plus any question by the listed anonIds in
+ * these sessions (covers a crash between the route write and the caller's ledger save).
+ * Throws unless eventId is cnh-demos and every session is in cnh-demos.
+ */
+export async function cleanupSynthetic(
+  ctx: AppContext,
+  input: CleanupInput,
+): Promise<CleanupResult> {
+  // Runtime check too: callers may not be typed.
+  if ((input.eventId as string) !== EVENT_IDS.cnhDemos)
     throw new HttpError(403, 'forbidden', 'cleanupSynthetic only runs on cnh-demos');
   const questionIds = input.questionIds ?? [];
-  const chunkIds = input.chunkIds ?? [];
   const anonIds = input.anonIds ?? [];
+  let chunkIds = input.chunkIds ?? [];
   if ([input.sessionIds, questionIds, chunkIds, anonIds].some((a) => a.length > MAX_IDS))
     throw new HttpError(400, 'too_many_ids', `At most ${MAX_IDS} ids per list`);
+
+  const removed: CleanupResult['removed'] = {
+    questions: 0,
+    chunks: 0,
+    members: 0,
+    signals: 0,
+    votes: 0,
+  };
+  if (input.sessionIds.length === 0) return { removed };
+  const r = ctx.kv;
+  if (!r) throw new HttpError(503, 'valkey_unavailable', 'Live state store is not configured');
 
   // Every session must belong to CNH Demos (second guard against a wrong id list).
   const sessions = new Map<string, LiveSession>();
@@ -248,28 +372,29 @@ export async function cleanupSynthetic(input: CleanupInput): Promise<CleanupResu
     sessions.set(sid, s);
   }
   const sids = [...sessions.keys()];
-  const removed: CleanupResult['removed'] = {
-    questions: 0,
-    esQuestions: 0,
-    esTranscripts: 0,
-    captions: 0,
-    clusters: 0,
-    presence: 0,
-    signals: 0,
-  };
-  if (sids.length === 0) return { removed };
-  const r = kv();
 
-  if (questionIds.length) {
-    Object.assign(removed, await removeQuestions(r, sessions, questionIds));
-    removed.esQuestions = await esDeleteByIds(ES_INDICES.questions, questionIds, sids);
+  const discovered = anonIds.length ? await discoverQuestions(r, sids, anonIds) : [];
+  const allQuestions = [...new Set([...questionIds, ...discovered])];
+  if (allQuestions.length) {
+    const fromValkey = await removeQuestions(r, ctx.bus, sessions, allQuestions);
+    const fromEs = await esDelete(ES_INDICES.questions, sids, questionIds, anonIds);
+    removed.questions = Math.max(fromValkey, fromEs);
   }
+  // Chunks a simulated speaker published (ledger written before publish).
+  const ledger = anonIds.filter((a) => a.startsWith('sim_')).map((a) => keys.syntheticChunks(a));
+  if (ledger.length) chunkIds = [...new Set([...chunkIds, ...(await r.sunion(...ledger))])];
   if (chunkIds.length) {
-    removed.captions = await removeCaptions(r, sids, chunkIds);
-    removed.esTranscripts = await esDeleteByIds(ES_INDICES.transcripts, chunkIds, sids);
+    const fromTail = await removeCaptions(r, sids, chunkIds);
+    const fromEs = await esDelete(ES_INDICES.transcripts, sids, chunkIds);
+    removed.chunks = Math.max(fromTail, fromEs);
   }
-  if (anonIds.length) Object.assign(removed, await removeAttendees(r, sessions, anonIds));
+  if (anonIds.length) {
+    Object.assign(removed, await removeAttendees(r, ctx.bus, sessions, anonIds));
+    // Sim votes on real questions (dedup can merge a sim question into a real cluster).
+    removed.votes = await removeVotes(r, ctx.bus, sids, anonIds);
+    if (ledger.length) await r.del(...ledger);
+  }
 
-  logger.info({ eventId: input.eventId, removed }, 'synthetic cleanup');
+  ctx.logger.info({ eventId: input.eventId, removed }, 'synthetic cleanup');
   return { removed };
 }

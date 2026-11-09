@@ -4,7 +4,14 @@
 // the cnh-transcripts record in the background.
 import type { FastifyInstance } from 'fastify';
 import { metrics } from '@opentelemetry/api';
-import { channels, ES_INDICES, METRICS, realtime, TranscriptRequest } from '@lanyard/contracts';
+import {
+  channels,
+  ES_INDICES,
+  EVENT_IDS,
+  METRICS,
+  realtime,
+  TranscriptRequest,
+} from '@lanyard/contracts';
 import { authOf, requireRole } from '../../core/auth';
 import { getBus } from '../../core/context';
 import { parse } from '../../core/errors';
@@ -68,7 +75,8 @@ export function registerTranscript(app: FastifyInstance): void {
     async (req, reply) => {
       const body = parse(TranscriptRequest, req.body ?? {});
       const s = await getLiveSession(req.params.id);
-      assertSameEvent(authOf(req), s);
+      const claims = authOf(req);
+      assertSameEvent(claims, s);
       const r = kv();
 
       // Client-chosen seqs push the server counter forward atomically (it never decreases).
@@ -92,6 +100,14 @@ export function registerTranscript(app: FastifyInstance): void {
       const caption = { chunkId: chunk.id, seq, text: chunk.text, lang: chunk.lang, endedAt };
 
       // Fan out first (that's what the lag SLO measures), record in parallel.
+      // Demo engine ledger: a simulated speaker's chunks are recorded before they go out,
+      // so cleanupSynthetic can find them even if the simulator crashes mid-run.
+      if (s.eventId === EVENT_IDS.cnhDemos && claims.sub.startsWith('sim_'))
+        await r
+          .multi()
+          .sadd(keys.syntheticChunks(claims.sub), chunk.id)
+          .expire(keys.syntheticChunks(claims.sub), 24 * 3600)
+          .exec();
       const fanout = (async () => {
         await getBus().publish(
           channels.session(s.id),

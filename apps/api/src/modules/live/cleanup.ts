@@ -8,6 +8,7 @@ import type { Redis } from 'ioredis';
 import type { ModuleContext } from '../../core/context';
 import { HttpError } from '../../core/errors';
 import { es } from '../../core/es';
+import { logger } from '../../core/logger';
 import {
   getLiveSession,
   keys,
@@ -144,9 +145,16 @@ redis.call('LREM', KEYS[3], 0, ARGV[1])
 if redis.call('DECR', KEYS[4]) < 0 then redis.call('SET', KEYS[4], 0) end
 return {1, cid, v}`;
 
-/** Publishing is best effort: a failed refresh must not stop the accounting. */
+/** Publishing is best effort: a failed refresh must not stop the accounting (but is logged). */
 const publish = (bus: Bus, ...args: Parameters<Bus['publish']>) =>
-  bus.publish(...args).catch(() => undefined);
+  bus
+    .publish(...args)
+    .catch((err: unknown) =>
+      logger.warn(
+        { type: args[1].type, code: (err as { code?: string }).code, err: (err as Error).message },
+        'synthetic cleanup publish failed',
+      ),
+    );
 
 /** Every surviving member of a cluster (the whole session list, not the 200 tail). */
 async function clusterMembers(r: Redis, sid: string, cid: string) {
@@ -457,7 +465,12 @@ export async function cleanupSynthetic(
       void Promise.all([
         late.questions && esDelete(ES_INDICES.questions, sids, questionIds, anonIds),
         late.chunks && esDelete(ES_INDICES.transcripts, sids, chunkIds),
-      ]).catch(() => ctx.logger.warn('synthetic cleanup second ES pass failed'));
+      ]).catch((err: unknown) =>
+        ctx.logger.warn(
+          { code: (err as { code?: string }).code, err: (err as Error).message },
+          'synthetic cleanup second ES pass failed',
+        ),
+      );
     }, LATE_PASS_MS).unref();
 
   ctx.logger.info({ eventId: input.eventId, removed }, 'synthetic cleanup');

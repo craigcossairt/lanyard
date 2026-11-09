@@ -42,7 +42,8 @@ All ids are opaque strings. All times are **UTC ISO-8601** in storage and transi
 | Alert | id, eventId, roomId, kind (overflow, signal_spike, facilities), severity, opened at, resolved at, action taken | |
 | Recommendation | for an anonId: alternative sessionId, reason | Reroute output |
 | Booth (P1) | id, eventId, vendor name, description, tags | |
-| Match (P1) | anonId, boothId or anonId, score, consented flag | Only with consent |
+| Match (P1) | anonId, boothId or anonId, score, consented flag | Only with consent; attendee suggestions expose handle and LinkedIn URL only to opted-in attendees |
+| NetworkingProfile (P1) | anonId, eventId, handle, linkedinUrl, needs, offers, interests, consented=true | Absent until explicit opt-in; stored only in `cnh-people`; text and URL never logged or added to spans/metric labels |
 
 ## 3. Elasticsearch indices (Elastic Cloud, prefix `cnh-`)
 Each index has a `semantic` field of type `semantic_text` where noted. **Source fields stay ordinary `text` fields with `copy_to: "semantic"`** (sessions: title, abstract, speakerNames; transcripts and questions: text; people: interests; booths: description), and every semantic query targets the field named `semantic`. Writers only index the plain fields, and embeddings are filled automatically. It uses the deployment's default inference endpoint, which WS1 verifies in the first 30 minutes. The fallback is a `dense_vector` field filled with OpenAI embeddings.
@@ -57,7 +58,7 @@ Each index has a `semantic` field of type `semantic_text` where noted. **Source 
 | `cnh-questions` | keyword: sessionId, eventId, anonId, clusterId, status. integer: votes. date: at. text: text (copy_to semantic). semantic_text: semantic | Duplicate detection (top-1 semantic similarity within the session above a threshold, so it joins that cluster), clustering, digest |
 | `cnh-signals` | keyword: sessionId, roomId, eventId, type, anonId. date: at | Aggregations by type over time windows |
 | `cnh-presence` | keyword: eventId, roomId, sessionId, anonId, kind. date: at | Occupancy aggregations (latest state per anonId) |
-| `cnh-people` *(P1)* | keyword: anonId, eventId. text: interests (copy_to semantic). semantic_text: semantic | Hallway and vendor matching |
+| `cnh-people` *(P1)* | keyword: anonId, eventId, handle; boolean: consented. text: needs, offers, interests (each copy_to semantic). semantic_text: semantic. LinkedIn URL is returned only in opted-in match cards | Event-scoped hallway and vendor matching; only consented profiles are discoverable |
 | `cnh-booths` *(P1)* | text: description (copy_to semantic). semantic_text: semantic | Vendor matching |
 
 Live counters (occupancy, votes) are **also** kept in Valkey for speed. ES remains the record and the analytics layer.
@@ -79,6 +80,9 @@ Roles are carried by a signed token: attendee (issued on join), or speaker, orga
 | POST `/events/:eventId/ask` | organizer (attendee in P1) | Ask the conference (RAG over transcripts and questions) | WS1 |
 | GET and PUT `/me/schedule` | attendee | My schedule | WS3 |
 | PUT `/me/prefs` | attendee | Accessibility prefs, language, interests (opt-in) | WS3 |
+| PUT `/me/networking` | attendee | Explicitly opt in or update a networking profile (`NetworkingProfileRequest`) | WS7 |
+| DELETE `/me/networking` | attendee | Remove consent and delete the caller's `cnh-people` profile | WS7 |
+| GET `/events/:eventId/networking/suggestions` | attendee | Event-scoped suggestions for other opted-in attendees; excludes self and returns handle, LinkedIn URL and optional one-line reason | WS7 |
 | POST `/sessions/:id/presence` | attendee | Join or leave session (drives occupancy) | WS2 |
 | GET `/sessions/:id/stream` | any | SSE stream of realtime messages for the session | WS2 |
 | POST `/sessions/:id/transcript` | speaker | Append a caption chunk | WS2 |
@@ -155,6 +159,7 @@ The ops rules open an overflow alert at occupancy ≥90%, and a signal-spike ale
 | `conf.questions` | counter | event, session | Engagement |
 | `conf.question.dedup` | counter | event, merged (true/false) | Shows ES doing real work |
 | `conf.reroute.suggested` / `conf.reroute.accepted` | counter | event, room | Outcome of the ops action |
+| `conf.matches.suggested` | counter | event | Opted-in attendee suggestions returned |
 | `conf.caption.lag_ms` | histogram | event, session | Accessibility SLO: p95 < 1500 ms |
 | `conf.realtime.fanout_ms` | histogram | channel kind | Product SLO: question visible to the speaker, p95 < 1000 ms |
 | `conf.sse.clients` | gauge | channel kind | Load evidence during the demo |

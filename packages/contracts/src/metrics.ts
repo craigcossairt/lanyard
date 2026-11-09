@@ -9,6 +9,7 @@ export const METRICS = {
   questionDedup: 'conf.question.dedup',
   rerouteSuggested: 'conf.reroute.suggested',
   rerouteAccepted: 'conf.reroute.accepted',
+  matchesSuggested: 'conf.matches.suggested',
   captionLagMs: 'conf.caption.lag_ms',
   realtimeFanoutMs: 'conf.realtime.fanout_ms',
   sseClients: 'conf.sse.clients',

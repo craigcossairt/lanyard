@@ -33,14 +33,25 @@ On a laptop, the side panel shows questions and signals. The dock keeps only Ask
 
 ![Direction A on a laptop](docs/design/shots/a-desktop.png)
 
-### Speaker console and organizer board
+### Speaker console (laptop), direction E
 
-These surfaces were not grilled as separate rounds. They use the same tokens and components, following the principles above:
+Decided in two rounds (see the decision log). The speaker console is **private**: only the speaker sees it, on the laptop or a confidence monitor. Lanyard owns the deck. The console shows the current and next slide, large notes for this slide, and a rail with room cues and the questions asked during this slide. A separate stage window puts the slide and the join QR on the projector.
 
-- **Speaker (stage mode):** `CaptionStream size="stage"` and `QuestionItem size="stage"` scale to `--stage-size` (about 5 rem on a 1440 px projector). Signals are `Meter`s labelled in people, not percentages. Big text and high contrast make it readable from the back of the room.
-- **Organizer:** `RoomTile` is a room as a service: SLO state with an edge colour, icon and word; occupancy as a meter with thresholds at 75% and 90%; and stats in monospace, the way an SRE console shows them. It's dense and calm, with colour only where something is wrong.
+![Speaker console, direction E](docs/design/shots/speaker-e-live.png)
 
-![Speaker console sample](docs/design/shots/speaker-sample.png)
+Q&A mode turns the rail into a one-at-a-time queue. Not started, a 2,000-person spike, no speech API (typed live notes), and light:
+
+![Speaker console in Q&A](docs/design/shots/speaker-e-qa.png)
+
+![Speaker console states](docs/design/shots/speaker-e-states.png)
+
+- Room cues reuse the attendee signal thresholds: warn at 5% of the room in the last 60 s, crit at 15%. Each cue shows an icon, a count and a one-line suggestion ("Recap the last point"). "Got it" is never an alert.
+- Time elapsed and time left sit top right; time left turns amber in the last 3 minutes.
+- Keyboard: arrow keys and Page Up/Down (clicker) step slides, Q toggles Q&A, A marks answered, N skips.
+
+### Organizer board
+
+Not grilled yet; a round is in progress (`docs/design/grill-ops.html` on branch `design/ops-round1`). Until it lands, use `RoomTile`: a room as a service with SLO state shown as an edge colour, icon and word; occupancy as a meter with thresholds at 75% and 90%; and stats in monospace, the way an SRE console shows them. It's dense and calm, with colour only where something is wrong.
 
 ### Components
 

@@ -1,7 +1,7 @@
 {
   "source": "https://sessionize.com/api/v2/svi82w6c/view/All",
   "retrievedOn": "2026-11-09",
-  "notes": "Public talk data only. Room capacities and x/y are demo fixtures; accessibility flags are unverified placeholders, not venue guidance. Public talks initially scheduled; CNH demo fixtures live.",
+  "notes": "Public talk data only. Room capacities and x/y are demo fixtures; accessibility flags are unverified placeholders, not venue guidance. KubeCon sessions start scheduled; CNH demo fixture sessions are seeded live.",
   "events": [
     {
       "id": "kubecon-na-2026",

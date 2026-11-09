@@ -59,7 +59,7 @@ sessions.push({
   track: 'CNH Demos', level: 'Any Level', tags: ['hackathon', 'demos', 'questions'], speakerIds: [], speakerNames: [],
   startsAt: events[1].startsAt, endsAt: events[1].endsAt, status: 'live',
 });
-const seed = { source, retrievedOn: '2026-11-09', notes: 'Public talk data only. Room capacities and x/y are demo fixtures; accessibility flags are unverified placeholders, not venue guidance. Public talks initially scheduled; CNH demo fixtures live.', events, rooms, speakers, sessions };
+const seed = { source, retrievedOn: '2026-11-09', notes: 'Public talk data only. Room capacities and x/y are demo fixtures; accessibility flags are unverified placeholders, not venue guidance. KubeCon sessions start scheduled; CNH demo fixture sessions are seeded live.', events, rooms, speakers, sessions };
 await mkdir(new URL('../../data/seed/', import.meta.url), { recursive: true });
 await writeFile(new URL('../../data/seed/conference.json', import.meta.url), `${JSON.stringify(seed, null, 2)}\n`);
 console.log(JSON.stringify(Object.fromEntries(['events', 'rooms', 'speakers', 'sessions'].map(key => [key, seed[key].length]))));

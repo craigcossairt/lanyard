@@ -79,17 +79,26 @@ export function openSse(req: FastifyRequest, reply: FastifyReply, opts: SseOptio
     if (closed) return;
     closed = true;
     clearInterval(heartbeat);
+    clearTimeout(readyTimer);
     unsubs.forEach((u) => u());
     clientsGauge.add(-1, { channel_kind: kind });
     res.end();
   }
   req.raw.on('close', close);
 
-  // Say "ready" only once every channel is live (or after 2 s), so a client that
-  // refetches its snapshot on "ready" can't miss messages published in between.
-  void Promise.race([
-    Promise.all(unsubs.map((u) => u.ready)),
-    new Promise((r) => setTimeout(r, READY_TIMEOUT_MS)),
-  ]).then(() => send('ready', { channels: subs.map(channelKind), retryMs: RETRY_MS }));
+  // `ready` tells the client when to (re)fetch its snapshot. `live: true` means every
+  // channel's SUBSCRIBE has landed, so nothing published after the snapshot can be missed.
+  // If that takes longer than 2 s (Valkey slow or down), send `ready {live:false}` first
+  // and `ready {live:true}` once it lands; clients refetch on every live:true.
+  const ready = (live: boolean) =>
+    send('ready', { channels: subs.map(channelKind), retryMs: RETRY_MS, live });
+  let readyTimer: NodeJS.Timeout | undefined = setTimeout(() => {
+    readyTimer = undefined;
+    ready(false);
+  }, READY_TIMEOUT_MS);
+  void Promise.all(unsubs.map((u) => u.ready)).then(() => {
+    clearTimeout(readyTimer);
+    ready(true);
+  });
   return { send, close };
 }

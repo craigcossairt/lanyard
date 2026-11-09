@@ -51,6 +51,7 @@ test('SSE stream: bearer auth, session + user channel multiplexed', async () => 
     }
   };
   await readUntil('event: ready');
+  await readUntil('"live":true');
 
   const { getBus } = await import('./context');
   await getBus().publish(

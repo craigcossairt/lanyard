@@ -1,0 +1,12 @@
+{
+  "measuredAt": "2026-11-09T23:13:44Z",
+  "threshold": 0.848,
+  "diagnosticTimeoutMs": 2000,
+  "complete": false,
+  "interruptedBy": "semantic query timeout in the next group",
+  "rows": [
+    { "group": 0, "original": 0, "paraphrase": 1, "score": 0.82620645, "merged": false },
+    { "group": 0, "original": 0, "paraphrase": 2, "score": 0.71551156, "merged": false },
+    { "group": 0, "original": 1, "paraphrase": 2, "score": 0.7333971, "merged": false }
+  ]
+}

@@ -1,0 +1,22 @@
+[
+  [
+    "What happens when a room fills up and reaches its capacity?",
+    "What do you do when a room reaches its capacity and fills up?",
+    "How is overflow handled when a room fills up and reaches its capacity?"
+  ],
+  [
+    "How can I catch up on a talk if I arrive late?",
+    "If I arrive late to a talk, how can I catch up?",
+    "How can I catch up after arriving late to a talk?"
+  ],
+  [
+    "How are similar audience questions grouped into one cluster?",
+    "How do you group similar audience questions into a single cluster?",
+    "Can similar audience questions be grouped together into one cluster?"
+  ],
+  [
+    "Can I read live captions of this talk on my phone?",
+    "Can I read this talk's live captions on my phone?",
+    "Are live captions of this talk available to read on my phone?"
+  ]
+]

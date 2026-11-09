@@ -22,10 +22,33 @@ The per-cluster tools named in AGENTS.md (`get_cluster_audit`, `manage_gitops`, 
 | 2026-11-09T19:20Z | `fleet_list_gitops` | same as above | Synced to `74ca0ac`, health **Progressing**, then **Healthy** at 19:20:43Z; resource count 3 → 5 | Verify the #2 deploy (Valkey + Secret wiring) |
 | 2026-11-09T19:20Z | `fleet_search` | `q="ns:team-lanyard"`, CEL `filter: kind == "Pod" \|\| kind == "Deployment" \|\| kind == "Service"` | `app` 2/2 on `b1b0e69`; `valkey` 1/1 (`Recreate`), first seen `ContainerCreating` while the image pulled; Services `app:80`, `valkey:6379` | Confirm the new workload and that every `secretKeyRef` resolved (pods would sit in `CreateContainerConfigError` otherwise) |
 | 2026-11-09T19:20Z | `fleet_issues` | same as above | 0 issues | No regressions after #2 |
+| 2026-11-09T19:28Z | `fleet_list_gitops` | same as above | Synced to `b37bd5a` (deploy commit for WS0's skeleton #5), Healthy, last op Succeeded 19:26:30Z | Verify the monorepo skeleton deploy |
+| 2026-11-09T19:28Z | `fleet_search` | `q="ns:team-lanyard"`, CEL `kind == "Pod" \|\| kind == "Deployment"` | `app` 2/2 on `ghcr.io/craigcossairt/lanyard:63f928d` (new pods, 1 min old); `valkey` 1/1 | The new one-image build runs as `ROLE=app` |
 
-URL checks alongside: `https://lanyard.cnh.radarhq.io/` served `version f8c3220` at 18:49Z, `1f80ab7` at 18:56Z and `b1b0e69` at 19:20Z. The Valkey pod events (kubectl, because the per-cluster `get_events` tool isn't on this connection) show the Docker Hub pull succeeded in 29.7 s with no rate limit, plus one expected readiness failure at start-up before Valkey bound its port.
+URL checks alongside: `https://lanyard.cnh.radarhq.io/` served `version f8c3220` at 18:49Z, `1f80ab7` at 18:56Z and `b1b0e69` at 19:20Z. At 19:28Z, after the skeleton, `/healthz` returned `{"status":"ok","role":"app","version":"63f928d"}` and `/readyz` returned 200. The Valkey pod events (kubectl, because the per-cluster `get_events` tool isn't on this connection) show the Docker Hub pull succeeded in 29.7 s with no rate limit, plus one expected readiness failure at start-up before Valkey bound its port.
 
 ## Checks (audit) before / after
 
-- **Before: not captured.** `get_cluster_audit` isn't on this MCP connection, and no Radar Cloud UI screenshot of Checks for `team-lanyard` was taken before the 12:15 MT cutoff. #2 merged without it (orchestrator decision). The closest "before" evidence is the starter manifest: one container, no Secret wiring, 100m/128Mi requests, no read-only root fs, service-account token automounted, and `fleet_issues` = 0 at 18:49Z.
-- **After:** a UI screenshot after the worker + HPA PR deploys. Expected wins: requests/limits on every container, non-root everywhere, read-only root fs on Valkey, no service-account token automount on Valkey and worker.
+`get_cluster_audit` isn't on this MCP connection, so Checks come from the Radar Cloud UI.
+
+### Before: 2026-11-09T19:20Z (12:20 MT), all namespaces, platform-managed hidden
+
+![Radar Checks before](radar-checks-before.png)
+
+**14 checks, 45 actionable, 370 of 418 passing: 0 critical, 1 high, 13 medium.** (Taken just after #2 deployed Valkey, so Valkey's hardening is already in the baseline. The cutoff for a pre-#2 screenshot was missed.)
+
+Which findings are ours? Each one is mapped to a workload from the live pod specs (kubectl, 19:30Z):
+
+| Check (severity, count) | Our workloads in `team-lanyard` | Platform (pre-installed; leave alone per AGENTS.md) | Plan |
+|---|---|---|---|
+| Privilege escalation (High, 1) | none: `app` and `valkey` set `allowPrivilegeEscalation: false` | `monitoring/prometheus-server` | Not ours |
+| Service account token auto-mount (Medium, 10) | `app` | Argo CD, Rollouts, CNPG, Prometheus, Radar, CoreDNS | Fix `app`; worker ships with `false` |
+| Read-only root filesystem (Medium, 2) | `app` | `prometheus-server` | Fix `app` (emptyDir `/tmp`) |
+| Missing PodDisruptionBudget (Medium, 1) | `app` | | Add PDB `minAvailable: 1` |
+| Missing topology spread (Medium, 1) | `app` | | Add a soft spread by hostname |
+| Single replica (Medium, 8) | `valkey` (by design) | Platform controllers | Accepted: one Valkey = one pub/sub bus; ES is the record |
+| Workload managed by Helm but not GitOps (9), missing probes (3+3), missing CPU/memory requests or limits (1 each), unused ConfigMap/Secret (3) | none: every one of our containers has probes, requests and limits, and is GitOps-managed | Argo CD, Prometheus sidecar, `default/kubeconfig` (kept: kubectl access) | Not ours |
+
+### After
+
+Recorded after the worker + HPA PR and the Checks-fix PR deploy (screenshot plus the same table).

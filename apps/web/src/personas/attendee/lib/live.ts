@@ -1,6 +1,7 @@
 // Live session state: the stream's `snapshot` event plus realtime messages, merged into
-// one view model. WS2's `GET /sessions/:id/stream` sends `snapshot` first (and again on
-// every reconnect), then live messages; there is no separate snapshot route.
+// one view model. WS2's `GET /sessions/:id/stream` sends `snapshot` first, then live
+// messages. The shell's `useSse` handles the deliberate ~12 s rotation (resume with
+// Last-Event-ID) and hands non-contract frames such as `snapshot` to `onEvent`.
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import type {
   AskQuestionResponse,
@@ -12,7 +13,7 @@ import type {
   SignalType,
 } from '@lanyard/contracts';
 import { api } from './api';
-import { useSse, type SseStatus, type StreamEvent } from './sse';
+import { useSse, type SseStatus } from '../../../app/sse';
 
 export interface CaptionLine {
   chunkId: string;
@@ -255,11 +256,13 @@ export function useLiveSession(sessionId: string, known: Session | null): LiveAp
     };
   }, [sessionId]);
 
-  const onEvent = useCallback((e: StreamEvent) => {
-    if (e.type === 'snapshot') dispatch({ type: 'snapshot', snapshot: e as LiveSnapshot });
-    else dispatch({ type: 'message', msg: e });
+  const onMessage = useCallback((msg: RealtimeMessage) => dispatch({ type: 'message', msg }), []);
+  const onEvent = useCallback((event: string, data: unknown) => {
+    if (event === 'snapshot') dispatch({ type: 'snapshot', snapshot: data as LiveSnapshot });
   }, []);
-  const stream = useSse(`/sessions/${encodeURIComponent(sessionId)}/stream`, onEvent);
+  const stream = useSse(`/sessions/${encodeURIComponent(sessionId)}/stream`, onMessage, {
+    onEvent,
+  });
 
   const ask = useCallback(
     async (text: string) => {

@@ -17,6 +17,7 @@ import { buildClusterViews } from '../attendee/components/QuestionList';
 import { useEventView } from '../attendee/lib/event';
 import { cachedSessions } from '../attendee/lib/schedule';
 import { useEventId, useSession } from '../attendee/lib/session';
+import { useDelayedFlag } from '../attendee/lib/useDelayedFlag';
 import { useSpeechCaptions } from './lib/captions';
 import { useSpeakerConsole } from './lib/console';
 
@@ -91,8 +92,14 @@ function Console({ id }: { id: string }) {
   };
 
   const listening = captions.state === 'listening' || captions.state === 'starting';
-  const lines = captions.recent;
+  // What attendees see comes from the stream (snapshot tail + caption.appended), whatever the
+  // source: this mic, typed notes, or a scripted speaker on the server. Our own POSTs echo back
+  // on the stream, so the local `recent` list is only a fallback until the echo arrives.
+  const streamLines = live.captions.map((c) => ({ id: c.chunkId, text: c.text }));
+  const lines = streamLines.length > 0 ? streamLines : captions.recent;
+  const captionsLive = lines.length > 0 || listening;
   const captionStatus = lines.length === 0 && !captions.interim ? 'waiting' : 'live';
+  const offline = useDelayedFlag(live.stream === 'reconnecting', 3_000);
 
   return (
     <div className={`sp-page${stage ? ' sp-page--stage' : ''}`}>
@@ -107,12 +114,14 @@ function Console({ id }: { id: string }) {
           <h1>{session?.title ?? 'Speaker console'}</h1>
           <p className="sp-header__pills">
             {live.ended ? <StatusPill tone="neutral">Ended</StatusPill> : <LivePill />}
-            {listening && (
+            {listening ? (
               <StatusPill tone="crit" icon="mic">
                 Captions on
               </StatusPill>
+            ) : (
+              lines.length > 0 && <StatusPill tone="ok">Captions live</StatusPill>
             )}
-            {live.stream === 'reconnecting' && (
+            {offline && (
               <StatusPill tone="warn" icon="offline">
                 Reconnecting
               </StatusPill>
@@ -178,7 +187,9 @@ function Console({ id }: { id: string }) {
             {captions.state === 'starting' && 'Starting the microphone…'}
             {captions.state === 'idle' &&
               captions.supported &&
-              'Captions are off. Attendees see them the moment you start.'}
+              (captionsLive
+                ? 'Captions are coming from another source. Start the mic to add yours.'
+                : 'Captions are off. Attendees see them the moment you start.')}
             {captions.state === 'blocked' && 'Microphone blocked.'}
           </p>
           {/* CaptionStream's role="log" announces each published caption once; interim text stays silent. */}

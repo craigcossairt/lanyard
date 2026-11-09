@@ -49,27 +49,34 @@ export async function findDestinations(
   const { now: sessions } = await getNowNext(eventId, now);
   const session = sessions.find((s) => s.id === source.sessionId);
   if (!session) throw new HttpError(409, 'no_current_session', 'No current session to reroute');
-  const result = await es(ES_INDICES.sessions, 'reroute', (client, options) =>
-    client.search(
-      {
-        index: ES_INDICES.sessions,
-        size: 50,
-        query: {
-          bool: {
-            filter: [
-              { term: { eventId } },
-              { range: { endsAt: { gt: now.toISOString() } } },
-              { range: { startsAt: { lte: new Date(now.getTime() + 30 * 60_000).toISOString() } } },
-            ],
-            must_not: [{ term: { roomId: source.room.id } }, { term: { status: 'ended' } }],
-            // Rerouting is ordered by start time and physical distance below.
-            // Optional semantic inference must not delay finding available seats.
+  const search = (semantic: boolean) =>
+    es(ES_INDICES.sessions, semantic ? 'reroute' : 'reroute_seats', (client, options) =>
+      client.search(
+        {
+          index: ES_INDICES.sessions,
+          size: 50,
+          query: {
+            bool: {
+              filter: [
+                { term: { eventId } },
+                { range: { endsAt: { gt: now.toISOString() } } },
+                {
+                  range: { startsAt: { lte: new Date(now.getTime() + 30 * 60_000).toISOString() } },
+                },
+              ],
+              must_not: [{ term: { roomId: source.room.id } }, { term: { status: 'ended' } }],
+              ...(semantic
+                ? { should: [{ semantic: { field: 'semantic', query: session.title } }] }
+                : {}),
+            },
           },
         },
-      },
-      options,
-    ),
-  );
+        options,
+      ),
+    );
+  // Inference can exceed the ES deadline. Keep identical eligibility filters
+  // and physical-distance/seat rules when optional semantic ranking fails.
+  const result = await search(true).catch(() => search(false));
   const hits = result.hits.hits.flatMap((hit) => {
     const parsed = Session.safeParse({ id: hit._id, ...(hit._source as object) });
     return parsed.success ? [{ session: parsed.data, score: hit._score ?? 0 }] : [];

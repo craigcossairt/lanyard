@@ -16,6 +16,8 @@ export function initEs(url: string | undefined, apiKey: string | undefined): Cli
     auth: { apiKey },
     requestTimeout: ES_TIMEOUT_MS,
     maxRetries: 0, // hard 2 s cap per call: no retry on timeout
+    // Request bodies (search text) stay off spans: the transport's OTel middleware has
+    // captureSearchQuery off by default (not exposed on this client version).
   });
   return client;
 }
@@ -51,7 +53,12 @@ export async function es<T>(
       try {
         return await fn(c, { requestTimeout: timeoutMs, maxRetries: 0 });
       } catch (err) {
-        span.recordException(err as Error);
+        // Record only the error class and status: ES messages can echo query text.
+        const name = (err as Error).name ?? 'Error';
+        span.recordException({
+          name,
+          message: `${name} (${(err as { meta?: { statusCode?: number } }).meta?.statusCode ?? 'no status'})`,
+        });
         span.setStatus({ code: SpanStatusCode.ERROR });
         const status = (err as { meta?: { statusCode?: number } }).meta?.statusCode;
         if (status === 404) throw new HttpError(404, 'not_found', `Not found in ${index}`);

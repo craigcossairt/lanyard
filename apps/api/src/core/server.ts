@@ -3,6 +3,7 @@ import { modules as defaultModules } from '../modules';
 import type { Config } from './config';
 import { initContext } from './context';
 import { registerErrorHandler } from './errors';
+import { registerEventRoutes } from './events';
 import { registerHealth } from './health';
 import { logger } from './logger';
 import { registerModules, type LanyardModule } from './module';
@@ -23,6 +24,7 @@ export async function buildServer(
 
   registerErrorHandler(app);
   registerHealth(app, config);
+  registerEventRoutes(app, ctx);
   await registerModules(app, ctx, modules);
   await registerSpa(app, config);
   return app;

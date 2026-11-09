@@ -1,6 +1,7 @@
 // Backstop redaction (02-contracts section 4): tokens never belong in URLs, but if one
 // arrives in a query string it must not reach logs or span attributes.
-const SENSITIVE = new Set(['token', 'access_token', 't', 'key', 'api_key', 'apikey']);
+// Credentials, plus free text (q = search queries) that must not reach logs or spans.
+const SENSITIVE = new Set(['token', 'access_token', 't', 'key', 'api_key', 'apikey', 'q']);
 
 function decodeName(raw: string): string {
   try {

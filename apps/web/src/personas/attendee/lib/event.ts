@@ -4,6 +4,7 @@ import { api, ApiError } from './api';
 
 const cache = new Map<string, { at: number; view: EventView }>();
 const TTL_MS = 30_000;
+const REVALIDATE_MS = 60_000;
 
 export async function fetchEventView(eventId: string, force = false): Promise<EventView> {
   const hit = cache.get(eventId);
@@ -25,6 +26,18 @@ export function useEventView(eventId: string): EventState {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!view);
   const [tick, setTick] = useState(0);
+
+  // Revalidate while the screen stays open: talks start and end under the attendee.
+  useEffect(() => {
+    const bump = () => setTick((t) => t + 1);
+    const timer = setInterval(bump, REVALIDATE_MS);
+    const onVisible = () => document.visibilityState === 'visible' && bump();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;

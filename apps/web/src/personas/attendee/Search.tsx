@@ -9,7 +9,11 @@ import { rememberSessions, useMySchedule } from './lib/schedule';
 import { useEventId, useSession } from './lib/session';
 
 const DEBOUNCE_MS = 250;
-const EXAMPLES = ['eBPF but for security folks', 'platform engineering without the toil', 'observability on a budget'];
+const EXAMPLES = [
+  'eBPF but for security folks',
+  'platform engineering without the toil',
+  'observability on a budget',
+];
 
 export default function Search() {
   const eventId = useEventId();
@@ -40,9 +44,13 @@ export default function Search() {
       return;
     }
     let alive = true;
+    // Results belong to one query: never show A's hits under B's heading.
+    setResult(null);
     setStatus('loading');
     api
-      .get<SearchResponse>(`/events/${encodeURIComponent(eventId)}/search?q=${encodeURIComponent(q)}`)
+      .get<SearchResponse>(
+        `/events/${encodeURIComponent(eventId)}/search?q=${encodeURIComponent(q)}`,
+      )
       .then((r) => {
         if (!alive) return;
         setResult(r);
@@ -116,14 +124,19 @@ export default function Search() {
             <ul className="at-examples">
               {EXAMPLES.map((ex) => (
                 <li key={ex}>
-                  <button type="button" className="at-chip at-chip--button" onClick={() => setDraft(ex)}>
+                  <button
+                    type="button"
+                    className="at-chip at-chip--button"
+                    onClick={() => setDraft(ex)}
+                  >
                     {ex}
                   </button>
                 </li>
               ))}
             </ul>
             <p className="at-muted">
-              Hybrid search: keywords plus meaning, so “security folks” still finds the eBPF runtime talk.
+              Hybrid search: keywords plus meaning, so “security folks” still finds the eBPF runtime
+              talk.
             </p>
           </section>
         )}

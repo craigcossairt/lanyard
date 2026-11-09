@@ -57,7 +57,10 @@ export function SessionCard({ session, room, tz, highlights, saved, onToggleSave
           {saved ? '✓ In my schedule' : '+ My schedule'}
         </button>
         {live && (
-          <Link className="at-btn at-btn--sm at-btn--primary" to={`/a/s/${encodeURIComponent(session.id)}`}>
+          <Link
+            className="at-btn at-btn--sm at-btn--primary"
+            to={`/a/s/${encodeURIComponent(session.id)}`}
+          >
             Join live
           </Link>
         )}

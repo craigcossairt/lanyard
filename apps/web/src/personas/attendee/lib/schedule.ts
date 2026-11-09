@@ -53,7 +53,9 @@ export function rememberSessions(eventId: string, sessions: Session[]): void {
     for (const s of sessions) map[s.id] = s;
     // Keep the cache to the saved ids plus a little slack.
     const keep = new Set(read(eventId).sessionIds);
-    const entries = Object.entries(map).filter(([id]) => keep.has(id) || sessions.some((s) => s.id === id));
+    const entries = Object.entries(map).filter(
+      ([id]) => keep.has(id) || sessions.some((s) => s.id === id),
+    );
     localStorage.setItem(CACHE(eventId), JSON.stringify(Object.fromEntries(entries.slice(-200))));
   } catch {
     // Cache is optional.

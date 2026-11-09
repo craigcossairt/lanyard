@@ -40,17 +40,34 @@ export function authHeaders(): Record<string, string> {
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
+/** Every outbound call has an explicit timeout (API routes never block past 8 s). */
+const REQUEST_TIMEOUT_MS = 10_000;
+
 async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
   if (isMock()) return mockRequest<T>(method, path, body);
-  const res = await fetch(`/api${path}`, {
-    method,
-    headers: {
-      accept: 'application/json',
-      ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
-      ...authHeaders(),
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`/api${path}`, {
+      method,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      headers: {
+        accept: 'application/json',
+        ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
+        ...authHeaders(),
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch (err) {
+    const timedOut =
+      err instanceof DOMException && (err.name === 'TimeoutError' || err.name === 'AbortError');
+    throw new ApiError(
+      0,
+      timedOut ? 'timeout' : 'network',
+      timedOut
+        ? 'The request took too long. Check your connection and try again.'
+        : 'Could not reach the server.',
+    );
+  }
   if (res.status === 204) return undefined as T;
   const text = await res.text();
   let data: unknown = undefined;

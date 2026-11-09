@@ -107,7 +107,8 @@ const sessions: Session[] = [
     eventId: EVENT_ID,
     roomId: 'side-stage',
     title: 'Progressive delivery with Argo Rollouts and real SLOs',
-    abstract: 'Canary analysis driven by Prometheus and OpenTelemetry metrics, with honest rollbacks.',
+    abstract:
+      'Canary analysis driven by Prometheus and OpenTelemetry metrics, with honest rollbacks.',
     track: 'GitOps',
     level: 'Beginner',
     tags: ['argo', 'slo'],
@@ -142,8 +143,22 @@ const questions: Question[] = [
   },
 ];
 const clusters: QuestionCluster[] = [
-  { id: 'c1', sessionId: 's-lanyard', label: 'Duplicate threshold', size: 14, votes: 13, representativeQuestionId: 'q1' },
-  { id: 'c2', sessionId: 's-lanyard', label: 'Browser support', size: 2, votes: 4, representativeQuestionId: 'q2' },
+  {
+    id: 'c1',
+    sessionId: 's-lanyard',
+    label: 'Duplicate threshold',
+    size: 14,
+    votes: 13,
+    representativeQuestionId: 'q1',
+  },
+  {
+    id: 'c2',
+    sessionId: 's-lanyard',
+    label: 'Browser support',
+    size: 2,
+    votes: 4,
+    representativeQuestionId: 'q2',
+  },
 ];
 
 function emphasise(text: string, q: string): string {
@@ -152,7 +167,10 @@ function emphasise(text: string, q: string): string {
     .split(/\s+/)
     .filter((t) => t.length > 2);
   if (terms.length === 0) return text;
-  const re = new RegExp(`(${terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'ig');
+  const re = new RegExp(
+    `(${terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`,
+    'ig',
+  );
   return text.replace(re, '<em>$1</em>');
 }
 
@@ -188,7 +206,8 @@ export async function mockRequest<T>(method: string, path: string, body?: unknow
     const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
     const hits = sessions
       .map((s) => {
-        const hay = `${s.title} ${s.abstract} ${s.track} ${s.tags.join(' ')} ${s.speakerNames.join(' ')}`.toLowerCase();
+        const hay =
+          `${s.title} ${s.abstract} ${s.track} ${s.tags.join(' ')} ${s.speakerNames.join(' ')}`.toLowerCase();
         const score = terms.reduce((n, t) => n + (hay.includes(t) ? 1 : 0), 0) + 0.3;
         return { session: s, score, highlights: [emphasise(s.abstract, q)] };
       })
@@ -224,7 +243,14 @@ export async function mockRequest<T>(method: string, path: string, body?: unknow
     const merged = /threshold|duplicate|merge/i.test(text);
     const cluster = merged
       ? { ...clusters[0]!, size: clusters[0]!.size + 1 }
-      : { id: `c${Date.now()}`, sessionId: 's-lanyard', label: text.slice(0, 40), size: 1, votes: 0, representativeQuestionId: `q${Date.now()}` };
+      : {
+          id: `c${Date.now()}`,
+          sessionId: 's-lanyard',
+          label: text.slice(0, 40),
+          size: 1,
+          votes: 0,
+          representativeQuestionId: `q${Date.now()}`,
+        };
     const question: Question = {
       id: cluster.representativeQuestionId,
       sessionId: 's-lanyard',

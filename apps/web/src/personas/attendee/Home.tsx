@@ -95,7 +95,8 @@ export default function Home() {
           </div>
           {view && view.now.length > MAX_NOW && (
             <p className="at-muted">
-              {view.now.length - MAX_NOW} more live talks. <Link to="/a/search">Search to find yours.</Link>
+              {view.now.length - MAX_NOW} more live talks.{' '}
+              <Link to="/a/search">Search to find yours.</Link>
             </p>
           )}
         </section>
@@ -121,7 +122,8 @@ export default function Home() {
           <h2 id="mine-h">My schedule</h2>
           {mine.length === 0 ? (
             <p className="at-muted">
-              Nothing saved yet. Tap “My schedule” on a talk, or <Link to="/a/plan">let us plan your day</Link>.
+              Nothing saved yet. Tap “My schedule” on a talk, or{' '}
+              <Link to="/a/plan">let us plan your day</Link>.
             </p>
           ) : (
             <div className="at-list">

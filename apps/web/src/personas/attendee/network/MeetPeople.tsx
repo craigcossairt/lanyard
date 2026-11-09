@@ -21,6 +21,7 @@ export default function MeetPeople() {
   const me = useSession();
   const [profile, setProfile] = useState<Profile>(emptyProfile);
   const [optedIn, setOptedIn] = useState(false);
+  const [optInSelected, setOptInSelected] = useState(false);
   const [matches, setMatches] = useState<NetworkingSuggestionsResponse['matches']>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -42,6 +43,7 @@ export default function MeetPeople() {
       .then(async (result) => {
         if (!active) return;
         setOptedIn(result.optedIn);
+        setOptInSelected(result.optedIn);
         if (result.optedIn) {
           setProfile(result.profile);
           await loadMatches();
@@ -69,8 +71,13 @@ export default function MeetPeople() {
     try {
       await api.put('/me/networking', profile);
       setOptedIn(true);
-      await loadMatches();
+      setOptInSelected(true);
       setStatus('You’re opted in. Only other opted-in attendees can see your match card.');
+      try {
+        await loadMatches();
+      } catch {
+        setError('Your profile was saved, but suggestions could not load. Try refreshing.');
+      }
     } catch (reason) {
       setError(message(reason));
     } finally {
@@ -84,6 +91,7 @@ export default function MeetPeople() {
     try {
       await api.del('/me/networking');
       setOptedIn(false);
+      setOptInSelected(false);
       setMatches([]);
       setProfile(emptyProfile);
       setStatus('Your networking profile was removed.');
@@ -101,8 +109,9 @@ export default function MeetPeople() {
     } else if (optedIn) {
       void remove();
       return;
+    } else {
+      setOptInSelected(false);
     }
-    setOptedIn(checked);
   };
 
   return (
@@ -128,14 +137,14 @@ export default function MeetPeople() {
               <input
                 id="networking-opt-in"
                 type="checkbox"
-                checked={optedIn}
+                checked={optInSelected}
                 onChange={(event) => toggleOptIn(event.currentTarget.checked)}
                 disabled={saving}
               />
               I want to meet people at this event
             </label>
 
-            {optedIn && (
+            {optInSelected && (
               <form className="at-fieldset" onSubmit={save}>
                 <label htmlFor="networking-linkedin" className="at-label">LinkedIn profile URL</label>
                 <input

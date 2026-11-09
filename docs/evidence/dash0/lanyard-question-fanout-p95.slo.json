@@ -12,7 +12,7 @@
     }
   },
   "spec": {
-    "description": "95% of question fanouts reach the speaker within 1000 ms (conf.realtime.fanout_ms, native histogram), i.e. p95 < 1 s.",
+    "description": "95% of session-channel fanouts (questions, plus captions and attendance on the same channel) reach subscribers such as the speaker console within 1000 ms (conf.realtime.fanout_ms, channel_kind=session, native histogram), i.e. p95 < 1 s.",
     "service": "lanyard-app",
     "budgetingMethod": "Occurrences",
     "timeWindow": [
@@ -32,7 +32,7 @@
             "metricSource": {
               "type": "Prometheus",
               "spec": {
-                "query": "histogram_fraction(0, 1000, increase({otel_metric_name=\"conf.realtime.fanout_ms\"}[5m])) * histogram_count(increase({otel_metric_name=\"conf.realtime.fanout_ms\"}[5m]))"
+                "query": "histogram_fraction(0, 1000, increase({otel_metric_name=\"conf.realtime.fanout_ms\", channel_kind=\"session\"}[5m])) * histogram_count(increase({otel_metric_name=\"conf.realtime.fanout_ms\", channel_kind=\"session\"}[5m]))"
               }
             }
           },
@@ -40,7 +40,7 @@
             "metricSource": {
               "type": "Prometheus",
               "spec": {
-                "query": "histogram_count(increase({otel_metric_name=\"conf.realtime.fanout_ms\"}[5m]))"
+                "query": "histogram_count(increase({otel_metric_name=\"conf.realtime.fanout_ms\", channel_kind=\"session\"}[5m]))"
               }
             }
           }

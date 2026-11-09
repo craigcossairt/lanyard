@@ -27,11 +27,18 @@ const api = `https://api.${region}.aws.dash0.com`;
 
 async function upsert(kind, origin, body) {
   const url = `${api}/api/${kind}/${encodeURIComponent(origin)}?dataset=${dataset}`;
-  const res = await fetch(url, {
-    method: 'PUT',
-    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (e) {
+    console.log(JSON.stringify({ kind, origin, status: e?.name === 'TimeoutError' ? 'TIMEOUT (15 s)' : 'ERR', error: e?.cause?.code ?? e?.name }));
+    return false;
+  }
   const text = await res.text();
   let json = null;
   try { json = JSON.parse(text); } catch { /* not JSON */ }

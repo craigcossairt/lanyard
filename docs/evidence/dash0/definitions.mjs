@@ -50,8 +50,8 @@ const panels = {
   ),
   fanout_p95_now: stat(
     'Question fanout p95 (ms)',
-    'Question visible to the speaker. SLO: p95 < 1000 ms.',
-    `histogram_quantile(0.95, sum(rate(${m('conf.realtime.fanout_ms')}[5m])))`,
+    'Session channel (what the speaker console reads). SLO: p95 < 1000 ms.',
+    `histogram_quantile(0.95, sum(rate(${m('conf.realtime.fanout_ms', ', channel_kind="session"')}[5m])))`,
   ),
   llm_cost_1h: stat(
     'LLM cost, last hour (USD)',
@@ -147,7 +147,10 @@ export const dashboard = {
 };
 
 // SLOs -----------------------------------------------------------------------
-const fanout = m('conf.realtime.fanout_ms');
+// Session channel only: the speaker console reads it, so this is "question visible
+// to the speaker" (the bus tags fanout by channel kind; session also carries
+// captions and attendance, so this is a slight superset of question fanout).
+const fanout = m('conf.realtime.fanout_ms', ', channel_kind="session"');
 export const slos = {
   'lanyard-question-fanout-p95': {
     apiVersion: 'openslo/v1',
@@ -158,7 +161,7 @@ export const slos = {
       annotations: { 'dash0.com/display-name': 'Lanyard: question fanout under 1 s' },
     },
     spec: {
-      description: '95% of question fanouts reach the speaker within 1000 ms (conf.realtime.fanout_ms, native histogram), i.e. p95 < 1 s.',
+      description: '95% of session-channel fanouts (questions, plus captions and attendance on the same channel) reach subscribers such as the speaker console within 1000 ms (conf.realtime.fanout_ms, channel_kind=session, native histogram), i.e. p95 < 1 s.',
       service: 'lanyard-app',
       budgetingMethod: 'Occurrences',
       timeWindow: [{ duration: '28d', isRolling: true }],

@@ -81,7 +81,7 @@
         "spec": {
           "display": {
             "name": "Question fanout p95 (ms)",
-            "description": "Question visible to the speaker. SLO: p95 < 1000 ms."
+            "description": "Session channel (what the speaker console reads). SLO: p95 < 1000 ms."
           },
           "plugin": {
             "kind": "StatChart",
@@ -96,7 +96,7 @@
                 "plugin": {
                   "kind": "PrometheusTimeSeriesQuery",
                   "spec": {
-                    "query": "histogram_quantile(0.95, sum(rate({otel_metric_name=\"conf.realtime.fanout_ms\"}[5m])))"
+                    "query": "histogram_quantile(0.95, sum(rate({otel_metric_name=\"conf.realtime.fanout_ms\", channel_kind=\"session\"}[5m])))"
                   }
                 }
               }

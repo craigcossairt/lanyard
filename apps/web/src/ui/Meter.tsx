@@ -7,6 +7,8 @@ export interface MeterProps {
   max?: number;
   /** Visible value text, e.g. "212 / 240". Defaults to a percentage. */
   valueText?: string;
+  /** Appended when value is over max, e.g. "over capacity". Occupancy only; lag and signals omit it. */
+  overText?: string;
   /**
    * Colour by threshold (fraction of max): below warnAt is ok, from warnAt is warn, from critAt is crit.
    * Omit both for a neutral accent bar. The value text always carries the number, so colour is never alone.
@@ -23,6 +25,7 @@ export function Meter({
   value,
   max = 100,
   valueText,
+  overText,
   warnAt,
   critAt,
   size = 'default',
@@ -41,7 +44,7 @@ export function Meter({
   const text = valueText ?? `${Math.round(ratio * 100)}%`;
   // aria-valuenow must sit inside [min, max]. The words keep the real count ("34 / 30").
   const now = Math.min(max, Math.max(0, value));
-  const described = value > max ? `${text}, over capacity` : text;
+  const described = overText && value > max ? `${text}, ${overText}` : text;
   return (
     <div
       className={cx(

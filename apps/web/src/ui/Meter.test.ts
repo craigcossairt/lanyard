@@ -6,7 +6,13 @@ import { Meter } from './Meter';
 
 test('Meter clamps aria-valuenow when occupancy is over capacity', () => {
   const html = renderToStaticMarkup(
-    createElement(Meter, { label: 'Occupancy', value: 34, max: 30, valueText: '34 / 30' }),
+    createElement(Meter, {
+      label: 'Occupancy',
+      value: 34,
+      max: 30,
+      valueText: '34 / 30',
+      overText: 'over capacity',
+    }),
   );
   assert.match(html, /aria-valuemin="0"/);
   assert.match(html, /aria-valuemax="30"/);
@@ -14,6 +20,15 @@ test('Meter clamps aria-valuenow when occupancy is over capacity', () => {
   assert.doesNotMatch(html, /aria-valuenow="34"/);
   assert.match(html, /aria-valuetext="34 \/ 30, over capacity"/);
   assert.match(html, />34 \/ 30, over capacity</);
+});
+
+test('Meter does not say over capacity unless the caller opts in', () => {
+  const html = renderToStaticMarkup(
+    createElement(Meter, { label: 'Caption lag', value: 2.5, max: 2, valueText: '2.5 s' }),
+  );
+  assert.match(html, /aria-valuenow="2"/);
+  assert.match(html, /aria-valuetext="2.5 s"/);
+  assert.doesNotMatch(html, /over capacity/);
 });
 
 test('Meter leaves an in-range value and its text alone', () => {

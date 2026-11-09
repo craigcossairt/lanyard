@@ -1,12 +1,18 @@
-// Process-wide singletons built once from config: ES, signing key (bus and KV follow).
-// Modules receive these through ModuleContext.
+// Process-wide singletons built once from config: bus, Valkey KV, ES, signing key.
+// Modules receive these through ModuleContext; helpers like openSse() use the getters.
+import type { Redis } from 'ioredis';
 import { setSigningKey } from './auth';
+import { createBus, createValkeyClient, type Bus } from './bus';
 import type { Config } from './config';
 import { initEs } from './es';
+import { initJev } from './jev';
 import { logger } from './logger';
 
 export interface ModuleContext {
   config: Config;
+  bus: Bus;
+  /** Valkey client for counters; undefined when VALKEY_URL is unset (use a fallback). */
+  kv: Redis | undefined;
   logger: typeof logger;
 }
 
@@ -17,7 +23,13 @@ export function initContext(config: Config): ModuleContext {
   if (!config.tokenSigningKey) logger.warn('TOKEN_SIGNING_KEY not set: auth routes return 503');
   if (!initEs(config.esUrl, config.esApiKey))
     logger.warn('ES_URL/ES_API_KEY not set: ES routes return 503');
-  ctx = { config, logger };
+  initJev(config.typesafeApiKey, config.openaiApiKey);
+  ctx = {
+    config,
+    bus: createBus(config.valkeyUrl),
+    kv: createValkeyClient(config.valkeyUrl),
+    logger,
+  };
   return ctx;
 }
 
@@ -26,4 +38,9 @@ export function getContext(): ModuleContext {
   return ctx;
 }
 
-export async function closeContext(): Promise<void> {}
+export const getBus = (): Bus => getContext().bus;
+
+export async function closeContext(): Promise<void> {
+  await ctx?.bus.close();
+  ctx?.kv?.disconnect();
+}

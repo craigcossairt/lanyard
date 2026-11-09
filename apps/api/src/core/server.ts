@@ -19,6 +19,8 @@ export async function buildServer(
     loggerInstance: logger as FastifyBaseLogger,
     trustProxy: true,
     bodyLimit: 256 * 1024,
+    // Long-lived SSE sockets must not hold up shutdown during rollouts.
+    forceCloseConnections: true,
   });
   const ctx = initContext(config);
 

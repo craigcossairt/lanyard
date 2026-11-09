@@ -11,7 +11,7 @@ import {
 } from '@lanyard/contracts';
 import type { estypes } from '@elastic/elasticsearch';
 import { authOf, requireRole } from '../../core/auth';
-import { cached, es } from '../../core/es';
+import { es } from '../../core/es';
 import { HttpError, parse } from '../../core/errors';
 import { defineModule } from '../../core/module';
 import { llm } from '../../core/llm';
@@ -19,6 +19,9 @@ import { llm } from '../../core/llm';
 const suggestionCounter = metrics.getMeter('lanyard').createCounter(METRICS.matchesSuggested);
 const SUGGESTION_LIMIT = 8;
 const REASON_TIMEOUT_MS = 1_200;
+const REASON_CACHE_TTL_MS = 10 * 60_000;
+const REASON_CACHE_MAX = 256;
+const reasonCache = new Map<string, { expiresAt: number; value: Promise<{ text: string }> }>();
 const isProfileNotFound = (error: unknown): boolean =>
   error instanceof HttpError && error.status === 404;
 
@@ -42,12 +45,33 @@ function fallbackReason(): string {
   return 'Your goals and interests look aligned.';
 }
 
+function cachedReason(key: string, create: () => Promise<{ text: string }>) {
+  const now = Date.now();
+  for (const [cacheKey, entry] of reasonCache) {
+    if (entry.expiresAt <= now) reasonCache.delete(cacheKey);
+  }
+  const hit = reasonCache.get(key);
+  if (hit) {
+    reasonCache.delete(key);
+    reasonCache.set(key, hit);
+    return hit.value;
+  }
+  const value = create();
+  reasonCache.set(key, { expiresAt: now + REASON_CACHE_TTL_MS, value });
+  while (reasonCache.size > REASON_CACHE_MAX)
+    reasonCache.delete(reasonCache.keys().next().value!);
+  value.catch(() => {
+    if (reasonCache.get(key)?.value === value) reasonCache.delete(key);
+  });
+  return value;
+}
+
 async function matchReason(me: NetworkingProfile, other: NetworkingProfile): Promise<string> {
   const input = [me.needs, me.offers, me.interests, other.needs, other.offers, other.interests];
   const cacheKey = createHash('sha256').update(JSON.stringify(input)).digest('hex');
   try {
-    const reason = cached(
-      `networking-reason:${cacheKey}`,
+    const reason = cachedReason(
+      cacheKey,
       () =>
         llm({
           purpose: 'networking_match_reason',
@@ -71,7 +95,6 @@ async function matchReason(me: NetworkingProfile, other: NetworkingProfile): Pro
             },
           ],
         }),
-      10 * 60_000,
     );
     const result = await Promise.race([
       reason,
@@ -173,6 +196,7 @@ export default defineModule({
             index: ES_INDICES.people,
             id: profileId(claims.eventId, claims.sub),
             document: profile,
+            refresh: true,
           },
           opts,
         ),
@@ -186,7 +210,7 @@ export default defineModule({
       try {
         await es(ES_INDICES.people, 'delete', (client, opts) =>
           client.delete(
-            { index: ES_INDICES.people, id: profileId(claims.eventId, claims.sub) },
+            { index: ES_INDICES.people, id: profileId(claims.eventId, claims.sub), refresh: true },
             opts,
           ),
         );

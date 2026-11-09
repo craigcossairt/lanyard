@@ -252,3 +252,18 @@
 .appbar__end .ly-btn {
   text-decoration: none;
 }
+/* First focusable element on persona pages; visible only when focused. */
+.skip-link {
+  position: absolute;
+  left: var(--space-3);
+  top: var(--space-2);
+  z-index: var(--z-toast);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+  border-radius: var(--radius-md);
+  transform: translateY(-200%);
+}
+.skip-link:focus {
+  transform: none;
+}

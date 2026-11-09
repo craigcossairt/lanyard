@@ -70,6 +70,15 @@ function DisplayChoices() {
   );
 }
 
+/** Skip past the bar to the persona's main content (#main, else the first <main>). */
+function skipToMain(e: React.MouseEvent<HTMLAnchorElement>) {
+  const main = document.getElementById('main') ?? document.querySelector('main');
+  if (!main) return;
+  e.preventDefault();
+  if (!main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1');
+  main.focus();
+}
+
 /** Full-screen stage views (attendee live session, speaker console) carry their own header. */
 const IMMERSIVE = /^\/(a\/s|s)\/[^/]+/;
 
@@ -84,6 +93,9 @@ export function AppBar({ def }: { def: PersonaDef }) {
 
   return (
     <header className="appbar">
+      <a href="#main" className="skip-link" onClick={skipToMain}>
+        Skip to content
+      </a>
       <Link to="/" className="wordmark-link" aria-label="Lanyard home">
         <Wordmark />
       </Link>

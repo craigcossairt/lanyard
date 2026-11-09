@@ -49,16 +49,16 @@ Each index has a `semantic` field of type `semantic_text` where noted. **Source 
 
 | Index | Mappings (described) | Queries it serves |
 |---|---|---|
-| `cnh-sessions` | text: title, abstract, speakerNames (denormalized). keyword: eventId, roomId, track, level, tags, speakerIds, status. date: startsAt, endsAt. semantic_text: title plus abstract plus speaker names | Hybrid search (BM25 plus semantic, fused with RRF), nearest-session for reroute, "build my day" RAG |
+| `cnh-sessions` | text: title, abstract, speakerNames (denormalized), each copy_to semantic. keyword: eventId, roomId, track, level, tags, speakerIds, status. date: startsAt, endsAt. semantic_text: semantic | Hybrid search (BM25 plus semantic, fused with RRF), nearest-session for reroute, "build my day" RAG |
 | `cnh-events` | keyword: id, joinCode, timezone. text: name, venueName. date: startsAt, endsAt | Event lookup by id or join code |
 | `cnh-rooms` | keyword: id, eventId. text: name. integer: capacity, floor. float: x, y. boolean: accessibility.stepFree, accessibility.hearingLoop, accessibility.quiet | Room list per event, capacity for occupancy |
 | `cnh-speakers` | keyword: id. text: name, title, company, bio | Speaker details for session pages |
-| `cnh-transcripts` | keyword: sessionId, eventId, lang, source. integer: seq. date: times. text plus semantic_text: text | Catch-me-up (last N minutes, by time), "ask the conference" RAG across sessions |
-| `cnh-questions` | keyword: sessionId, eventId, anonId, clusterId, status. integer: votes. date: at. semantic_text: text | Duplicate detection (top-1 semantic similarity within the session above a threshold, so it joins that cluster), clustering, digest |
+| `cnh-transcripts` | keyword: sessionId, eventId, lang, source. integer: seq. date: startedAt, endedAt. text: text (copy_to semantic). semantic_text: semantic | Catch-me-up (last N minutes, by time), "ask the conference" RAG across sessions |
+| `cnh-questions` | keyword: sessionId, eventId, anonId, clusterId, status. integer: votes. date: at. text: text (copy_to semantic). semantic_text: semantic | Duplicate detection (top-1 semantic similarity within the session above a threshold, so it joins that cluster), clustering, digest |
 | `cnh-signals` | keyword: sessionId, roomId, eventId, type, anonId. date: at | Aggregations by type over time windows |
 | `cnh-presence` | keyword: eventId, roomId, sessionId, anonId, kind. date: at | Occupancy aggregations (latest state per anonId) |
-| `cnh-people` *(P1)* | keyword: anonId, eventId. semantic_text: interests | Hallway and vendor matching |
-| `cnh-booths` *(P1)* | text plus semantic_text: description | Vendor matching |
+| `cnh-people` *(P1)* | keyword: anonId, eventId. text: interests (copy_to semantic). semantic_text: semantic | Hallway and vendor matching |
+| `cnh-booths` *(P1)* | text: description (copy_to semantic). semantic_text: semantic | Vendor matching |
 
 Live counters (occupancy, votes) are **also** kept in Valkey for speed. ES remains the record and the analytics layer.
 

@@ -88,7 +88,7 @@ Plan-my-day retrieves at most 50 candidates from the requested event-local
 calendar day, with exact UTC day bounds applied **before ranking** (including
 23/25-hour DST days). The model may select only those session IDs. Server
 validation rejects invented/cross-event/duplicate IDs and plans longer than
-eight, orders accepted plans by start time and removes overlaps.
+eight; accepted plans are ordered by start time with overlaps removed.
 
 Ask-the-conference retrieves at most 12 transcript/question passages with RRF,
 excludes hidden questions, and accepts only exact retrieved

@@ -53,6 +53,7 @@ export function useSse(
     let attempt = 0;
     let retryMs = 2_000;
     let everOpen = false;
+    let degraded = false; // got ready {live:false}; refetch on the following live:true
 
     const run = async () => {
       while (!ac.signal.aborted) {
@@ -72,13 +73,19 @@ export function useSse(
             if (done) break;
             buf = parseSse(buf + dec.decode(value, { stream: true }), (event, data) => {
               if (event === 'ready') {
-                // Server subscriptions are live: now a snapshot refetch can't miss anything.
-                const hint = (JSON.parse(data) as { retryMs?: number }).retryMs;
-                if (hint) retryMs = hint;
+                // live:true = server subscriptions are live, so a snapshot refetch can't
+                // miss anything. live:false (Valkey slow) is followed by a live:true later.
+                const r = JSON.parse(data) as { retryMs?: number; live?: boolean };
+                if (r.retryMs) retryMs = r.retryMs;
                 setStatus('open');
-                if (everOpen) reconnect.current?.();
-                everOpen = true;
                 attempt = 0;
+                if (r.live === false) {
+                  degraded = true;
+                  return;
+                }
+                if (everOpen || degraded) reconnect.current?.();
+                everOpen = true;
+                degraded = false;
                 return;
               }
               const msg = RealtimeMessage.safeParse(JSON.parse(data));

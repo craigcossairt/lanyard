@@ -34,11 +34,32 @@ export const TALK = [
 ];
 
 const QUESTIONS = [
-  ['How do you handle a thousand people in one room?', 'What happens when a room fills up?', 'How does overflow handling work?'],
-  ['Can I catch up if I arrive late to a talk?', 'How can a late arrival get a summary?', 'Can you summarize what I missed in this session?'],
-  ['How are similar audience questions grouped together?', 'Can differently worded questions become one cluster?', 'How do you deduplicate audience questions?'],
-  ['How do captions help attendees follow a session?', 'Can I read the talk on my phone?', 'Are live captions available for people who cannot hear the speaker?'],
+  [
+    'How do you handle a thousand people in one room?',
+    'What happens when a room fills up?',
+    'How does overflow handling work?',
+  ],
+  [
+    'Can I catch up if I arrive late to a talk?',
+    'How can a late arrival get a summary?',
+    'Can you summarize what I missed in this session?',
+  ],
+  [
+    'How are similar audience questions grouped together?',
+    'Can differently worded questions become one cluster?',
+    'How do you deduplicate audience questions?',
+  ],
+  [
+    'How do captions help attendees follow a session?',
+    'Can I read the talk on my phone?',
+    'Are live captions available for people who cannot hear the speaker?',
+  ],
 ];
+
+// Each group's paraphrases trail its seed by at least 22 s, allowing ES refresh.
+// Five seconds between groups also keeps the two moderation lanes from bursting.
+const QUESTION_WAVES_MS = [8000, 30000, 44000];
+const QUESTION_GROUP_GAP_MS = 5000;
 
 export type DemoAction = { id: string; at: number; actor: number } & (
   | { kind: 'join'; stage: 0 | 1 }
@@ -48,16 +69,38 @@ export type DemoAction = { id: string; at: number; actor: number } & (
 
 export function demoActions(): DemoAction[] {
   const actions: DemoAction[] = [];
-  for (let actor = 0; actor < 40; actor++) actions.push({
-    id: `join-${actor}`, actor, kind: 'join', stage: actor < 34 ? 0 : 1,
-    at: actor < 20 || actor >= 34 ? Math.floor(actor % 20 / 5) * 1000 : 60_000 + Math.floor((actor - 20) / 5) * 1000,
-  });
-  TALK.forEach((text, index) => actions.push({ id: `caption-${index}`, actor: 0,
-    kind: 'caption', at: (index + 1) * 4000, text: `SIMULATED: ${text}` }));
-  QUESTIONS.forEach((group, index) => group.forEach((text, wave) => actions.push({
-    id: `question-${index}-${wave}`, actor: index * 3 + wave, kind: 'question',
-    at: [8000, 32000, 48000][wave]! + index * (wave === 2 ? 3500 : 4000), text: `SIMULATED: ${text}`,
-  })));
-  for (let actor = 0; actor < 5; actor++) actions.push({ id: `louder-${actor}`, actor, kind: 'signal', at: 35_000 });
+  for (let actor = 0; actor < 40; actor++)
+    actions.push({
+      id: `join-${actor}`,
+      actor,
+      kind: 'join',
+      stage: actor < 34 ? 0 : 1,
+      at:
+        actor < 20 || actor >= 34
+          ? Math.floor((actor % 20) / 5) * 1000
+          : 60_000 + Math.floor((actor - 20) / 5) * 1000,
+    });
+  TALK.forEach((text, index) =>
+    actions.push({
+      id: `caption-${index}`,
+      actor: 0,
+      kind: 'caption',
+      at: (index + 1) * 4000,
+      text: `SIMULATED: ${text}`,
+    }),
+  );
+  QUESTIONS.forEach((group, index) =>
+    group.forEach((text, wave) =>
+      actions.push({
+        id: `question-${index}-${wave}`,
+        actor: index * 3 + wave,
+        kind: 'question',
+        at: QUESTION_WAVES_MS[wave]! + index * QUESTION_GROUP_GAP_MS,
+        text: `SIMULATED: ${text}`,
+      }),
+    ),
+  );
+  for (let actor = 0; actor < 5; actor++)
+    actions.push({ id: `louder-${actor}`, actor, kind: 'signal', at: 35_000 });
   return actions.sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
 }

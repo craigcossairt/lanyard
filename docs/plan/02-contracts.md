@@ -74,7 +74,7 @@ Roles are carried by a signed token: attendee (issued on join), or speaker, orga
 | POST `/events/:eventId/role-links` | organizer | Mint speaker, vendor and venue links | WS0 |
 | GET `/config` | public | Runtime config for the SPA: version, event timezone, Dash0 RUM settings (public values only) | WS0 |
 | GET `/sessions/:id` | any | Session snapshot (session, questions, clusters, attendance), refetched after an SSE reconnect | WS2 |
-| GET `/events/:eventId/search?q=` | any | Hybrid session search | WS1 |
+| GET `/events/:eventId/search?q=&track=&level=&from=&to=` | any | Hybrid session search; optional exact track/level filters and UTC overlap window `[from,to)`, limit 1–50 | WS1 |
 | POST `/events/:eventId/plan-my-day` | attendee | RAG schedule suggestion with cited session ids | WS1 |
 | POST `/events/:eventId/ask` | organizer (attendee in P1) | Ask the conference (RAG over transcripts and questions) | WS1 |
 | GET and PUT `/me/schedule` | attendee | My schedule | WS3 |

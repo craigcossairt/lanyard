@@ -25,7 +25,7 @@ WS0 (Platform) turns this document into the shared TypeScript types package in t
 Build: a single Dockerfile builds the web app, then the API and worker, and produces one image. The `app` Deployment runs the API, which serves the SPA from `/`. The `worker` Deployment runs the same image with the worker entry command. Every app listens on `$PORT` (8080) and exposes `/healthz` and `/readyz`.
 
 ## 2. Domain model
-All ids are opaque strings. All times are **UTC ISO-8601** in storage and transit. **Field names are camelCase and identical in ES documents, `packages/contracts` types and API payloads**: e.g. `startsAt`, `endsAt`, `eventId`, `roomId`, `speakerIds`, `venueName`, `joinCode`, `capacity`, `floor`, `x`, `y`, `accessibility: { stepFree, hearingLoop, quiet }` (booleans). Events, rooms and speakers live in ES (`cnh-events`, `cnh-rooms`, `cnh-speakers`); the API caches them in memory (30 s TTL). Sessions are in `cnh-sessions`, because organizers add CNH Demos sessions live. They are rendered in the event's IANA timezone (`America/Denver`) **only** through the shared time helper.
+All ids are opaque strings. All times are **UTC ISO-8601** in storage and transit, and all times are rendered in the event's IANA timezone (`America/Denver`) **only** through the shared time helper. **Field names are camelCase and identical in ES documents, `packages/contracts` types and API payloads**: e.g. `startsAt`, `endsAt`, `eventId`, `roomId`, `speakerIds`, `venueName`, `joinCode`, `capacity`, `floor`, `x`, `y`, `accessibility: { stepFree, hearingLoop, quiet }` (booleans). Events, rooms and speakers live in ES (`cnh-events`, `cnh-rooms`, `cnh-speakers`); the API caches them in memory (30 s TTL). Sessions are in `cnh-sessions`, because organizers add CNH Demos sessions live.
 
 | Entity | Key fields | Notes |
 |---|---|---|
@@ -63,9 +63,9 @@ Each index has a `semantic` field of type `semantic_text` where noted. It uses t
 Live counters (occupancy, votes) are **also** kept in Valkey for speed. ES remains the record and the analytics layer.
 
 ## 4. API surface (all under `/api`, JSON)
-Roles are carried by a signed token: attendee (issued on join), or speaker, organizer, vendor or venue (role links). The token travels in the `Authorization` header (`Bearer`). SSE routes also accept it as `?token=` because `EventSource` cannot set headers.
+Roles are carried by a signed token: attendee (issued on join), or speaker, organizer, vendor or venue (role links). The token travels in the `Authorization` header (`Bearer`). SSE routes take it the same way: the web client opens streams with `fetch` plus the `Authorization` header and reads the streamed body (not `EventSource`), so **tokens never appear in URLs**. As a backstop, WS0 redacts any `token` query parameter from span attributes (`url.query`, `http.target`, `url.full`), RUM URLs and request logs, and never logs the `Authorization` header.
 
-**First organizer token (bootstrap):** there is no public route that mints an organizer token. `npm run mint-link -- --role organizer --event <eventId>` (WS0, `apps/api/src/core/`) signs one locally with `TOKEN_SIGNING_KEY` from `.env` and prints the full join link. From then on the organizer uses `POST /events/:eventId/role-links` to mint speaker, vendor and venue links.
+**First organizer token (bootstrap):** there is no public route that mints an organizer token. `npm run mint-link -- --role organizer --event <eventId>` (WS0, `apps/api/src/core/`) signs one locally with `TOKEN_SIGNING_KEY` from `.env` and prints the full join link. From then on the organizer uses `POST /events/:eventId/role-links` to mint speaker, vendor and venue links. **Every role link carries its token in the URL fragment** (`/join#t=<token>`), which browsers never send to the server; the SPA saves it to localStorage and immediately strips it with `history.replaceState` before RUM records the page URL.
 
 | Method and path | Role | Purpose | Owner |
 |---|---|---|---|

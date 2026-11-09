@@ -131,6 +131,17 @@ class MemoryBus implements Bus {
 }
 
 const bufKey = (channel: Channel) => `sse:buf:${channel}`;
+/** Global id source: a 1-entry stream whose auto ids are monotonic across all channels. */
+const ID_KEY = 'sse:ids';
+/**
+ * One atomic round trip: take the next global id, append the message to the channel's
+ * replay buffer under that explicit id (ids stay unique across channels, so a client
+ * multiplexing session + user channels can dedupe and resume on a single Last-Event-ID).
+ */
+const XADD_GLOBAL = `local id = redis.call('XADD', KEYS[1], 'MAXLEN', '1', '*', 'n', '1')
+redis.call('XADD', KEYS[2], 'MAXLEN', '~', ARGV[1], id, 'm', ARGV[2])
+redis.call('PEXPIRE', KEYS[2], ARGV[3])
+return id`;
 
 class ValkeyBus implements Bus {
   readonly kind = 'valkey' as const;
@@ -175,13 +186,15 @@ class ValkeyBus implements Bus {
     const json = JSON.stringify(msg);
     let id: string | undefined;
     try {
-      // XADD gives a time-ordered id and the replay buffer in one round trip.
-      const res = await this.pub
-        .multi()
-        .xadd(bufKey(channel), 'MAXLEN', '~', String(REPLAY_MAX), '*', 'm', json)
-        .pexpire(bufKey(channel), REPLAY_TTL_MS * 2)
-        .exec();
-      const v = res?.[0]?.[1];
+      const v = await this.pub.eval(
+        XADD_GLOBAL,
+        2,
+        ID_KEY,
+        bufKey(channel),
+        String(REPLAY_MAX),
+        json,
+        String(REPLAY_TTL_MS * 2),
+      );
       id = typeof v === 'string' ? v : undefined;
     } catch (err) {
       logger.warn({ err: (err as Error).message }, 'replay buffer write failed');

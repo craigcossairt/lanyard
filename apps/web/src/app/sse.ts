@@ -135,18 +135,20 @@ export function useSse(
               else other.current?.(event, parsed);
             });
           }
-          clean = true; // the response ended (rotation or a proxy cut): reconnect now
         } catch {
           if (ac.signal.aborted) break;
         }
-        // A stream that ends right after opening is a failure, not a rotation: back off.
+        // Only an announced rotation (`event: reconnect`) is clean: reconnect at once and keep
+        // the UI "open". A stream that rotates right after opening is treated as a failure.
         if (clean && Date.now() - openedAt > 1_000) {
-          attempt = 0; // immediate, and the UI stays "open" across rotations
+          attempt = 0;
           continue;
         }
+        // Unannounced end or error: the first retry is still immediate (attempt was reset
+        // by `ready`), then exponential backoff.
         const delay = reconnectDelay(attempt, retryMs);
         attempt++;
-        setStatus('reconnecting');
+        if (attempt > 1) setStatus('reconnecting');
         await new Promise((r) => setTimeout(r, delay));
       }
     };

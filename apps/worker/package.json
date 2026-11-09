@@ -6,7 +6,7 @@
     "dev": "PORT=8081 ROLE=worker tsx watch src/main.ts",
     "build": "tsup",
     "typecheck": "tsc --noEmit -p .",
-    "test": "tsx --test src/**/*.test.ts",
+    "test": "tsx --test 'src/**/*.test.ts'",
     "start": "node dist/main.js"
   },
   "tsup": {

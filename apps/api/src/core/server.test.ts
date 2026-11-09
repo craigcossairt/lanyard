@@ -29,7 +29,11 @@ test('health, SPA fallback and JSON 404', async () => {
 });
 
 test('redactUrl strips token-like query params', () => {
-  assert.equal(redactUrl('/x?token=abc&q=1'), '/x?token=[REDACTED]&q=1');
-  assert.equal(redactUrl('/x?q=1&t=abc'), '/x?q=1&t=[REDACTED]');
+  assert.equal(redactUrl('/x?token=abc&p=1'), '/x?token=[REDACTED]&p=1');
+  assert.equal(redactUrl('/x?p=1&t=abc'), '/x?p=1&t=[REDACTED]');
   assert.equal(redactUrl('/x?%74oken=abc'), '/x?%74oken=[REDACTED]');
+  assert.equal(
+    redactUrl('/api/events/e/search?q=my+private+text'),
+    '/api/events/e/search?q=[REDACTED]',
+  );
 });

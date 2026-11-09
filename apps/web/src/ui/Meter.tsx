@@ -39,6 +39,9 @@ export function Meter({
           ? 'ok'
           : null;
   const text = valueText ?? `${Math.round(ratio * 100)}%`;
+  // aria-valuenow must sit inside [min, max]. The words keep the real count ("34 / 30").
+  const now = Math.min(max, Math.max(0, value));
+  const described = value > max ? `${text}, over capacity` : text;
   return (
     <div
       className={cx(
@@ -52,15 +55,15 @@ export function Meter({
         <span id={labelId} className="ly-meter__label">
           {label}
         </span>
-        <span className="ly-meter__value">{text}</span>
+        <span className="ly-meter__value">{described}</span>
       </div>
       <div
         className="ly-meter__track"
         role="meter"
         aria-valuemin={0}
         aria-valuemax={max}
-        aria-valuenow={value}
-        aria-valuetext={text}
+        aria-valuenow={now}
+        aria-valuetext={described}
         aria-labelledby={labelId}
       >
         <div className="ly-meter__fill" style={{ width: `${ratio * 100}%` }} />

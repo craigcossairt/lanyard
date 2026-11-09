@@ -189,12 +189,18 @@ export const RoomStatus = z.object({
   occupancy: z.number().int(),
   ratio: z.number(),
   signals: SignalCounts,
+  questionCount: z.number().int().nonnegative().optional(),
 });
 export const OpsSnapshot = z.object({ rooms: z.array(RoomStatus), alerts: z.array(Alert) });
 export type OpsSnapshot = z.infer<typeof OpsSnapshot>;
 
 // POST /events/:eventId/alerts/:id/reroute
 export const RerouteResponse = z.object({ suggested: z.number().int(), toSessionIds: z.array(Id) });
+
+// POST /events/:eventId/reroute/accept (attendee, idempotent per suggestion)
+export const RerouteAcceptRequest = z.object({ suggestionId: Id });
+export const RerouteAcceptResponse = z.object({ accepted: z.boolean(), sessionId: Id });
+export type RerouteAcceptResponse = z.infer<typeof RerouteAcceptResponse>;
 
 // GET /events/:eventId/rooms/:roomId/history
 export const RoomHistory = z.object({

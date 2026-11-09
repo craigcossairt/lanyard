@@ -180,6 +180,7 @@ export const Alert = z.object({
 export type Alert = z.infer<typeof Alert>;
 
 export const Recommendation = z.object({
+  suggestionId: Id.optional(), // WS4 reroute recommendations include this for acceptance
   anonId: Id,
   sessionId: Id,
   reason: z.string(),

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { generateConferenceAnswer, NO_ANSWER, type ConferenceEvidence } from './ask';
-import type { Generate } from './runtime';
+import type { Generate } from './generation';
 
 test('conference answer smoke accepts exact citations and rejects invented/cross-event sources', async () => {
   const evidence: ConferenceEvidence[] = [

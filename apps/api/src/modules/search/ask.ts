@@ -2,9 +2,9 @@ import { AskResponse, ES_INDICES, Id } from '@lanyard/contracts';
 import { z } from 'zod';
 import { HttpError } from '../../core/errors';
 import { es } from '../../core/es';
-import { cachedGeneration } from './generation';
+import { cachedGeneration, type Generate } from './generation';
 import { completeSearch } from './response';
-import { llm, type Generate } from './runtime';
+import { llm } from '../../core/llm';
 
 export const NO_ANSWER =
   'The indexed session material does not contain enough evidence to answer this question.';

@@ -25,10 +25,31 @@ export function maybeRelabel(clusterId: string, size: number, force = false): vo
   );
 }
 
-async function relabel(clusterId: string): Promise<void> {
+/**
+ * Install the label only if every member it was built from is still open and still in
+ * this cluster, in one step, so a racing hide can never leave hidden text naming it.
+ * KEYS[1] = cluster hash, KEYS[2..] = member question hashes.
+ * ARGV: label, labelIds csv, clusterId. Returns 1 if installed.
+ */
+const INSTALL = `for i = 2, #KEYS do
+  local st = redis.call('HGET', KEYS[i], 'status')
+  if st == false or st == 'hidden' or redis.call('HGET', KEYS[i], 'clusterId') ~= ARGV[3] then
+    return 0
+  end
+end
+redis.call('HSET', KEYS[1], 'label', ARGV[1], 'labelFrom', 'llm', 'labelIds', ARGV[2])
+return 1`;
+
+const lockKey = (cid: string) => `${keys.cluster(cid)}:labeling`;
+const pendingKey = (cid: string) => `${keys.cluster(cid)}:relabel_pending`;
+
+async function relabel(clusterId: string, rounds = 0): Promise<void> {
   const r = kv();
-  const lock = `${keys.cluster(clusterId)}:labeling`;
-  if (!(await r.set(lock, '1', 'PX', LOCK_MS, 'NX'))) return;
+  if (!(await r.set(lockKey(clusterId), '1', 'PX', LOCK_MS, 'NX'))) {
+    // Someone is labeling: ask them to run once more when they finish.
+    await r.set(pendingKey(clusterId), '1', 'PX', LOCK_MS * 2);
+    return;
+  }
   try {
     const c = toCluster(await r.hgetall(keys.cluster(clusterId)));
     if (!c) return;
@@ -44,18 +65,22 @@ async function relabel(clusterId: string): Promise<void> {
     );
     const label = res?.label?.trim();
     if (!label) return;
-    // Re-check: a member hidden meanwhile must not keep naming the cluster.
+    const installed = await r.eval(
+      INSTALL,
+      1 + members.length,
+      keys.cluster(clusterId),
+      ...members.map((q) => keys.question(q.id)),
+      label,
+      members.map((q) => q.id).join(','),
+      clusterId,
+    );
+    if (!installed) {
+      // A member was hidden or moved meanwhile: label again from the current members.
+      await r.set(pendingKey(clusterId), '1', 'PX', LOCK_MS * 2);
+      return;
+    }
     const fresh = toCluster(await r.hgetall(keys.cluster(clusterId)));
     if (!fresh) return;
-    const live = new Set(
-      (await readQuestions(r, c.sessionId)).filter((q) => q.clusterId === c.id).map((q) => q.id),
-    );
-    if (!members.every((q) => live.has(q.id))) return;
-    await r.hset(keys.cluster(clusterId), {
-      label,
-      labelFrom: 'llm',
-      labelIds: members.map((q) => q.id).join(','),
-    });
     await getBus().publish(
       channels.session(fresh.sessionId),
       realtime('cluster.updated', {
@@ -66,6 +91,9 @@ async function relabel(clusterId: string): Promise<void> {
       }),
     );
   } finally {
-    await r.del(lock).catch(() => undefined);
+    await r.del(lockKey(clusterId)).catch(() => undefined);
+    // Bounded rerun if a relabel was requested while we held the lock.
+    if (rounds < 2 && (await r.getdel(pendingKey(clusterId)).catch(() => null)))
+      await relabel(clusterId, rounds + 1);
   }
 }

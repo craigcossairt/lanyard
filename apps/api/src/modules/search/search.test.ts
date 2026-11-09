@@ -39,12 +39,33 @@ test('search route and retrieval helpers smoke', async (t) => {
   };
   const requests: estypes.SearchRequest[] = [];
   let partial = false;
+  let expireAsk = false;
+  let restoreClock: (() => void) | undefined;
+  t.after(() => restoreClock?.());
   const mocked = mock.method(
     esClient(),
     'search',
     async (request: estypes.SearchRequest, opts: { requestTimeout: number }) => {
       assert.equal(opts.requestTimeout, 2000);
       requests.push(request);
+      if (Array.isArray(request.index)) {
+        if (expireAsk) {
+          const now = Date.now();
+          const clock = mock.method(Date, 'now', () => now + 8_000);
+          restoreClock = () => clock.mock.restore();
+        }
+        return {
+          hits: {
+            hits: [
+              {
+                _index: 'cnh-transcripts',
+                _id: 'evidence',
+                _source: { sessionId: 'talk', eventId: 'event', text: 'Runtime evidence' },
+              },
+            ],
+          },
+        };
+      }
       if (request.index === 'cnh-questions')
         return { hits: { hits: [{ _source: { clusterId: 'existing' }, _score: 0.95 }] } };
       if (request.index === 'cnh-transcripts')
@@ -86,6 +107,17 @@ test('search route and retrieval helpers smoke', async (t) => {
     60,
   ).token;
   const headers = { authorization: `Bearer ${token}` };
+  assert.equal(
+    (
+      await app.inject({
+        method: 'POST',
+        url: '/api/events/event/ask',
+        headers,
+        payload: { question: 'What was discussed?' },
+      })
+    ).statusCode,
+    403,
+  );
   assert.equal(
     (
       await app.inject({
@@ -151,4 +183,19 @@ test('search route and retrieval helpers smoke', async (t) => {
     (await app.inject({ url: '/api/events/event/search?q=kernel', headers })).statusCode,
     503,
   );
+  expireAsk = true;
+  const organizer = signToken(
+    key,
+    { sub: 'organizer-fixture', role: 'organizer', eventId: 'event' },
+    60,
+  ).token;
+  const accepted = await app.inject({
+    method: 'POST',
+    url: '/api/events/event/ask',
+    headers: { authorization: `Bearer ${organizer}` },
+    payload: { question: 'What was discussed?' },
+  });
+  restoreClock?.();
+  assert.equal(accepted.statusCode, 202);
+  assert.equal(accepted.headers['retry-after'], '2');
 });

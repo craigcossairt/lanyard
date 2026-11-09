@@ -2,6 +2,7 @@
 // Valkey key schema: see store.ts `keys`.
 import { defineModule } from '../../core/module';
 import { registerPresence } from './presence';
+import { registerQuestions } from './questions';
 import { registerStream } from './stream';
 import { registerTranscript } from './transcript';
 
@@ -11,5 +12,6 @@ export default defineModule({
     registerStream(app);
     registerTranscript(app);
     registerPresence(app);
+    registerQuestions(app);
   },
 });

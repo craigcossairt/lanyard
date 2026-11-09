@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { OpsSnapshot } from '@lanyard/contracts';
 import { RoomCard, roomHealth } from './RoomCard';
 import { safeOpsLink } from './links';
+import { SimulationNotice } from './SimulationControls';
 
 test('organizer room exposes health, occupancy and stale state without relying on color', () => {
   const status: OpsSnapshot['rooms'][number] = {
@@ -38,4 +39,12 @@ test('organizer room exposes health, occupancy and stale state without relying o
     safeOpsLink('https://app.dash0.com/dashboards/conference'),
     'https://app.dash0.com/dashboards/conference',
   );
+  const simulation = renderToStaticMarkup(createElement(SimulationNotice, {
+    status: { simulated: true, running: true, stopping: false, attendees: 40, endsAt: '2026-11-09T21:00:00Z' },
+    timezone: 'America/Denver',
+  }));
+  assert.match(simulation, /SIMULATED/);
+  assert.match(simulation, /40 virtual attendees/);
+  assert.match(simulation, /auto-stop 2:00 PM/);
+  assert.match(simulation, /Virtual activity is included/);
 });

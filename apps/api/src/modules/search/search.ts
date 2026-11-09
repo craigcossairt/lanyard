@@ -6,8 +6,13 @@ import { completeSearch } from './response';
 
 export type SearchInput = z.infer<typeof SearchQuery>;
 
-export function searchRequest(eventId: string, input: SearchInput): estypes.SearchRequest {
+export function searchRequest(
+  eventId: string,
+  input: SearchInput,
+  startsAtOrAfter?: string,
+): estypes.SearchRequest {
   const filter: estypes.QueryDslQueryContainer[] = [{ term: { eventId } }];
+  if (startsAtOrAfter) filter.push({ range: { startsAt: { gte: startsAtOrAfter } } });
   if (input.track) filter.push({ term: { track: input.track } });
   if (input.level) filter.push({ term: { level: input.level } });
   if (input.from) filter.push({ range: { endsAt: { gt: input.from } } });
@@ -44,9 +49,15 @@ export function searchRequest(eventId: string, input: SearchInput): estypes.Sear
   };
 }
 
-export async function searchSessions(eventId: string, input: SearchInput): Promise<SearchResponse> {
+export async function searchSessions(
+  eventId: string,
+  input: SearchInput,
+  startsAtOrAfter?: string,
+): Promise<SearchResponse> {
   const result = await es(ES_INDICES.sessions, 'search', (client, opts) =>
-    client.search<Session>(searchRequest(eventId, input), opts).then(completeSearch),
+    client
+      .search<Session>(searchRequest(eventId, input, startsAtOrAfter), opts)
+      .then(completeSearch),
   );
   return {
     hits: result.hits.hits.flatMap((hit) => {

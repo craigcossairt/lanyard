@@ -629,3 +629,62 @@
   border-radius: var(--radius-md);
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.3);
 }
+
+/* Settings and plan */
+.at-fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin: 0 0 var(--space-4);
+  min-width: 0;
+}
+.at-fieldset legend,
+.at-label {
+  font-weight: 700;
+  padding: 0 var(--space-1);
+  display: block;
+  margin-bottom: var(--space-2);
+}
+.at-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.at-choices--stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+.at-choices--stack .at-btn {
+  justify-content: flex-start;
+}
+.at-preview {
+  margin: var(--space-3) 0 0;
+  font-size: var(--caption-size);
+  color: var(--color-text-muted);
+}
+.at-hint {
+  font-size: var(--text-sm);
+  margin-top: var(--space-2);
+}
+select.at-input {
+  width: 100%;
+}
+.at-plan-summary {
+  font-size: var(--text-lg);
+  line-height: 1.5;
+  margin: 0 0 var(--space-3);
+}
+
+.at-check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  min-height: 44px;
+}
+.at-check input {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  flex: none;
+}

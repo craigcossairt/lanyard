@@ -2,6 +2,7 @@ import { ES_INDICES, Session, type OpsSnapshot } from '@lanyard/contracts';
 import { es } from '../../core/es';
 import { getNowNext } from '../../core/events';
 import { HttpError } from '../../core/errors';
+import { logger } from '../../core/logger';
 
 export type Destination = { session: Session; seats: number; distance: number; score: number };
 
@@ -76,7 +77,13 @@ export async function findDestinations(
     );
   // Inference can exceed the ES deadline. Keep identical eligibility filters
   // and physical-distance/seat rules when optional semantic ranking fails.
-  const result = await search(true).catch(() => search(false));
+  const result = await search(true).catch((error: unknown) => {
+    logger.warn(
+      { event: eventId, code: error instanceof HttpError ? error.code : 'unknown' },
+      'reroute semantic ranking failed; using seats fallback',
+    );
+    return search(false);
+  });
   const hits = result.hits.hits.flatMap((hit) => {
     const parsed = Session.safeParse({ id: hit._id, ...(hit._source as object) });
     return parsed.success ? [{ session: parsed.data, score: hit._score ?? 0 }] : [];

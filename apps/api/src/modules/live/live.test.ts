@@ -26,6 +26,9 @@ test('live routes: auth, roles and validation (ES and Valkey unconfigured)', asy
     ['GET', '/api/sessions/s1/stream'],
     ['POST', '/api/sessions/s1/transcript'],
     ['POST', '/api/sessions/s1/presence'],
+    ['POST', '/api/sessions/s1/questions'],
+    ['POST', '/api/questions/q1/vote'],
+    ['PATCH', '/api/questions/q1'],
   ] as const) {
     assert.equal((await app.inject({ method, url })).statusCode, 401, url);
   }
@@ -38,6 +41,24 @@ test('live routes: auth, roles and validation (ES and Valkey unconfigured)', asy
     payload: { text: 'hi' },
   });
   assert.equal(cap.statusCode, 403);
+
+  // Only speakers (or organizers) answer or hide questions.
+  const patch = await app.inject({
+    method: 'PATCH',
+    url: '/api/questions/q1',
+    headers: { authorization: tok('attendee') },
+    payload: { status: 'hidden' },
+  });
+  assert.equal(patch.statusCode, 403);
+
+  // Empty question text is rejected.
+  const empty = await app.inject({
+    method: 'POST',
+    url: '/api/sessions/s1/questions',
+    headers: { authorization: tok('attendee') },
+    payload: { text: '' },
+  });
+  assert.equal(empty.statusCode, 400);
 
   // Bad body: 400 before any backend call.
   const bad = await app.inject({

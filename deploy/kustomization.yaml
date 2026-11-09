@@ -35,4 +35,4 @@ replacements:
 images:
   - name: app
     newName: ghcr.io/craigcossairt/lanyard
-    newTag: 1c29e89
+    newTag: d997e6b

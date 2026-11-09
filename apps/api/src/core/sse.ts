@@ -15,7 +15,8 @@ import {
 } from '@lanyard/contracts';
 import { getBus } from './context';
 
-const HEARTBEAT_MS = 15_000;
+/** Comment-line heartbeat; well under any proxy idle timeout (the ingress cuts at ~15 s). */
+export const HEARTBEAT_MS = 5_000;
 /** Reconnect hint for clients (ms); they back off exponentially from here. */
 const RETRY_MS = 2_000;
 const READY_TIMEOUT_MS = 2_000;
@@ -48,6 +49,8 @@ export function openSse(req: FastifyRequest, reply: FastifyReply, opts: SseOptio
     connection: 'keep-alive',
     'x-accel-buffering': 'no',
   });
+  // Small frames must go out immediately: no Nagle delay on the socket.
+  res.socket?.setNoDelay(true);
   res.write(`retry: ${RETRY_MS}\n\n`);
 
   let closed = false;

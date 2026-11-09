@@ -4,7 +4,8 @@ import { z } from 'zod';
 
 export const EVENT_IDS = { kubecon: 'kubecon-na-2026', cnhDemos: 'cnh-demos' } as const;
 
-export const IsoDateTime = z.iso.datetime({ offset: true });
+/** UTC only, e.g. 2026-11-09T23:30:00Z (02-contracts: all times UTC in storage and transit). */
+export const IsoDateTime = z.iso.datetime();
 export const Id = z.string().min(1).max(200);
 
 export const Accessibility = z.object({

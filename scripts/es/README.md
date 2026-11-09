@@ -20,9 +20,12 @@ in a `finally` block. On 2026-11-09, serverless 9.7.0 selected
 `.jina-embeddings-v5-text-small` and passed the probe.
 
 `setup` creates the ten contract indices and leaves existing indices alone.
-**Development reset only:** `setup.mjs --recreate` deletes and recreates all ten
-indices, including live questions, captions, presence and signals. Never use it
-to refresh a running event. Setup/bulk operations allow longer timeouts; normal
+**Development reset only:** `setup.mjs --recreate` lists all ten target indices
+and refuses before any ES call. Deleting/recreating them also requires the explicit
+`--i-understand-this-deletes-live-data` flag. This erases live questions,
+captions, presence and signals; never use it to refresh a running event.
+Programmatic callers must also pass `confirmDestructive: true` with `recreate`.
+Setup/bulk operations allow longer timeouts; normal
 queries have a 2-second timeout. Failures omit bodies, headers and credentials.
 Source text fields use `copy_to: "semantic"`; all semantic queries target
 `semantic`. New application writes therefore need no client-side embeddings.

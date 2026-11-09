@@ -1,6 +1,7 @@
 // POST /api/sessions/:id/transcript (speaker): append one finalized caption chunk.
-// Writes cnh-transcripts (record), pushes the Valkey caption tail (snapshot), publishes
-// caption.appended, and records conf.caption.lag_ms from the client's utterance end.
+// Pushes the Valkey caption tail (snapshot), publishes
+// caption.appended, records conf.caption.lag_ms from the client's utterance end, then writes
+// the cnh-transcripts record in the background.
 import type { FastifyInstance } from 'fastify';
 import { metrics } from '@opentelemetry/api';
 import { channels, ES_INDICES, METRICS, realtime, TranscriptRequest } from '@lanyard/contracts';
@@ -8,6 +9,7 @@ import { authOf, requireRole } from '../../core/auth';
 import { getBus } from '../../core/context';
 import { parse } from '../../core/errors';
 import { es } from '../../core/es';
+import { logger } from '../../core/logger';
 import { assertSameEvent, CAPTION_TAIL, getLiveSession, keys, kv } from './store';
 
 const captionLag = metrics
@@ -21,7 +23,45 @@ return 1`;
 /** Lag above this is a client clock problem, not a pipeline one: don't record it. */
 const MAX_PLAUSIBLE_LAG_MS = 60_000;
 
+// Pending background records (including a scheduled retry), drained on shutdown.
+const pending = new Set<Promise<void>>();
+const DRAIN_MS = 3_000;
+
+async function writeChunk(chunk: { id: string }): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await es(ES_INDICES.transcripts, 'index', (c, o) =>
+        c.index({ index: ES_INDICES.transcripts, id: chunk.id, document: chunk }, o),
+      );
+      return;
+    } catch (err) {
+      if (attempt >= 2) {
+        // Identifiers and the wrapper's sanitized error only: never the caption text.
+        logger.warn(
+          { chunkId: chunk.id, code: (err as { code?: string }).code },
+          'transcript record failed',
+        );
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
+}
+
+function recordChunk(chunk: { id: string }): void {
+  const p = writeChunk(chunk).finally(() => pending.delete(p));
+  pending.add(p);
+}
+
 export function registerTranscript(app: FastifyInstance): void {
+  // Graceful shutdown (rollouts): let acknowledged captions finish their ES record.
+  app.addHook('onClose', async () => {
+    if (pending.size === 0) return;
+    await Promise.race([
+      Promise.allSettled([...pending]),
+      new Promise((r) => setTimeout(r, DRAIN_MS).unref()),
+    ]);
+  });
   app.post<{ Params: { id: string } }>(
     '/sessions/:id/transcript',
     { preHandler: requireRole('speaker') },
@@ -73,11 +113,11 @@ export function registerTranscript(app: FastifyInstance): void {
         .lpush(keys.captions(s.id), JSON.stringify(caption))
         .ltrim(keys.captions(s.id), 0, CAPTION_TAIL - 1)
         .exec();
-      // Stable id: a retried chunk overwrites itself instead of duplicating.
-      const record = es(ES_INDICES.transcripts, 'index', (c, o) =>
-        c.index({ index: ES_INDICES.transcripts, id: chunk.id, document: chunk }, o),
-      );
-      await Promise.all([fanout, tail, record]);
+      await Promise.all([fanout, tail]);
+      // The ES record (catch-up, "ask the conference") is off the hot path: indexing embeds
+      // the text (semantic_text) and can take ~2 s, which must not fail a caption that is
+      // already live. Stable id, so the one retry overwrites instead of duplicating.
+      recordChunk(chunk);
       reply.code(201);
       return { chunkId: chunk.id, seq };
     },

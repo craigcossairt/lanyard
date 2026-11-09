@@ -46,7 +46,7 @@ test('search route and retrieval helpers smoke', async (t) => {
     esClient(),
     'search',
     async (request: estypes.SearchRequest, opts: { requestTimeout: number }) => {
-      assert.equal(opts.requestTimeout, 2000);
+      assert.equal(opts.requestTimeout, request.index === 'cnh-questions' ? 4000 : 2000);
       requests.push(request);
       if (Array.isArray(request.index)) {
         if (expireAsk) {

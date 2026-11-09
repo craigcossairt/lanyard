@@ -40,6 +40,7 @@ export async function findQuestionCluster(input: {
         opts,
       )
       .then(completeSearch),
+    4_000, // Trial inference tail latency; approved dedup-only exception.
   );
   const hit = result.hits.hits[0];
   const score = hit?._score ?? 0;

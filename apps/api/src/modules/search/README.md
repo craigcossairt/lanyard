@@ -46,7 +46,7 @@ rejects or times out; do not interpret missing pairs as successful matches.
 `scripts/es/demo-pairs.ts` scores isolated synthetic records through the actual
 helper and deletes only its own ids. Its CLI-only fetch transport works around
 local client transport failures; `--diagnostic-timeout` explicitly allows 15 s
-for scoring, without changing the production 2 s query budget. `--resume`
+for scoring, separate from the approved production 4 s dedup-only budget. `--resume`
 continues measured pairs with ten-second pauses. Background question writes
 wait for ES refresh; this does not bypass inference rate limits or guarantee
 that every subsequent semantic query completes inside its deadline.

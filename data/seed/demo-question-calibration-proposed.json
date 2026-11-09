@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-11-09T23:17:01.035Z",
+  "measuredAt": "2026-11-09T23:17:32.503Z",
   "threshold": 0.848,
   "diagnosticTimeoutMs": 15000,
   "rows": [
@@ -22,6 +22,20 @@
       "original": 0,
       "paraphrase": 1,
       "score": 0.9609331,
+      "merged": true
+    },
+    {
+      "group": 1,
+      "original": 0,
+      "paraphrase": 2,
+      "score": 0.9614817,
+      "merged": true
+    },
+    {
+      "group": 2,
+      "original": 0,
+      "paraphrase": 1,
+      "score": 0.9586739,
       "merged": true
     }
   ]

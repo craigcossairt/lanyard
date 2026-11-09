@@ -188,6 +188,7 @@ The ops rules open an overflow alert at occupancy ≥90%, and a signal-spike ale
 
 ## 8. Reliability conventions (also Gitar review rules)
 - Every outbound call has an explicit timeout: ES 2 s, LLM 20 s (catch-up 8 s), Valkey 500 ms. Each has a span, and errors are recorded on the span.
+- Exception: `findQuestionCluster` semantic dedup queries allow ES 4 s because measured trial-inference tail latency exceeds 2 s; all other ES calls remain 2 s and question routes retain the 8 s budget.
 - LLM calls happen only in `worker` or behind a cache. API routes never block more than 8 s.
 - Catch-me-up retrieves the last N transcript chunks from ES. It never sends a whole transcript to the LLM.
 - Resource requests and limits are set on every container and stay within budget.

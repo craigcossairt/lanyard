@@ -7,7 +7,7 @@ import type { ModuleContext } from '../../core/context';
 import { signToken } from '../../core/tokens';
 
 export interface SyntheticRecords {
-  eventId: string; sessionIds: string[]; questionIds: string[]; chunkIds: string[]; anonIds: string[];
+  eventId: 'cnh-demos'; sessionIds: string[]; questionIds: string[]; chunkIds: string[]; anonIds: string[];
 }
 export type CleanupSynthetic = (records: SyntheticRecords) => Promise<unknown>;
 const EVENT = 'cnh-demos';
@@ -96,7 +96,14 @@ export function createDemoRunner(app: FastifyInstance, ctx: ModuleContext, clean
         if (lane && [...work.keys()].filter(id => id.startsWith(lane)).length >= (lane === 'question-' ? 2 : 1)) continue;
         if (!lane && work.size >= 8) continue;
         // A fixed script, with no unbounded queue or catch-up loop.
-        if (await kv().sadd(key(run, 'dispatched'), action.id)) launch(action.id, () => perform(run, action));
+        if (await kv().sadd(key(run, 'dispatched'), action.id)) launch(action.id, async () => {
+          try { await perform(run, action); }
+          catch (error) {
+            // Presence joins are idempotent; retry transient failures next tick.
+            if (action.kind === 'join') await kv().srem(key(run, 'dispatched'), action.id);
+            throw error;
+          }
+        });
       }
       const offers = await kv().hgetall(key(run, 'offers'));
       for (const [actor, raw] of Object.entries(offers)) {

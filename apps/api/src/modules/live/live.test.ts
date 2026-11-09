@@ -29,6 +29,7 @@ test('live routes: auth, roles and validation (ES and Valkey unconfigured)', asy
     ['POST', '/api/sessions/s1/questions'],
     ['POST', '/api/questions/q1/vote'],
     ['PATCH', '/api/questions/q1'],
+    ['POST', '/api/sessions/s1/signals'],
   ] as const) {
     assert.equal((await app.inject({ method, url })).statusCode, 401, url);
   }
@@ -59,6 +60,15 @@ test('live routes: auth, roles and validation (ES and Valkey unconfigured)', asy
     payload: { text: '' },
   });
   assert.equal(empty.statusCode, 400);
+
+  // Unknown signal type is rejected.
+  const sig = await app.inject({
+    method: 'POST',
+    url: '/api/sessions/s1/signals',
+    headers: { authorization: tok('attendee') },
+    payload: { type: 'too_loud_and_wrong' },
+  });
+  assert.equal(sig.statusCode, 400);
 
   // Bad body: 400 before any backend call.
   const bad = await app.inject({

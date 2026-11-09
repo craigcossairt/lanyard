@@ -3,6 +3,7 @@
 import { defineModule } from '../../core/module';
 import { registerPresence } from './presence';
 import { registerQuestions } from './questions';
+import { registerSignals } from './signals';
 import { registerStream } from './stream';
 import { registerTranscript } from './transcript';
 
@@ -13,5 +14,6 @@ export default defineModule({
     registerTranscript(app);
     registerPresence(app);
     registerQuestions(app);
+    registerSignals(app);
   },
 });

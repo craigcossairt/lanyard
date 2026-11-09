@@ -67,7 +67,7 @@ export async function seedPeople({ reset = false } = {}) {
     method: 'POST',
     body,
     ndjson: true,
-    timeoutMs: 10_000,
+    timeoutMs: 60_000,
   });
   if (result.errors) throw new Error('Elasticsearch bulk seed failed');
   console.log(JSON.stringify({ eventId: 'cnh-demos', action: 'seeded', count: attendees.length }));

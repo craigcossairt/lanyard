@@ -22,12 +22,35 @@ spec:
           ports:
             - name: http
               containerPort: 8080
-          # Secrets (ES, OpenAI, Typesafe, OTLP, Dash0, token signing) come only
-          # from the app-credentials Secret, which is kept outside git.
-          envFrom:
-            - secretRef:
-                name: app-credentials
           env:
+            # Secrets (contracts §7, starred): one secretKeyRef per key from
+            # app-credentials, which is kept outside git. Not optional: a
+            # missing key should fail the rollout loudly, not start a broken app.
+            - name: ES_URL
+              valueFrom:
+                secretKeyRef: {name: app-credentials, key: ES_URL}
+            - name: ES_API_KEY
+              valueFrom:
+                secretKeyRef: {name: app-credentials, key: ES_API_KEY}
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef: {name: app-credentials, key: OPENAI_API_KEY}
+            - name: TYPESAFE_API_KEY
+              valueFrom:
+                secretKeyRef: {name: app-credentials, key: TYPESAFE_API_KEY}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              valueFrom:
+                secretKeyRef: {name: app-credentials, key: OTEL_EXPORTER_OTLP_ENDPOINT}
+            - name: OTEL_EXPORTER_OTLP_HEADERS
+              valueFrom:
+                secretKeyRef: {name: app-credentials, key: OTEL_EXPORTER_OTLP_HEADERS}
+            - name: DASH0_RUM_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef: {name: app-credentials, key: DASH0_RUM_AUTH_TOKEN}
+            - name: TOKEN_SIGNING_KEY
+              valueFrom:
+                secretKeyRef: {name: app-credentials, key: TOKEN_SIGNING_KEY}
+            # Non-secret config.
             - name: TEAM_NAME
               value: "lanyard"
             - name: ROLE

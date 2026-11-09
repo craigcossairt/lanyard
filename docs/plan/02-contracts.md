@@ -91,10 +91,13 @@ Roles are carried by a signed token: attendee (issued on join), or speaker, orga
 | GET `/events/:eventId/ops` | organizer | Room grid snapshot | WS4 |
 | GET `/events/:eventId/ops/stream` | organizer | SSE ops stream | WS4 |
 | POST `/events/:eventId/alerts/:id/reroute` | organizer | Push alternatives to attendees of a full room | WS4 |
+| POST `/events/:eventId/reroute/accept` | attendee | Body `{ suggestionId }`; idempotently count acceptance, return `{ accepted, sessionId }`. Client then joins via the normal presence route | WS4 |
 | GET `/events/:eventId/rooms/:roomId/history` | organizer | Occupancy and signal series | WS4 |
 | `/vendor/*`, `/venue/*` | vendor / venue | P1 / P2 | WS7 / WS8 |
 
 Errors use a JSON body with `error.code` and `error.message`. Every route validates input with the shared schema library chosen by WS0: **zod 4**. `packages/contracts` exports a zod schema and a TypeScript type with the same name for every entity, request and response (`JoinRequest`, `JoinResponse`, `EventView`, `SessionSnapshot`, ...), so the exact field names live there.
+
+The ops snapshot's `RoomStatus` includes optional `questionCount` (a nonnegative integer). Reroute recommendations include optional `suggestionId` for the acceptance route; WS4 always supplies it on new suggestions.
 
 ## 5. Realtime messages (SSE, fanned out via Valkey channels)
 Channels: `session:<id>`, `ops:<eventId>`, `user:<anonId>`. Each message has `type`, `at` and a `payload` (`RealtimeMessage` in `packages/contracts`; build one with `realtime(type, payload)`). Payload ids are named `chunkId`, `questionId`, `clusterId`, `sessionId`, `roomId`.
@@ -113,6 +116,20 @@ Channels: `session:<id>`, `ops:<eventId>`, `user:<anonId>`. Each message has `ty
 | `session.status` | session, ops | live or ended |
 
 The client reconnects with exponential backoff and refetches the snapshot after reconnecting.
+
+### Valkey live-state keys
+
+WS2 writes live state; WS4 reads it through the core `ctx.kv` client (500 ms timeout and ioredis spans):
+
+- `room:{roomId}:members` SET of anonId; occupancy = SCARD.
+- `session:{sessionId}:members` SET of anonId; session attendees = SCARD.
+- `attendee:{anonId}:at` HASH `{eventId, roomId, sessionId, at}`. Reroute targets = SMEMBERS of the full room's members.
+- `signals:{sessionId}:{type}` ZSET, score = epoch ms, member = unique id, trimmed at >120 s; rolling 60 s = ZCOUNT from now-60000 to +inf.
+- `questions:{sessionId}:count` INT.
+- WS2 treats an SSE disconnect as leave after a 30 s grace.
+- WS4 stores suggestions as `reroute:{suggestionId}` HASH `{anonId, alertId, fromRoomId, toSessionId}`, TTL 15 min.
+
+The ops rules open an overflow alert at occupancy ≥90%, and a signal-spike alert at ≥5 `lost` or `louder` signals within the rolling 60-second window. Acceptance increments `conf.reroute.accepted` once per suggestion; normal presence handles the subsequent session move.
 
 ## 6. Observability conventions (Dash0)
 - **Service names:** `lanyard-app`, `lanyard-worker`, `lanyard-web` (RUM). Resource attributes: `deployment.environment=hackathon` and `service.version=<git sha>`.

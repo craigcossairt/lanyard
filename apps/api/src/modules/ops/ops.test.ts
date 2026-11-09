@@ -107,6 +107,11 @@ test('ops reads bounded live counts and enforces organizer/event authorization',
       const response = await app.inject({ url, headers: { authorization: `Bearer ${token}` } });
       assert.equal(response.statusCode, status);
       if (status === 200) assert.equal(response.json().rooms[0].occupancy, 27);
+      const simulation = await app.inject({
+        method: 'POST', url: '/api/events/demo/ops/simulation',
+        headers: { authorization: `Bearer ${token}` }, payload: { running: true, attendees: 201 },
+      });
+      assert.equal(simulation.statusCode, status === 200 ? 400 : status);
     }
   } finally {
     await app.close();

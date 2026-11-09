@@ -6,6 +6,7 @@
 import { useCallback, useSyncExternalStore } from 'react';
 import type { AccessibilityPrefs, PrefsRequest } from '@lanyard/contracts';
 import { applyRootPrefs, loadPrefs, setRootPrefs } from '../../../app/theme';
+import { LOCALE_EVENT } from '../../../i18n/locale';
 import { api } from './api';
 
 export interface DisplayPrefs {
@@ -85,6 +86,7 @@ function write(next: Prefs, mirror: boolean): void {
     // Private mode: this visit only.
   }
   listeners.forEach((l) => l());
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(LOCALE_EVENT));
   if (mirror) {
     const body: PrefsRequest = {
       accessibility,
@@ -99,6 +101,24 @@ function write(next: Prefs, mirror: boolean): void {
 function subscribe(l: () => void) {
   listeners.add(l);
   return () => listeners.delete(l);
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener(LOCALE_EVENT, () => {
+    if (!current) return;
+    let language = current.language;
+    try {
+      const parsed = JSON.parse(localStorage.getItem(PERSONAL_KEY) ?? 'null') as {
+        language?: unknown;
+      } | null;
+      if (parsed && typeof parsed.language === 'string') language = parsed.language;
+    } catch {
+      return;
+    }
+    if (language === current.language) return;
+    current = { ...current, language };
+    listeners.forEach((l) => l());
+  });
 }
 
 export function usePrefs() {

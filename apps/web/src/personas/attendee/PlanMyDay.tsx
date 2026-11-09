@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import type { PlanMyDayResponse, Session } from '@lanyard/contracts';
+import { useI18n } from '../../i18n/useI18n';
 import { AttendeeHeader } from './components/AttendeeHeader';
 import { SessionCard } from './components/SessionCard';
 import { api, ApiError } from './lib/api';
@@ -13,6 +14,7 @@ import { useEventId, useSession } from './lib/session';
 type PlanResponse = PlanMyDayResponse & { sessions?: Session[] };
 
 export default function PlanMyDay() {
+  const { t } = useI18n();
   const eventId = useEventId();
   const me = useSession();
   const { view } = useEventView(eventId);
@@ -58,8 +60,8 @@ export default function PlanMyDay() {
 
   return (
     <div className="at-page">
-      <AttendeeHeader title="Plan my day" handle={me?.handle} back />
-      <main id="main" className="at-main">
+      <AttendeeHeader title={t('planDay')} handle={me?.handle} back />
+      <main id="main" tabIndex={-1} className="at-main">
         <form onSubmit={(e) => void submit(e)}>
           <label htmlFor="plan-interests" className="at-label">
             What are you here for?

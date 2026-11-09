@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { formatRange, type Room, type Session } from '@lanyard/contracts';
+import { useI18n } from '../../../i18n/useI18n';
 import { parseHighlight } from '../lib/highlight';
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function SessionCard({ session, room, tz, highlights, saved, onToggleSave, reason }: Props) {
+  const { t } = useI18n();
   const live = session.status === 'live';
   const headingId = `sess-${session.id}`;
   return (
@@ -23,7 +25,7 @@ export function SessionCard({ session, room, tz, highlights, saved, onToggleSave
         {room && <span>· {room.name}</span>}
         {live && (
           <span className="at-pill at-pill--live">
-            <span aria-hidden="true">●</span> Live
+            <span aria-hidden="true">●</span> {t('live')}
           </span>
         )}
       </div>
@@ -40,7 +42,7 @@ export function SessionCard({ session, room, tz, highlights, saved, onToggleSave
       {reason && <p className="at-card__reason">{reason}</p>}
       {highlights && highlights.length > 0 && (
         <p className="at-card__why">
-          <span className="at-card__why-label">Why this matched: </span>
+          <span className="at-card__why-label">{t('whyMatched')}</span>
           {parseHighlight(highlights[0] ?? '').map((part, i) =>
             part.hit ? <mark key={i}>{part.text}</mark> : <span key={i}>{part.text}</span>,
           )}
@@ -52,16 +54,17 @@ export function SessionCard({ session, room, tz, highlights, saved, onToggleSave
           type="button"
           className="at-btn at-btn--sm"
           aria-pressed={saved}
+          aria-label={t(saved ? 'removeSchedule' : 'addSchedule', { title: session.title })}
           onClick={() => onToggleSave(session)}
         >
-          {saved ? '✓ In my schedule' : '+ My schedule'}
+          {saved ? t('inSchedule') : t('addScheduleShort')}
         </button>
         {live && (
           <Link
             className="at-btn at-btn--sm at-btn--primary"
             to={`/a/s/${encodeURIComponent(session.id)}`}
           >
-            Join live
+            {t('joinLive')}
           </Link>
         )}
       </div>

@@ -10,7 +10,7 @@
 .ops-page button { cursor: pointer; font-weight: 600; }
 .ops-page button:disabled { cursor: default; opacity: .6; }
 .ops-live { font-family: var(--font-mono); font-size: var(--text-xs); padding: var(--space-3) 0; color: var(--color-text-muted); border-block: 1px solid var(--color-border); }
-.ops-summary { display: grid; grid-template-columns: repeat(4, 1fr); margin: var(--space-6) 0 var(--space-8); gap: var(--space-4); }
+.ops-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); margin: var(--space-6) 0 var(--space-8); gap: var(--space-4); }
 .ops-summary > div { padding-left: var(--space-4); border-left: 2px solid var(--color-border); }
 .ops-summary dt { font-size: var(--text-sm); color: var(--color-text-muted); }
 .ops-summary dd { margin: var(--space-2) 0 0; font-family: var(--font-mono); font-size: var(--text-3xl); line-height: 1; }

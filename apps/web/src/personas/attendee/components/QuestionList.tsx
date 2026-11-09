@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { Question, QuestionCluster } from '@lanyard/contracts';
+import { useI18n } from '../../../i18n/useI18n';
 
 interface Props {
   questions: Question[];
@@ -79,12 +80,13 @@ export function buildClusterViews(
 }
 
 export function QuestionList({ questions, clusters, voted, mine, onVote }: Props) {
+  const { t } = useI18n();
   const views = useMemo(() => buildClusterViews(questions, clusters), [questions, clusters]);
   if (views.length === 0) {
-    return <p className="at-muted">No questions yet. Yours could be first.</p>;
+    return <p className="at-muted">{t('noQuestions')}</p>;
   }
   return (
-    <ol className="at-questions" aria-label="Questions, most voted first">
+    <ol className="at-questions" aria-label={t('questionsList')}>
       {views.map((v) => {
         const qid = v.representative?.id ?? v.cluster.representativeQuestionId;
         const text = v.representative?.text || v.cluster.label || 'Question';
@@ -99,15 +101,17 @@ export function QuestionList({ questions, clusters, voted, mine, onVote }: Props
             <div className="at-question__body">
               <p className="at-question__text">{text}</p>
               <p className="at-question__meta">
-                {v.answered && <span className="at-pill at-pill--ok">✓ Answered</span>}
+                {v.answered && <span className="at-pill at-pill--ok">✓ {t('answered')}</span>}
                 {isMine ? (
                   <span>
-                    {others > 0
-                      ? `You + ${others} ${others === 1 ? 'other' : 'others'} asked this`
-                      : 'You asked this'}
+                    {others > 1
+                      ? t('youAndOthers', { count: others })
+                      : others === 1
+                        ? t('youAndOther')
+                        : t('youAsked')}
                   </span>
                 ) : (
-                  v.size > 1 && <span>{v.size} people asked this</span>
+                  v.size > 1 && <span>{t('peopleAsked', { count: v.size })}</span>
                 )}
               </p>
             </div>
@@ -115,7 +119,7 @@ export function QuestionList({ questions, clusters, voted, mine, onVote }: Props
               type="button"
               className="at-vote"
               aria-pressed={hasVoted}
-              aria-label={`Upvote, ${v.votes} ${v.votes === 1 ? 'vote' : 'votes'}`}
+              aria-label={v.votes === 1 ? t('upvoteOne') : t('upvote', { votes: v.votes })}
               disabled={hasVoted || !qid}
               onClick={() => onVote(qid)}
             >

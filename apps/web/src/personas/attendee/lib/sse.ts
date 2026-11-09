@@ -1,10 +1,10 @@
-// TEMP adapter (WS3): SSE over fetch streaming with the Authorization header. Never
-// EventSource (it can't send headers, so the token would end up in the URL). The WS0
-// shell's `useSse` replaces this; the signature is kept identical.
+// Session stream reader: SSE over fetch with the Authorization header (never EventSource,
+// so no token in a URL). Kept beside the shell's `useSse` because that hook validates
+// every event against the RealtimeMessage schema and drops WS2's `snapshot` event, which
+// the live view needs. Same signature as the shell hook otherwise.
 import { useEffect, useRef, useState } from 'react';
 import type { RealtimeMessage } from '@lanyard/contracts';
 import { authHeaders } from './api';
-import { isMock, MOCK_CAPTIONS, mockSnapshot } from './mock';
 
 export type SseStatus = 'connecting' | 'open' | 'reconnecting' | 'closed';
 
@@ -58,8 +58,6 @@ export function useSse(
       setStatus('closed');
       return;
     }
-    if (isMock()) return mockStream(handler, setStatus);
-
     let stopped = false;
     let attempt = 0;
     let controller: AbortController | null = null;
@@ -115,46 +113,4 @@ export function useSse(
   }, [path, enabled]);
 
   return status;
-}
-
-function mockStream(
-  handler: React.RefObject<(msg: StreamEvent) => void>,
-  setStatus: (s: SseStatus) => void,
-): () => void {
-  setStatus('open');
-  const first = setTimeout(() => handler.current(mockSnapshot('s-lanyard')), 200);
-  let i = 0;
-  const captions = setInterval(() => {
-    const text = MOCK_CAPTIONS[i % MOCK_CAPTIONS.length] ?? '';
-    i += 1;
-    handler.current({
-      type: 'caption.appended',
-      at: new Date().toISOString(),
-      payload: { chunkId: `m${i}`, seq: i, text, lang: 'en' },
-    });
-  }, 2_800);
-  const signals = setInterval(() => {
-    handler.current({
-      type: 'signals.window',
-      at: new Date().toISOString(),
-      payload: { sessionId: 's-lanyard', windowSec: 60, counts: { slower: 3, thumbs_up: 9 } },
-    });
-  }, 10_000);
-  const reroute = setTimeout(() => {
-    handler.current({
-      type: 'reroute.suggested',
-      at: new Date().toISOString(),
-      payload: {
-        anonId: 'me',
-        sessionId: 's-hallway',
-        reason: 'Main Stage is full. Hallway Track: open Q&A has seats on the Side Stage.',
-      },
-    });
-  }, 25_000);
-  return () => {
-    clearTimeout(first);
-    clearInterval(captions);
-    clearInterval(signals);
-    clearTimeout(reroute);
-  };
 }

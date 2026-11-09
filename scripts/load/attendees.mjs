@@ -131,7 +131,12 @@ async function call(route, method, path, { token, body, force = false, meta } = 
     const text = await res.text();
     let json = null;
     try { json = JSON.parse(text); } catch { /* not JSON */ }
-    if (res.status === 404 && !json?.error?.code) stats.unimplemented.add(route);
+    // Not built yet: a 404 from the router itself. The API's catch-all answers
+    // {error:{code:'not_found', message:'No route for …'}}; a 404 for a missing
+    // entity (session_not_found, a gone question) keeps the route in play.
+    const routeMissing = !json?.error?.code
+      || (json.error.code === 'not_found' && /^No route/.test(json.error.message ?? ''));
+    if (res.status === 404 && routeMissing) stats.unimplemented.add(route);
     return res.ok ? json ?? {} : null;
   } catch (e) {
     status = e?.name === 'TimeoutError' ? 'TIMEOUT' : 'ERR';

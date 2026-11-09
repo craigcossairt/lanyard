@@ -122,9 +122,11 @@ class MemoryBus implements Bus {
   }
   async replay(channel: Channel, afterId: string): Promise<Replay> {
     const buf = this.buffers.get(channel) ?? [];
+    const first = buf[0]?.id;
+    const trimmed = buf.length >= REPLAY_MAX && !!first && compareIds(first, afterId) > 0;
     return {
       entries: buf.filter((e) => compareIds(e.id, afterId) > 0),
-      complete: idAgeMs(afterId) <= REPLAY_TTL_MS,
+      complete: idAgeMs(afterId) <= REPLAY_TTL_MS && !trimmed,
     };
   }
   async close() {}
@@ -214,12 +216,26 @@ class ValkeyBus implements Bus {
   async replay(channel: Channel, afterId: string): Promise<Replay> {
     if (idAgeMs(afterId) > REPLAY_TTL_MS) return { entries: [], complete: false };
     try {
-      const rows = await this.pub.xrange(bufKey(channel), `(${afterId}`, '+', 'COUNT', REPLAY_MAX);
+      const key = bufKey(channel);
+      const [rowsRes, firstRes, lenRes] =
+        (await this.pub
+          .multi()
+          .xrange(key, `(${afterId}`, '+', 'COUNT', REPLAY_MAX)
+          .xrange(key, '-', '+', 'COUNT', 1)
+          .xlen(key)
+          .exec()) ?? [];
+      const rows = (rowsRes?.[1] ?? []) as [string, string[]][];
+      const first = ((firstRes?.[1] ?? []) as [string, string[]][])[0]?.[0];
+      const len = Number(lenRes?.[1] ?? 0);
       const entries = rows.flatMap(([id, fields]) => {
         const r = RealtimeMessage.safeParse(JSON.parse(fields[1] ?? 'null'));
         return r.success ? [{ id, msg: r.data }] : [];
       });
-      return { entries, complete: true };
+      // A capped buffer whose oldest entry is newer than the cursor may have been trimmed
+      // past it: coverage is unproven, so the caller sends a snapshot. (A missing key means
+      // nothing was published on this channel for 2x the TTL, so nothing was missed.)
+      const trimmed = len >= REPLAY_MAX * 0.9 && !!first && compareIds(first, afterId) > 0;
+      return { entries, complete: !trimmed };
     } catch (err) {
       logger.warn({ err: (err as Error).message }, 'replay read failed');
       return { entries: [], complete: false };

@@ -18,6 +18,7 @@ import {
   METRICS,
   type Channel,
   type RealtimeMessage,
+  type SseReady,
 } from '@lanyard/contracts';
 import { compareIds, isEventId } from './bus';
 import { getBus } from './context';
@@ -122,7 +123,12 @@ export function openSse(req: FastifyRequest, reply: FastifyReply, opts: SseOptio
   // the Last-Event-ID replay covered the gap (client keeps its state) or the client must
   // refetch its snapshot. If subscribing takes > 2 s, `ready {live:false}` goes first.
   const ready = (live: boolean, resumed: boolean) =>
-    send('ready', { channels: subs.map(channelKind), retryMs: RETRY_MS, live, resumed });
+    send('ready', {
+      channels: subs.map(channelKind),
+      retryMs: RETRY_MS,
+      live,
+      resumed,
+    } satisfies SseReady);
   let readyTimer: NodeJS.Timeout | undefined = setTimeout(() => {
     readyTimer = undefined;
     ready(false, false);

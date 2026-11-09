@@ -24,6 +24,8 @@ export interface SseOptions {
 
 const MAX_BACKOFF_MS = 30_000;
 const SEEN_MAX = 500;
+/** A stream that lived this long was healthy: its next unannounced end retries at once. */
+const HEALTHY_MS = 5_000;
 
 /** Parse complete SSE frames out of `buf`; returns the unconsumed remainder. */
 export function parseSse(
@@ -76,13 +78,15 @@ export function useSse(
     let attempt = 0;
     let retryMs = 2_000;
     let everOpen = false;
-    let degraded = false; // got ready {live:false}; refetch on the following live:true
+    let degraded = false; // got ready {live:false}; recover on the following live:true
     let lastId: string | undefined;
     const seen = new Set<string>(); // dedupe replayed messages by id
 
     const run = async () => {
       while (!ac.signal.aborted) {
-        let clean = false; // server rotated the stream on purpose
+        let clean = false; // server announced a rotation (`event: reconnect`)
+        let resync = false; // we dropped the stream on purpose to get a fresh snapshot
+        const conn = new AbortController();
         const openedAt = Date.now();
         try {
           if (!everOpen) setStatus('connecting');
@@ -92,7 +96,7 @@ export function useSse(
               accept: 'text/event-stream',
               ...(lastId ? { 'last-event-id': lastId } : {}),
             },
-            signal: ac.signal,
+            signal: AbortSignal.any([ac.signal, conn.signal]),
             cache: 'no-store',
           });
           if (!res.ok || !res.body) throw new Error(`stream ${res.status}`);
@@ -112,16 +116,25 @@ export function useSse(
                 const r = parsed as { retryMs?: number; live?: boolean; resumed?: boolean };
                 if (r.retryMs) retryMs = r.retryMs;
                 setStatus('open');
-                attempt = 0;
                 other.current?.(event, parsed);
                 if (r.live === false) {
                   degraded = true;
                   return;
                 }
-                // Resumed = the server replayed the gap; otherwise refetch the snapshot.
-                if ((everOpen && !r.resumed) || degraded) reconnect.current?.();
+                if (degraded) {
+                  // Live only now: whatever was published between the server's snapshot and
+                  // this point may be missing. Recover via onReconnect, or else reopen the
+                  // stream without Last-Event-ID so the server sends a fresh snapshot.
+                  degraded = false;
+                  if (reconnect.current) reconnect.current();
+                  else {
+                    lastId = undefined;
+                    resync = true;
+                    conn.abort();
+                    return;
+                  }
+                } else if (everOpen && !r.resumed) reconnect.current?.();
                 everOpen = true;
-                degraded = false;
                 return;
               }
               if (id) {
@@ -138,14 +151,16 @@ export function useSse(
         } catch {
           if (ac.signal.aborted) break;
         }
-        // Only an announced rotation (`event: reconnect`) is clean: reconnect at once and keep
-        // the UI "open". A stream that rotates right after opening is treated as a failure.
-        if (clean && Date.now() - openedAt > 1_000) {
+        const lived = Date.now() - openedAt;
+        // Announced rotation or deliberate resync: reconnect at once, UI stays "open".
+        if (resync || (clean && lived > 1_000)) {
           attempt = 0;
           continue;
         }
-        // Unannounced end or error: the first retry is still immediate (attempt was reset
-        // by `ready`), then exponential backoff.
+        // Unannounced end or error. A connection that was healthy for a while (e.g. cut by a
+        // proxy) retries immediately; quick repeated failures (even ones that sent `ready`
+        // first) keep backing off, so a failing dependency isn't hammered.
+        if (lived >= HEALTHY_MS) attempt = 0;
         const delay = reconnectDelay(attempt, retryMs);
         attempt++;
         if (attempt > 1) setStatus('reconnecting');

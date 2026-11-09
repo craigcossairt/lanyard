@@ -1,8 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import type { Session } from '@lanyard/contracts';
+import {
+  Banner,
+  Button,
+  CaptionStream,
+  LivePill,
+  Meter,
+  QuestionItem,
+  QuestionList,
+  SIGNALS,
+  StatusPill,
+  TextInput,
+} from '../../ui';
 import { buildClusterViews } from '../attendee/components/QuestionList';
-import { ATTENDEE_SIGNALS } from '../attendee/components/SignalBar';
 import { useEventView } from '../attendee/lib/event';
 import { cachedSessions } from '../attendee/lib/schedule';
 import { useEventId, useSession } from '../attendee/lib/session';
@@ -80,44 +91,47 @@ function Console({ id }: { id: string }) {
   };
 
   const listening = captions.state === 'listening' || captions.state === 'starting';
+  const lines = captions.recent.map((text, i) => ({ id: `${i}-${text.slice(0, 12)}`, text }));
+  const captionStatus = lines.length === 0 && !captions.interim ? 'waiting' : 'live';
 
   return (
     <div className={`sp-page${stage ? ' sp-page--stage' : ''}`}>
       <header className="sp-header">
-        <a href="#main" className="at-skip">
+        <a href="#main" className="ly-sr-only sp-skip">
           Skip to content
         </a>
         <Link to="/s" className="sp-back" aria-label="Back to session list">
-          <span aria-hidden="true">‹</span> Sessions
+          ‹ Sessions
         </Link>
         <div className="sp-header__title">
           <h1>{session?.title ?? 'Speaker console'}</h1>
-          <p className="sp-muted">
-            {live.ended ? (
-              <span className="sp-pill">Ended</span>
-            ) : (
-              <span className="sp-pill sp-pill--live">● Live</span>
+          <p className="sp-header__pills">
+            {live.ended ? <StatusPill tone="neutral">Ended</StatusPill> : <LivePill />}
+            {listening && (
+              <StatusPill tone="crit" icon="mic">
+                Captions on
+              </StatusPill>
             )}
-            {live.stream === 'reconnecting' && <span> · Reconnecting…</span>}
+            {live.stream === 'reconnecting' && (
+              <StatusPill tone="warn" icon="offline">
+                Reconnecting
+              </StatusPill>
+            )}
           </p>
         </div>
         <div className="sp-header__stats" aria-live="polite">
           <span className="sp-stat">
-            <strong>{attendance}</strong> <span className="sp-stat__label">in the room</span>
+            <strong className="ly-num">{attendance}</strong>{' '}
+            <span className="sp-stat__label">in the room</span>
           </span>
           <span className="sp-stat">
-            <strong>{openClusters.length}</strong>{' '}
+            <strong className="ly-num">{openClusters.length}</strong>{' '}
             <span className="sp-stat__label">open questions</span>
           </span>
         </div>
-        <button
-          type="button"
-          className="sp-btn"
-          aria-pressed={stage}
-          onClick={() => setStage((s) => !s)}
-        >
+        <Button variant="ghost" aria-pressed={stage} onClick={() => setStage((s) => !s)}>
           {stage ? 'Exit stage mode' : 'Stage mode'}
-        </button>
+        </Button>
       </header>
 
       <main id="main" className="sp-main sp-grid">
@@ -125,36 +139,36 @@ function Console({ id }: { id: string }) {
           <div className="sp-panel__head">
             <h2 id="cap-h">Captions</h2>
             {captions.supported && !live.ended && (
-              <button
-                type="button"
-                className={`sp-btn sp-btn--lg ${listening ? '' : 'sp-btn--primary'}`}
+              <Button
+                variant={listening ? 'secondary' : 'primary'}
+                size="lg"
+                icon="mic"
                 aria-pressed={listening}
                 onClick={listening ? captions.stop : captions.start}
                 disabled={!canSpeak}
               >
-                <span aria-hidden="true">{listening ? '⏹' : '🎙'}</span>{' '}
                 {listening ? 'Stop captions' : 'Start captions'}
-              </button>
+              </Button>
             )}
           </div>
           {!canSpeak && (
-            <p className="sp-banner" role="status">
+            <Banner tone="info">
               A speaker link is needed to publish captions. Ask the organizer for one, then open it
               in this browser.
-            </p>
+            </Banner>
           )}
           {!captions.supported && (
-            <p className="sp-banner" role="status">
+            <Banner tone="info">
               This browser has no speech recognition. Use Chrome or Edge for mic captions, or type
               live notes below: they reach attendees as captions too.
-            </p>
+            </Banner>
           )}
           {captions.error && (
-            <p className="sp-banner sp-banner--warn" role="alert">
+            <Banner tone="warn" icon="warn">
               {captions.error}
-            </p>
+            </Banner>
           )}
-          <p className="sp-status" role="status">
+          <p className="sp-status ly-muted" role="status">
             {captions.state === 'listening' && (
               <>
                 <span className="sp-dot" aria-hidden="true" /> Listening. {captions.sentCount}{' '}
@@ -168,169 +182,127 @@ function Console({ id }: { id: string }) {
             {captions.state === 'blocked' && 'Microphone blocked.'}
           </p>
           {/* Screen readers hear each published caption once; interim text stays silent. */}
-          <div className="at-sr-only" aria-live="polite" aria-atomic="true">
+          <div className="ly-sr-only" aria-live="polite" aria-atomic="true">
             {captions.recent[captions.recent.length - 1] ?? ''}
           </div>
-          <div className="sp-captions" aria-label="What attendees see">
-            {captions.recent.map((line, i) => (
-              <p key={`${i}-${line.slice(0, 12)}`} className="sp-captions__final">
-                {line}
-              </p>
-            ))}
-            {captions.interim && (
-              <p className="sp-captions__interim" aria-hidden="true">
-                {captions.interim}
-              </p>
-            )}
-            {captions.recent.length === 0 && !captions.interim && (
-              <p className="sp-muted">Your words appear here as you speak.</p>
-            )}
-          </div>
+          <CaptionStream
+            lines={lines}
+            interim={captions.interim || undefined}
+            status={captionStatus}
+            size={stage ? 'stage' : 'wide'}
+            label="What attendees see"
+            waiting={{
+              title: 'Your words appear here as you speak',
+              body: 'Attendees see the same text on their phones, as large as they like.',
+            }}
+          />
           <form className="sp-notes" onSubmit={(e) => void sendNotes(e)}>
-            <label htmlFor="notes" className="sp-notes__label">
-              Typed live note (sent as a caption)
-            </label>
             <div className="sp-notes__row">
-              <input
-                id="notes"
-                className="sp-input"
+              <TextInput
+                label="Typed live note (sent as a caption)"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 maxLength={2000}
                 disabled={!canSpeak}
                 placeholder="e.g. Slides are at lanyard.dev/slides"
+                error={notesError ?? undefined}
               />
-              <button type="submit" className="sp-btn" disabled={!canSpeak || !notes.trim()}>
+              <Button type="submit" disabled={!canSpeak || !notes.trim()}>
                 Send
-              </button>
+              </Button>
             </div>
-            {notesError && (
-              <p role="alert" className="sp-error">
-                {notesError}
-              </p>
-            )}
           </form>
         </section>
 
         <section className="sp-panel sp-panel--questions" aria-labelledby="q-h">
           <h2 id="q-h">
             Questions{' '}
-            <span className="sp-muted sp-h2-sub">ranked by votes, then how many asked</span>
+            <span className="ly-muted sp-h2-sub">ranked by votes, then how many asked</span>
           </h2>
-          <div aria-live="polite" className="at-sr-only">
+          <div aria-live="polite" className="ly-sr-only">
             {openClusters.length} open questions
           </div>
           {answerError && (
-            <p role="alert" className="sp-banner sp-banner--warn">
+            <Banner tone="warn" icon="warn">
               {answerError}
-            </p>
+            </Banner>
           )}
           {openClusters.length === 0 ? (
-            <p className="sp-muted">
+            <p className="ly-muted">
               No open questions. Attendees ask from their phones; similar ones merge here.
             </p>
           ) : (
-            <ol className="sp-clusters">
+            <QuestionList label="Question clusters, ranked">
               {openClusters.map((c, i) => (
-                <li key={c.cluster.id} className="sp-cluster">
-                  <span className="sp-cluster__rank" aria-hidden="true">
-                    {i + 1}
-                  </span>
-                  <div className="sp-cluster__body">
-                    <p className="sp-cluster__text">
-                      {c.representative?.text || c.cluster.label || 'Question'}
-                    </p>
-                    <p className="sp-cluster__meta">
-                      <span>
-                        ▲ {c.votes} {c.votes === 1 ? 'vote' : 'votes'}
-                      </span>
-                      {c.size > 1 && <span>· {c.size} people asked this</span>}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="sp-btn"
-                    aria-pressed={false}
-                    disabled={!canSpeak}
-                    onClick={() => toggleAnswered(c.cluster.id, true)}
-                  >
-                    Answered
-                  </button>
-                </li>
+                <QuestionItem
+                  key={c.cluster.id}
+                  size={stage ? 'stage' : 'default'}
+                  rank={i + 1}
+                  label={c.representative?.text || c.cluster.label || 'Question'}
+                  votes={c.votes}
+                  askers={c.size}
+                  actions={
+                    <Button
+                      aria-pressed={false}
+                      disabled={!canSpeak}
+                      onClick={() => toggleAnswered(c.cluster.id, true)}
+                    >
+                      Answered
+                    </Button>
+                  }
+                />
               ))}
-            </ol>
+            </QuestionList>
           )}
           {answeredClusters.length > 0 && (
             <details className="sp-answered">
               <summary>{answeredClusters.length} answered</summary>
-              <ul className="sp-clusters sp-clusters--done">
+              <QuestionList label="Answered questions">
                 {answeredClusters.map((c) => (
-                  <li key={c.cluster.id} className="sp-cluster">
-                    <div className="sp-cluster__body">
-                      <p className="sp-cluster__text">
-                        {c.representative?.text || c.cluster.label}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      className="sp-btn sp-btn--sm"
-                      aria-pressed
-                      disabled={!canSpeak}
-                      onClick={() => toggleAnswered(c.cluster.id, false)}
-                    >
-                      ✓ Answered
-                    </button>
-                  </li>
+                  <QuestionItem
+                    key={c.cluster.id}
+                    label={c.representative?.text || c.cluster.label || 'Question'}
+                    votes={c.votes}
+                    askers={c.size}
+                    answered
+                    actions={
+                      <Button
+                        aria-pressed
+                        disabled={!canSpeak}
+                        onClick={() => toggleAnswered(c.cluster.id, false)}
+                      >
+                        Answered
+                      </Button>
+                    }
+                  />
                 ))}
-              </ul>
+              </QuestionList>
             </details>
           )}
         </section>
 
         <section className="sp-panel sp-panel--signals" aria-labelledby="sig-h">
           <h2 id="sig-h">
-            Room signals <span className="sp-muted sp-h2-sub">last 60 seconds</span>
+            Room signals <span className="ly-muted sp-h2-sub">last 60 seconds</span>
           </h2>
-          <ul className="sp-meters">
-            {ATTENDEE_SIGNALS.map((s) => {
+          <div className="sp-meters">
+            {SIGNALS.map((s) => {
               const n = live.signals[s.type] ?? 0;
               const denom = Math.max(attendance, 1);
-              const ratio = Math.min(1, n / denom);
-              const tone =
-                s.type === 'thumbs_up'
-                  ? 'ok'
-                  : ratio >= 0.15
-                    ? 'crit'
-                    : ratio >= 0.05
-                      ? 'warn'
-                      : 'neutral';
+              const thresholds = s.type === 'thumbs_up' ? {} : { warnAt: 0.05, critAt: 0.15 };
               return (
-                <li key={s.type} className={`sp-meter sp-meter--${tone}`}>
-                  <div className="sp-meter__head">
-                    <span>
-                      <span aria-hidden="true">{s.icon}</span> {s.label}
-                    </span>
-                    <strong>
-                      {n} <span className="sp-meter__unit">{n === 1 ? 'person' : 'people'}</span>
-                    </strong>
-                  </div>
-                  <div
-                    className="sp-meter__bar"
-                    role="meter"
-                    aria-valuemin={0}
-                    aria-valuemax={denom}
-                    aria-valuenow={n}
-                    aria-label={`${s.label}: ${n} of ${attendance} people`}
-                  >
-                    <div
-                      className="sp-meter__fill"
-                      style={{ width: `${Math.round(ratio * 100)}%` }}
-                    />
-                  </div>
-                </li>
+                <Meter
+                  key={s.type}
+                  size={stage ? 'lg' : 'default'}
+                  label={s.label}
+                  value={n}
+                  max={denom}
+                  valueText={`${n} ${n === 1 ? 'person' : 'people'}`}
+                  {...thresholds}
+                />
               );
             })}
-          </ul>
+          </div>
         </section>
       </main>
     </div>

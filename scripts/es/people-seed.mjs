@@ -75,7 +75,7 @@ export async function seedPeople({ reset = false } = {}) {
         operation.error?.type === 'inference_exception' &&
         attempt < 4
       ) {
-        await delay(500 * 2 ** attempt);
+        await delay(2_000 * 2 ** attempt);
         continue;
       }
       const key = `${operation?.status ?? 'unknown'}:${operation?.error?.type ?? 'unknown'}`;

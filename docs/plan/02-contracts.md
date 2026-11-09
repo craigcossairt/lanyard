@@ -25,7 +25,7 @@ WS0 (Platform) turns this document into the shared TypeScript types package in t
 Build: a single Dockerfile builds the web app, then the API and worker, and produces one image. The `app` Deployment runs the API, which serves the SPA from `/`. The `worker` Deployment runs the same image with the worker entry command. Every app listens on `$PORT` (8080) and exposes `/healthz` and `/readyz`.
 
 ## 2. Domain model
-All ids are opaque strings. All times are **UTC ISO-8601** in storage and transit. They are rendered in the event's IANA timezone (`America/Denver`) **only** through the shared time helper.
+All ids are opaque strings. All times are **UTC ISO-8601** in storage and transit. **Field names are camelCase and identical in ES documents, `packages/contracts` types and API payloads**: e.g. `startsAt`, `endsAt`, `eventId`, `roomId`, `speakerIds`, `venueName`, `joinCode`, `capacity`, `floor`, `x`, `y`, `accessibility: { stepFree, hearingLoop, quiet }` (booleans). Events, rooms and speakers live in ES (`cnh-events`, `cnh-rooms`, `cnh-speakers`); the API caches them in memory (30 s TTL). Sessions are in `cnh-sessions`, because organizers add CNH Demos sessions live. They are rendered in the event's IANA timezone (`America/Denver`) **only** through the shared time helper.
 
 | Entity | Key fields | Notes |
 |---|---|---|
@@ -49,7 +49,10 @@ Each index has a `semantic` field of type `semantic_text` where noted. It uses t
 
 | Index | Mappings (described) | Queries it serves |
 |---|---|---|
-| `cnh-sessions` | text: title, abstract. keyword: eventId, roomId, track, level, tags, speakerIds, status. date: starts at, ends at. semantic_text: title plus abstract plus speaker names | Hybrid search (BM25 plus semantic, fused with RRF), nearest-session for reroute, "build my day" RAG |
+| `cnh-sessions` | text: title, abstract, speakerNames (denormalized). keyword: eventId, roomId, track, level, tags, speakerIds, status. date: startsAt, endsAt. semantic_text: title plus abstract plus speaker names | Hybrid search (BM25 plus semantic, fused with RRF), nearest-session for reroute, "build my day" RAG |
+| `cnh-events` | keyword: id, joinCode, timezone. text: name, venueName. date: startsAt, endsAt | Event lookup by id or join code |
+| `cnh-rooms` | keyword: id, eventId. text: name. integer: capacity, floor. float: x, y. boolean: accessibility.stepFree, accessibility.hearingLoop, accessibility.quiet | Room list per event, capacity for occupancy |
+| `cnh-speakers` | keyword: id. text: name, title, company, bio | Speaker details for session pages |
 | `cnh-transcripts` | keyword: sessionId, eventId, lang, source. integer: seq. date: times. text plus semantic_text: text | Catch-me-up (last N minutes, by time), "ask the conference" RAG across sessions |
 | `cnh-questions` | keyword: sessionId, eventId, anonId, clusterId, status. integer: votes. date: at. semantic_text: text | Duplicate detection (top-1 semantic similarity within the session above a threshold, so it joins that cluster), clustering, digest |
 | `cnh-signals` | keyword: sessionId, roomId, eventId, type, anonId. date: at | Aggregations by type over time windows |

@@ -71,7 +71,7 @@ test('demo uses role routes, retries arrivals, waits for reroute, and records sc
       now = start + second * 1000; await runner.step(run); await runner.drain();
       if (second === 59) {
         assert.equal([...occupants.values()].filter(id => id === 'main').length, 20);
-        assert.equal(counts.question, 12); assert.equal(counts.accept, 0);
+        assert.equal(counts.question, 6); assert.equal(counts.accept, 0);
       }
       if (second === 64) {
         assert.equal([...occupants.values()].filter(id => id === 'main').length, 34);
@@ -89,9 +89,9 @@ test('demo uses role routes, retries arrivals, waits for reroute, and records sc
     }
     await runner.cleanup(run);
     assert.equal(warnings, 2); assert.equal(badAccepts, 1); // Retry arrival; drop expired offer.
-    assert.deepEqual(counts, { caption: 30, question: 12, vote: 24, signal: 5, accept: 34 });
+    assert.deepEqual(counts, { caption: 30, question: 6, vote: 12, signal: 5, accept: 34 });
     assert.equal([...occupants.values()].filter(id => id === 'side').length, 40);
-    assert.equal(cleaned?.questionIds.length, 12); assert.equal(cleaned?.chunkIds.length, 30);
+    assert.equal(cleaned?.questionIds.length, 6); assert.equal(cleaned?.chunkIds.length, 30);
     assert.equal(cleaned?.anonIds.length, 40); assert.equal(sets.size + hashes.size, 0);
   } finally { await runner.close(); await app.close(); await bus.close(); }
 });

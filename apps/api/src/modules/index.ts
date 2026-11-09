@@ -2,7 +2,8 @@
 // Keep the list sorted to avoid merge conflicts; see docs/plan/HOWTO-modules.md.
 import type { LanyardModule } from '../core/module';
 import live from './live';
+import people from './people';
 import ops from './ops';
 import search from './search';
 
-export const modules: LanyardModule[] = [live, ops, search];
+export const modules: LanyardModule[] = [live, ops, people, search];

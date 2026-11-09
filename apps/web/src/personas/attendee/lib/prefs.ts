@@ -14,8 +14,10 @@ export interface DisplayPrefs {
 }
 export interface PersonalPrefs {
   language: string;
-  /** Opt-in, free text. Only sent when the person saves it. */
+  /** Free text, kept on the device for Plan my day. */
   interests: string;
+  /** Opt-in: only when true do interests ever leave the device (PUT /me/prefs). */
+  shareInterests: boolean;
 }
 export type Prefs = DisplayPrefs & PersonalPrefs;
 
@@ -32,6 +34,7 @@ function defaults(): Prefs {
     reduceMotion: media('(prefers-reduced-motion: reduce)'),
     language: (typeof navigator !== 'undefined' && navigator.language.split('-')[0]) || 'en',
     interests: '',
+    shareInterests: false,
   };
 }
 
@@ -66,13 +69,13 @@ export function applyPrefs(p: DisplayPrefs = read()): void {
 
 function write(next: Prefs, mirror: boolean): void {
   current = next;
-  const { theme, captionSize, readable, reduceMotion, language, interests } = next;
+  const { theme, captionSize, readable, reduceMotion, language, interests, shareInterests } = next;
   try {
     localStorage.setItem(
       DISPLAY_KEY,
       JSON.stringify({ theme, captionSize, readable, reduceMotion }),
     );
-    localStorage.setItem(PERSONAL_KEY, JSON.stringify({ language, interests }));
+    localStorage.setItem(PERSONAL_KEY, JSON.stringify({ language, interests, shareInterests }));
   } catch {
     // Private mode: this visit only.
   }
@@ -82,7 +85,8 @@ function write(next: Prefs, mirror: boolean): void {
     const body: PrefsRequest = {
       accessibility: { theme, captionSize, readable, reduceMotion },
       language,
-      ...(interests.trim() ? { interests: interests.trim() } : {}),
+      // Interests are sent only after the person explicitly opted in on Settings.
+      ...(shareInterests && interests.trim() ? { interests: interests.trim() } : {}),
     };
     void api.put('/me/prefs', body).catch(() => undefined);
   }

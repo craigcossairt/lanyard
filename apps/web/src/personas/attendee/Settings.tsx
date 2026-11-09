@@ -30,11 +30,13 @@ export default function Settings() {
   const me = useSession();
   const { prefs, setPrefs } = usePrefs();
   const [interests, setInterests] = useState(prefs.interests);
+  const [share, setShare] = useState(prefs.shareInterests);
   const [saved, setSaved] = useState(false);
 
   const saveInterests = (e: React.FormEvent) => {
     e.preventDefault();
-    setPrefs({ interests: interests.trim() });
+    // Saving is the opt-in moment: interests reach the server only with the box ticked.
+    setPrefs({ interests: interests.trim(), shareInterests: share });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -136,9 +138,12 @@ export default function Settings() {
             maxLength={500}
             placeholder="e.g. eBPF, platform engineering, running Postgres on Kubernetes"
           />
+          <label className="at-check">
+            <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} />
+            Share my interests with the event to plan my day and suggest booths
+          </label>
           <p className="at-muted at-hint">
-            Only used to plan your day and, if you choose, to match you with booths. Never shown
-            with your handle.
+            Unticked, interests stay on this device. Never shown with your handle either way.
           </p>
           <div className="at-sheet__actions">
             <button type="submit" className="at-btn at-btn--primary">

@@ -98,7 +98,18 @@ const DECR_CLAMP = `local n = redis.call('DECR', KEYS[1])
 if n <= 0 then redis.call('DEL', KEYS[1]) return 0 end
 redis.call('EXPIRE', KEYS[1], ARGV[1]) return n`;
 
+/**
+ * Last stream close per attendee. Streams rotate every ~12 s (the gateway cuts at 15 s), so
+ * a grace timer from an older close can fire inside a later reconnect gap with conns at 0.
+ * The leave therefore requires 30 s with no stream at all, measured from the LAST close.
+ * (WS0 ownership exception for the SSE P0 fix, approved by the orchestrator.)
+ */
+const seenKey = (anonId: string) => `live:seen:${anonId}`;
+
 function onAttendeeClose(anonId: string): void {
+  void kv()
+    .set(seenKey(anonId), String(Date.now()), 'EX', CONNS_TTL_S)
+    .catch(() => undefined);
   void (kv().eval(DECR_CLAMP, 1, keys.conns(anonId), CONNS_TTL_S) as Promise<number>)
     .then((n) => {
       if (n > 0) return;
@@ -114,11 +125,14 @@ function onAttendeeClose(anonId: string): void {
 async function graceExpired(anonId: string): Promise<void> {
   try {
     const r = kv();
-    const [conns, at] = await Promise.all([
+    const [conns, at, seen] = await Promise.all([
       r.get(keys.conns(anonId)),
       r.hget(keys.attendeeAt(anonId), 'sessionId'),
+      r.get(seenKey(anonId)),
     ]);
     if (Number(conns ?? 0) > 0 || !at) return;
+    // A newer close exists: its own timer decides (no flapping across rotations).
+    if (seen && Date.now() - Number(seen) < GRACE_MS - 1_000) return;
     const s = await getLiveSession(at);
     await applyPresence(s, anonId, 'leave');
     await r.set(keys.graceLeft(anonId), s.id, 'EX', CONNS_TTL_S);
@@ -139,38 +153,52 @@ export function registerStream(app: FastifyInstance): void {
       req.raw.on('close', () => (gone = true));
       // Subscribe first and buffer live messages until the snapshot is out, so nothing
       // published while the snapshot is read gets lost.
-      let buffer: RealtimeMessage[] | undefined = [];
+      // Message ids are kept so the client's Last-Event-ID keeps advancing.
+      let buffer: { m: RealtimeMessage; id?: string }[] | undefined = [];
       const conn = openSse(req, reply, {
         channels: [channels.session(s.id)],
-        filter: (msg) => {
+        filter: (msg, _c, id) => {
           if (!buffer) return msg;
-          buffer.push(msg);
+          buffer.push({ m: msg, id });
           return undefined;
         },
       });
-      // Read state only once the session channel is live on Valkey (max 2 s), so the
-      // buffer above covers everything published after the snapshot's reads.
-      const probe = getBus().subscribe(channels.session(s.id), () => {});
-      await Promise.race([probe.ready, new Promise((r) => setTimeout(r, 2_000))]);
-      probe();
-      let snap: LiveSnapshot;
-      try {
-        snap = await buildSnapshot(s);
-      } catch {
-        conn.send('error', { error: { code: 'snapshot_failed', message: 'Retry shortly' } });
-        conn.close();
-        return;
-      }
-      conn.send('snapshot', snap);
-      const pending = buffer;
-      buffer = undefined;
-      // Drop buffered messages the snapshot already contains.
-      const maxSeq = Math.max(-1, ...snap.payload.captions.map((c) => c.seq));
-      const seen = new Set(snap.payload.questions.map((q) => q.id));
-      for (const m of pending) {
-        if (m.type === 'caption.appended' && m.payload.seq <= maxSeq) continue;
-        if (m.type === 'question.created' && seen.has(m.payload.questionId)) continue;
-        conn.send(m.type, m);
+      // Streams rotate every ~12 s (the gateway cuts at 15 s). A reconnect with a valid
+      // Last-Event-ID gets the missed delta replayed by core: no snapshot needed.
+      // (WS0 ownership exception: the reconnect-cheapness change, approved by the orchestrator.)
+      const resumed = await Promise.race([
+        conn.resumed,
+        new Promise<boolean>((r) => setTimeout(() => r(false), 2_000)),
+      ]);
+      if (resumed) {
+        const pending = buffer;
+        buffer = undefined;
+        for (const p of pending) conn.send(p.m.type, p.m, p.id);
+      } else {
+        // Read state only once the session channel is live on Valkey (max 2 s), so the
+        // buffer above covers everything published after the snapshot's reads.
+        const probe = getBus().subscribe(channels.session(s.id), () => {});
+        await Promise.race([probe.ready, new Promise((r) => setTimeout(r, 2_000))]);
+        probe();
+        let snap: LiveSnapshot;
+        try {
+          snap = await buildSnapshot(s);
+        } catch {
+          conn.send('error', { error: { code: 'snapshot_failed', message: 'Retry shortly' } });
+          conn.close();
+          return;
+        }
+        conn.send('snapshot', snap);
+        const pending = buffer;
+        buffer = undefined;
+        // Drop buffered messages the snapshot already contains.
+        const maxSeq = Math.max(-1, ...snap.payload.captions.map((c) => c.seq));
+        const seen = new Set(snap.payload.questions.map((q) => q.id));
+        for (const { m, id } of pending) {
+          if (m.type === 'caption.appended' && m.payload.seq <= maxSeq) continue;
+          if (m.type === 'question.created' && seen.has(m.payload.questionId)) continue;
+          conn.send(m.type, m, id);
+        }
       }
 
       // A client that left while the snapshot was read gets no bookkeeping: its close

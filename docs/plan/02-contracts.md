@@ -119,7 +119,17 @@ Channels: `session:<id>`, `ops:<eventId>`, `user:<anonId>`. Each message has `ty
 | `reroute.suggested` | user | recommendation |
 | `session.status` | session, ops | live or ended |
 
-The client reconnects with exponential backoff and refetches the snapshot after reconnecting.
+**Stream lifecycle (the platform gateway ends every response at 15 s):**
+- Every realtime message carries an SSE `id:` (`<ms>-<seq>`, globally ordered across channels). The bus keeps about 60 s of messages per channel (capped) for replay.
+- The server ends each response cleanly at about 12 s with `event: reconnect` (`data: {"reason":"max-stream"}`, `retry: 0`).
+- The client reconnects **immediately**, sending `Last-Event-ID`. The server replays every message after that id, deduplicated and in order.
+- `event: ready` reports `{ channels, retryMs, live, resumed }`:
+  - `live:false` means subscriptions are still pending, and a `ready {live:true}` follows.
+  - `resumed:true` means the gap was replayed, so the client keeps its state and routes skip the full `snapshot`.
+  - `resumed:false` (no id, or an expired or trimmed id) means the route sends its `snapshot` frame, or the client refetches its snapshot.
+- Unannounced ends and errors: the first retry is immediate when the stream had been healthy for at least 5 s; after that, exponential backoff.
+- Comment heartbeats (`: hb`) every 5 s.
+- Types: `SseReady` and `SseReconnect` in `packages/contracts`. Web client: `useSse` (`apps/web/src/app/sse.ts`).
 
 ### Valkey live-state keys
 

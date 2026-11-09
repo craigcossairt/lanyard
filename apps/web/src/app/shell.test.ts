@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { ApiError } from './api';
 import { decodeClaims } from './auth';
 import { parseSse, reconnectDelay } from './sse';
 
@@ -41,4 +42,12 @@ test('parseSse surfaces ids; first reconnect is immediate, then backoff', () => 
   ]);
   assert.equal(reconnectDelay(0, 2000), 0);
   assert.ok(reconnectDelay(1, 2000) >= 1500);
+});
+
+test('ApiError shows a friendly sentence and keeps the server text as detail', () => {
+  const e = new ApiError(503, 'worker_unavailable', 'WORKER_URL is not set');
+  assert.equal(e.message, 'That isn’t available right now. Try again in a moment.');
+  assert.equal(e.detail, 'WORKER_URL is not set');
+  assert.equal(e.code, 'worker_unavailable');
+  assert.match(new ApiError(403, 'bad_join_code', 'x').message, /join code/);
 });

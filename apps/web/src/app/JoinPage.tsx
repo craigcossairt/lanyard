@@ -34,9 +34,11 @@ export function JoinPage() {
       navigate(homeFor(res.role), { replace: true });
     } catch (err) {
       setError(
-        err instanceof ApiError && (err.status === 404 || err.status === 400)
+        err instanceof ApiError && err.status === 404
           ? 'We couldn’t find that event or join code. Check it and try again.'
-          : 'Couldn’t join just now. Check your connection and try again.',
+          : err instanceof ApiError
+            ? err.message
+            : 'Couldn’t join just now. Check your connection and try again.',
       );
     } finally {
       setBusy(false);

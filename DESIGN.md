@@ -49,9 +49,17 @@ Q&A mode turns the rail into a one-at-a-time queue. Not started, a 2,000-person 
 - Time elapsed and time left sit top right; time left turns amber in the last 3 minutes.
 - Keyboard: arrow keys and Page Up/Down (clicker) step slides, Q toggles Q&A, A marks answered, N skips.
 
-### Organizer board
+### Organizer ops board (laptop), floor plan with a time scrubber
 
-Not grilled yet; a round is in progress (`docs/design/grill-ops.html` on branch `design/ops-round1`). Until it lands, use `RoomTile`: a room as a service with SLO state shown as an edge colour, icon and word; occupancy as a meter with thresholds at 75% and 90%; and stats in monospace, the way an SRE console shows them. It's dense and calm, with colour only where something is wrong.
+Decided in three rounds (see the decision log). Rooms sit on a floor plan as services. The top row of each tile is always live: session, check-ins and SLO state, shown as an edge colour, icon and word. The second row follows the time scrubber and shows projected attendance for the chosen slot (live bars are solid; projected bars are striped). A reroute draws walking paths to the rooms with seats.
+
+![Ops board in an incident](docs/design/shots/ops-r3-incident.png)
+
+![Ops board states](docs/design/shots/ops-r3-states.png)
+
+- Use `RoomTile`'s states and thresholds: occupancy at risk at 75%, breached at 90%. A tile needs a second row for the scrubbed slot; add it to `RoomTile` as a prop rather than building a new tile.
+- Dashed edge: at risk or tight. Solid edge: breached or overflow risk. Always with the word.
+- Anything simulated is labelled **SIMULATED** on every view it touches.
 
 ### Components
 

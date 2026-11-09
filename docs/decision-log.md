@@ -1,5 +1,39 @@
 # Decision log
 
+## 2026-11-09: Organizer ops board is a floor plan with live tiles and a time scrubber
+
+**Decided in:** grill-design rounds 1–3, [`docs/design/grill-ops.html`](design/grill-ops.html). The rounds are commits `8d8bcee`, `da0ff3b` and `5df0039`, so git can show them side by side. States covered: live, incident, loading, not started, error with a simulated crowd, and 40 rooms; both events; laptop, projector and phone; all three themes.
+
+**Chosen: a floor plan with rich room tiles, plus a time scrubber.** Rooms sit where they are in the building, grouped by level. Each tile has two rows:
+
+- **Top row, always live:** the current session, check-ins against seats, and the SLO state (Healthy / At risk / Breached). The state shows as an edge colour, icon and word, and the edge always reflects live status.
+- **Second row, set by the scrubber:** the session in the chosen slot (Next, 13:00, 14:00…) and its projected attendance against seats. Projected = planned × show-up rate, and the board states the formula.
+
+The side panel follows the same split: live alerts first (with one-click **Reroute**, the accepted/suggested tally and per-room "+N" counts), then forecasts for the chosen slot. A reroute draws dashed walking paths from the full room to the rooms taking people. Ask the conference, the Simulator toggle (always labelled **SIMULATED**) and the Dash0 / SLO / Agent0 deep links sit in the header.
+
+**Why:** reroute is a walking problem. "The nearest session with seats" only makes sense on a map, and the demo moment (a room turns red and the presenter clicks Reroute, beat 0:55 in `06-demo.md`) reads best as a red room on a floor plan, with arcs to where people go. The scrubber turns the map into the schedule as well, so organizers see the next overflow before it happens. Keeping the top row live means a breach never disappears from the map while someone looks ahead.
+
+**Rejected in round 1** (reasons confirmed by the user):
+
+- **A, Service grid** (every room as a tile, worst first). It has no spatial sense, so "nearest room with seats" stays abstract.
+- **B, Pager inbox** (an alert queue drives a detail pane). It hides the floor until something fires.
+- **C, SLO table** (a sortable row per room with trend, burn rate and budget). Precise, but not glanceable on the projector.
+- **E, Incident commander** (the breaching room takes over the screen). It hides the rest of the floor and breaks "dense and calm".
+
+**Rejected in round 2:**
+
+- **D3, Map + room inspector:** puts the detail behind a click.
+- **D4, Room × time grid with a minimap** (pushback): the map shrinks to a minimap, losing the spatial read that won round 1.
+- **D2's whole-floor scrubber** (the scrubber replaces every tile): a live breach vanished from the map mid-incident. It survives only as the scrubber control, and it drives just the second row.
+
+**Constraints for building it (WS4):**
+
+- **Projected attendance needs a contract addition:** an organizer-side count of how many attendee schedules include each session, plus a show-up rate. The prototype uses 78% (checked in ÷ planned, from finished sessions). Coordinate with WS2 and the contracts owner. Until it lands, hide the second row and keep the live row.
+- **Floor positions:** rooms already have `floor` and `x`/`y`. With many rooms or no positions, fall back to a grid grouped by level, and drop the reroute arcs (keep the "+N rerouted in" labels).
+- **The CNH Demos event has two rooms,** and it's what the 17:30 demo uses. The design still works (Main Stage over capacity, an arc to Side Stage, a forecast for 17:00), but the floor looks sparse. Seed a few more rooms if the demo needs a fuller floor.
+- **Undecided:** what "Swap rooms…" and "Pre-announce" actually do (notify everyone who planned the session? move it in the schedule?). The prototype only shows a placeholder message for both; WS4 or the orchestrator decides.
+- **Projector:** only the incident view was sized for the room in round 1. For the demo, zoom the browser (the layout is fluid) or add a presentation zoom; don't redesign for it.
+
 ## 2026-11-09: Speaker console is a private presenter view that owns the deck (round 2, direction E)
 
 **Decided in:** grill-design rounds 1 and 2, [`docs/design/grill-speaker.html`](design/grill-speaker.html) (round 1 is in git history at `0fd4c41`). Each round had five variants, with live, Q&A, not started, loading, no speech API and too-much states, at laptop, confidence-monitor and phone widths, in all three themes.

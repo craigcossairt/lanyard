@@ -162,8 +162,12 @@ async function holdStream(a) {
     a.ctrl = new AbortController();
     const t = performance.now();
     try {
-      const url = `${cfg.target}/api/sessions/${enc(cfg.sessionId)}/stream?token=${enc(a.token)}`;
-      const res = await fetch(url, { headers: { accept: 'text/event-stream' }, signal: a.ctrl.signal });
+      // Contract §4: tokens never go in URLs; streams use fetch + Authorization.
+      const url = `${cfg.target}/api/sessions/${enc(cfg.sessionId)}/stream`;
+      const res = await fetch(url, {
+        headers: { accept: 'text/event-stream', authorization: `Bearer ${a.token}` },
+        signal: a.ctrl.signal,
+      });
       record(route, res.status, performance.now() - t);
       if (res.status === 404) { stats.unimplemented.add(route); await res.text(); return; }
       if (!res.ok || !res.body) throw new Error(`status ${res.status}`);

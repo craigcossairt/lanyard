@@ -14,7 +14,7 @@
 | `THINK_S` | 8 | Mean seconds between one attendee's actions (exponential) |
 | `MAX_RPS` | 40 | Shared cap on all requests per second (max 100) |
 
-Each attendee: `POST /api/events/:id/join` → `POST /api/sessions/:id/presence {kind:join}` → holds `GET /api/sessions/:id/stream?token=` (reconnects with backoff), then loops: 15% ask, 45% vote on a known question, 40% signal; finally `presence {kind:leave}`.
+Each attendee: `POST /api/events/:id/join` → `POST /api/sessions/:id/presence {kind:join}` → holds `GET /api/sessions/:id/stream` open with the token in the `Authorization` header, never the URL (reconnects with backoff), then loops: 15% ask, 45% vote on a known question, 40% signal; finally `presence {kind:leave}`.
 
 **Partial v1:** a route that returns 404 without a contract error body counts as not built yet; it is skipped for the rest of the run and listed in `notBuiltYet`.
 

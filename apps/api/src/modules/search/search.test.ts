@@ -38,6 +38,7 @@ test('search route and retrieval helpers smoke', async (t) => {
     status: 'scheduled',
   };
   const requests: estypes.SearchRequest[] = [];
+  let partial = false;
   const mocked = mock.method(
     esClient(),
     'search',
@@ -64,6 +65,7 @@ test('search route and retrieval helpers smoke', async (t) => {
           },
         };
       return {
+        timed_out: partial,
         hits: {
           hits: [
             {
@@ -122,5 +124,10 @@ test('search route and retrieval helpers smoke', async (t) => {
   assert.deepEqual(
     (await lastTranscriptChunks('talk', 10)).map((chunk) => chunk.seq),
     [1, 2],
+  );
+  partial = true;
+  assert.equal(
+    (await app.inject({ url: '/api/events/event/search?q=kernel', headers })).statusCode,
+    503,
   );
 });

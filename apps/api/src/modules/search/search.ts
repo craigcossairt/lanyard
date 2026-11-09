@@ -1,8 +1,8 @@
 import type { estypes } from '@elastic/elasticsearch';
 import { ES_INDICES, Session, type SearchQuery, type SearchResponse } from '@lanyard/contracts';
 import type { z } from 'zod';
-import { HttpError } from '../../core/errors';
 import { es } from '../../core/es';
+import { completeSearch } from './response';
 
 export type SearchInput = z.infer<typeof SearchQuery>;
 
@@ -46,11 +46,8 @@ export function searchRequest(eventId: string, input: SearchInput): estypes.Sear
 
 export async function searchSessions(eventId: string, input: SearchInput): Promise<SearchResponse> {
   const result = await es(ES_INDICES.sessions, 'search', (client, opts) =>
-    client.search<Session>(searchRequest(eventId, input), opts),
+    client.search<Session>(searchRequest(eventId, input), opts).then(completeSearch),
   );
-  if (result.timed_out || (result._shards?.failed ?? 0) > 0) {
-    throw new HttpError(503, 'search_incomplete', 'Search backend returned incomplete results');
-  }
   return {
     hits: result.hits.hits.flatMap((hit) => {
       const parsed = Session.safeParse({ ...hit._source, id: hit._id });

@@ -1,6 +1,7 @@
 import { ES_INDICES, Id, TranscriptChunk } from '@lanyard/contracts';
 import { HttpError } from '../../core/errors';
 import { es } from '../../core/es';
+import { completeSearch } from './response';
 
 // Conservative provisional Jina cosine-based score; calibrated pairs follow next slice.
 export const QUESTION_CLUSTER_THRESHOLD = 0.85;
@@ -22,24 +23,24 @@ export async function findQuestionCluster(input: {
     throw new HttpError(400, 'invalid_question', 'Invalid duplicate-question input');
   }
   const result = await es(ES_INDICES.questions, 'search', (client, opts) =>
-    client.search<{ clusterId: string }>(
-      {
-        index: ES_INDICES.questions,
-        size: 1,
-        _source: ['clusterId'],
-        query: {
-          bool: {
-            filter: [{ term: { eventId } }, { term: { sessionId } }],
-            must_not: [{ ids: { values: [questionId] } }, { term: { status: 'hidden' } }],
-            must: { semantic: { field: 'semantic', query: text } },
+    client
+      .search<{ clusterId: string }>(
+        {
+          index: ES_INDICES.questions,
+          size: 1,
+          _source: ['clusterId'],
+          query: {
+            bool: {
+              filter: [{ term: { eventId } }, { term: { sessionId } }],
+              must_not: [{ ids: { values: [questionId] } }, { term: { status: 'hidden' } }],
+              must: { semantic: { field: 'semantic', query: text } },
+            },
           },
         },
-      },
-      opts,
-    ),
+        opts,
+      )
+      .then(completeSearch),
   );
-  if (result.timed_out || (result._shards?.failed ?? 0) > 0)
-    throw new HttpError(503, 'search_incomplete', 'Duplicate search incomplete');
   const hit = result.hits.hits[0];
   const score = hit?._score ?? 0;
   const cluster = Id.safeParse(hit?._source?.clusterId);
@@ -64,33 +65,33 @@ export async function lastTranscriptChunks(
   }
   const now = Date.now();
   const result = await es(ES_INDICES.transcripts, 'search', (client, opts) =>
-    client.search<TranscriptChunk>(
-      {
-        index: ES_INDICES.transcripts,
-        size: 200,
-        _source: { excludes: ['semantic'] },
-        query: {
-          bool: {
-            filter: [
-              { term: { sessionId } },
-              {
-                range: {
-                  endedAt: {
-                    gte: new Date(now - minutes * 60_000).toISOString(),
-                    lte: new Date(now).toISOString(),
+    client
+      .search<TranscriptChunk>(
+        {
+          index: ES_INDICES.transcripts,
+          size: 200,
+          _source: { excludes: ['semantic'] },
+          query: {
+            bool: {
+              filter: [
+                { term: { sessionId } },
+                {
+                  range: {
+                    endedAt: {
+                      gte: new Date(now - minutes * 60_000).toISOString(),
+                      lte: new Date(now).toISOString(),
+                    },
                   },
                 },
-              },
-            ],
+              ],
+            },
           },
+          sort: [{ seq: 'desc' }],
         },
-        sort: [{ seq: 'desc' }],
-      },
-      opts,
-    ),
+        opts,
+      )
+      .then(completeSearch),
   );
-  if (result.timed_out || (result._shards?.failed ?? 0) > 0)
-    throw new HttpError(503, 'search_incomplete', 'Transcript search incomplete');
   return result.hits.hits
     .flatMap((hit) => {
       const chunk = TranscriptChunk.safeParse({ ...hit._source, id: hit._id });

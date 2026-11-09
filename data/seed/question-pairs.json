@@ -1,0 +1,122 @@
+[
+  {
+    "id": "capacity",
+    "original": "What happens when a room reaches its capacity?",
+    "query": "What do you do when the room fills up?",
+    "duplicate": true
+  },
+  {
+    "id": "captions",
+    "original": "Can I read captions without enabling my microphone?",
+    "query": "Do captions work for attendees who keep their mic off?",
+    "duplicate": true
+  },
+  {
+    "id": "kernel",
+    "original": "How does the kernel probe detect a suspicious process?",
+    "query": "How do kernel hooks identify a potentially malicious process?",
+    "duplicate": true
+  },
+  {
+    "id": "gitops",
+    "original": "How can we undo a broken GitOps deployment?",
+    "query": "What is the rollback procedure if a GitOps release fails?",
+    "duplicate": true
+  },
+  {
+    "id": "signals",
+    "original": "How often can an attendee send the louder signal?",
+    "query": "Is there a rate limit on asking the speaker to be louder?",
+    "duplicate": true
+  },
+  {
+    "id": "privacy",
+    "original": "Do you store attendee names or email addresses?",
+    "query": "Is any attendee personally identifiable information retained?",
+    "duplicate": true
+  },
+  {
+    "id": "summary",
+    "original": "Can I get a summary of the last ten minutes?",
+    "query": "How do I catch up on what was said in the previous ten minutes?",
+    "duplicate": true
+  },
+  {
+    "id": "inference",
+    "original": "Does indexing generate the embeddings automatically?",
+    "query": "Are vectors computed automatically when a document is ingested?",
+    "duplicate": true
+  },
+  {
+    "id": "seats",
+    "original": "How does the alternative talk recommendation find available seats?",
+    "query": "How does rerouting choose another session that has room?",
+    "duplicate": true
+  },
+  {
+    "id": "question",
+    "original": "Can a speaker mark a question as answered?",
+    "query": "How can presenters flag questions that they have already addressed?",
+    "duplicate": true
+  },
+  {
+    "id": "different-room",
+    "original": "What is the room capacity?",
+    "query": "Where is the nearest accessible bathroom?",
+    "duplicate": false
+  },
+  {
+    "id": "different-caption",
+    "original": "How are live captions generated?",
+    "query": "Are the live captions saved after this talk?",
+    "duplicate": false
+  },
+  {
+    "id": "different-kernel",
+    "original": "How do kernel probes detect suspicious processes?",
+    "query": "What performance overhead do kernel probes add?",
+    "duplicate": false
+  },
+  {
+    "id": "different-gitops",
+    "original": "How do I roll back a GitOps deployment?",
+    "query": "Who is allowed to approve a GitOps deployment?",
+    "duplicate": false
+  },
+  {
+    "id": "different-signal",
+    "original": "How often can I send the louder signal?",
+    "query": "Which language does the caption translator support?",
+    "duplicate": false
+  },
+  {
+    "id": "different-privacy",
+    "original": "Do you store attendee email addresses?",
+    "query": "How many replicas can the API run?",
+    "duplicate": false
+  },
+  {
+    "id": "different-summary",
+    "original": "Can I summarize the last ten minutes?",
+    "query": "How does a presenter start the microphone?",
+    "duplicate": false
+  },
+  {
+    "id": "different-inference",
+    "original": "How much does inference cost per indexed document?",
+    "query": "How do I change the model used to generate embeddings?",
+    "duplicate": false
+  },
+  {
+    "id": "different-seats",
+    "original": "What happens when Main Stage is full?",
+    "query": "Can I opt into matching with a vendor at a booth?",
+    "duplicate": false
+  },
+  {
+    "id": "different-votes",
+    "original": "Can attendees vote twice on the same question?",
+    "query": "Can a speaker delete an unanswered question?",
+    "duplicate": false
+  }
+]

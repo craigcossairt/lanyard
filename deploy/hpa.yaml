@@ -9,9 +9,12 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: app
-  minReplicas: 2
-  # 4 pods x 500m CPU limit = 2 of the team's 4 CPU of limits, which leaves
-  # room for the worker, valkey, a rollout surge pod and a load-test Job.
+  # Incident A: during the crash loop the HPA was blind ("did not receive
+  # metrics for targeted pods (pods might be unready)") and never scaled past
+  # 2. Start the demo with 3 pods of headroom instead of relying on scale-out.
+  minReplicas: 3
+  # 4 pods x 650m CPU limit = 2.6 CPU; + worker 0.5 + valkey 0.25 = 3.35 of the
+  # team's 4 CPU of limits (4.0 with one rollout surge pod). No load Jobs at max.
   maxReplicas: 4
   metrics:
     - type: Resource

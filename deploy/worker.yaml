@@ -10,6 +10,14 @@ metadata:
     app: worker
 spec:
   replicas: 1
+  # No surge pod: worker rolls with app on every deploy, and a second 500m
+  # worker at HPA max would push CPU limits to 4.5 of the team's 4.0.
+  # Worst case stays 5 x 650m (app) + 500m + 250m (valkey) = 4.0.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: worker

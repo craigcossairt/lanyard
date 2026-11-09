@@ -93,7 +93,10 @@ spec:
               cpu: 200m
               memory: 256Mi
             limits:
-              cpu: 500m
+              # Incident A (Radar issue dd66c0ce35d63e27): a pod hit 0.489 of a
+              # 0.5 CPU limit. 650m is the most that fits the 4 CPU limits budget
+              # even at HPA max + 1 rollout surge: 5 x 650m + worker 500m + valkey 250m = 4.0.
+              cpu: 650m
               memory: 512Mi
           # Radar investigation chat_RjOgOymzUJCDCUUF: during rollouts, readiness
           # and liveness fired before the app bound :8080 ("connection
@@ -104,16 +107,24 @@ spec:
               port: http
             periodSeconds: 2
             failureThreshold: 30
+          # Incident A (Radar issue dd66c0ce35d63e27, 22:56-23:01Z): under load a
+          # busy-but-alive pod missed the 1 s liveness timeout 3 times and was
+          # killed, which pushed its clients onto the other pod, which then died
+          # too. Liveness now tolerates 6 x 10 s of a slow /healthz before a
+          # restart; readiness gets 3 s so a busy pod sheds traffic instead.
           readinessProbe:
             httpGet:
               path: /readyz
               port: http
             periodSeconds: 5
+            timeoutSeconds: 3
           livenessProbe:
             httpGet:
               path: /healthz
               port: http
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false

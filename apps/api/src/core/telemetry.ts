@@ -2,6 +2,7 @@
 // so http, fastify, undici, ioredis and pino are patched before they load.
 // Exporters come from standard env (OTLP http/protobuf to OTEL_EXPORTER_OTLP_ENDPOINT with
 // OTEL_EXPORTER_OTLP_HEADERS). With no endpoint set, nothing starts and the app runs normally.
+import './env';
 import type { IncomingMessage } from 'node:http';
 import { startNodeSdk } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
@@ -23,6 +24,14 @@ function redactSpanUrl(span: { setAttribute(k: string, v: string): unknown }, re
   if (host) span.setAttribute('url.full', `http://${host}${red}`);
 }
 
+let sdk: { shutdown(): Promise<void> } | undefined;
+
+/** Flush and stop telemetry; entrypoints await this on SIGTERM before exiting (max 3 s). */
+export async function shutdownTelemetry(): Promise<void> {
+  if (!sdk) return;
+  await Promise.race([sdk.shutdown().catch(() => {}), new Promise((r) => setTimeout(r, 3000))]);
+}
+
 if (telemetryEnabled) {
   // Defaults the SDK reads from env; set here so a bare endpoint + headers is enough.
   process.env.OTEL_TRACES_EXPORTER ??= 'otlp';
@@ -32,7 +41,7 @@ if (telemetryEnabled) {
   process.env.OTEL_METRIC_EXPORT_INTERVAL ??= '15000';
   process.env.OTEL_EXPORTER_OTLP_TIMEOUT ??= '5000';
 
-  const sdk = startNodeSdk({
+  sdk = startNodeSdk({
     logLevel: 'warn',
     resourceAttributes: {
       'service.name': serviceName,
@@ -52,7 +61,4 @@ if (telemetryEnabled) {
       }),
     ],
   });
-  const stop = () => void sdk.shutdown().catch(() => {});
-  process.once('SIGTERM', stop);
-  process.once('SIGINT', stop);
 }

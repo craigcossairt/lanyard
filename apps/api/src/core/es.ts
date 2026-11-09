@@ -15,7 +15,7 @@ export function initEs(url: string | undefined, apiKey: string | undefined): Cli
     node: url,
     auth: { apiKey },
     requestTimeout: ES_TIMEOUT_MS,
-    maxRetries: 1,
+    maxRetries: 0, // hard 2 s cap per call: no retry on timeout
   });
   return client;
 }
@@ -49,7 +49,7 @@ export async function es<T>(
     },
     async (span) => {
       try {
-        return await fn(c, { requestTimeout: timeoutMs, maxRetries: 1 });
+        return await fn(c, { requestTimeout: timeoutMs, maxRetries: 0 });
       } catch (err) {
         span.recordException(err as Error);
         span.setStatus({ code: SpanStatusCode.ERROR });

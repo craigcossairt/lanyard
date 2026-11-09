@@ -15,7 +15,8 @@ export interface CatchUpResult {
   toSeq: number;
 }
 
-const BUDGET_MS = 8_000;
+// A little under the API's 8 s, so the worker answers before the API-side abort fires.
+const BUDGET_MS = 7_500;
 /** Hard cap on transcript text sent to the model (from the newest end). */
 const MAX_CHARS = 6_000;
 

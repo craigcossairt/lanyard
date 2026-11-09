@@ -56,7 +56,7 @@ URL checks alongside: `https://lanyard.cnh.radarhq.io/` served `version f8c3220`
 | **Before #23** (every pod generation, 19:26 to 19:52Z) | 1 to 3 per pod; **61 total** | 1 each on about a dozen app pods; **14 total** (a liveness failure can kill a starting pod) | n/a | 0 |
 | **After #23** (pods `679f4b5f78-*`, `b9b5c6f78-*`, `65c4cbc9bb-*`, `76df9fb766-*`) | **0** | **0** | 1 to 2 per pod while the process binds :8080; 8 total, harmless (30 allowed) | 0 |
 
-After #23, pods reach Ready 4 to 6 s after the container starts (for example, `app-65c4cbc9bb-dqvxs` started 19:54:57Z and was Ready at 19:55:02Z).
+After #23, pods reach Ready **4 to 6 s after the container starts**, and **9 to 15 s after the pod is created** (that window adds scheduling, image pull and container start). For example, `app-65c4cbc9bb-pvhzk` was created at 19:55:02Z, its container started at 19:55:11Z, and it was Ready at 19:55:17Z: 6 s from container start, 15 s from pod creation. Radar's "9–15 seconds" below measures from pod creation, so both figures hold.
 
 **Radar's answer** (MCP `follow_up_investigation` on the same run at 2026-11-09T20:10Z, read with `get_investigation` events 36 to 38, finished 20:12:20Z, cost $0.30, `healthy: true`, `confidence: 0.9`):
 

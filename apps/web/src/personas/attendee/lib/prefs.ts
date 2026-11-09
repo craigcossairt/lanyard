@@ -1,9 +1,11 @@
-// Display and accessibility prefs. Same localStorage key and shape as the design
-// system's DisplayPrefsProvider (`lanyard.display`), so adopting it is a swap. Applied to
-// <html> as data-theme / data-caption-size / data-readable / data-motion, and mirrored
-// to PUT /me/prefs so they follow the person. Prefs are never logged.
+// Display and accessibility prefs. Display prefs (theme, caption size, readable, motion)
+// live in the shell's store (apps/web/src/app/theme.ts, key `lanyard.prefs`), which
+// applies them to <html>. Language and interests are kept here. Everything the person
+// changes is mirrored to PUT /me/prefs; interests only after an explicit opt-in. Prefs
+// are never logged.
 import { useCallback, useSyncExternalStore } from 'react';
-import type { PrefsRequest } from '@lanyard/contracts';
+import type { AccessibilityPrefs, PrefsRequest } from '@lanyard/contracts';
+import { applyRootPrefs, loadPrefs, setRootPrefs } from '../../../app/theme';
 import { api } from './api';
 
 export interface DisplayPrefs {
@@ -21,17 +23,20 @@ export interface PersonalPrefs {
 }
 export type Prefs = DisplayPrefs & PersonalPrefs;
 
-const DISPLAY_KEY = 'lanyard.display';
 const PERSONAL_KEY = 'lanyard.personal';
 
 const media = (q: string) => typeof window !== 'undefined' && window.matchMedia(q).matches;
 
-function defaults(): Prefs {
+function displayDefaults(): DisplayPrefs {
   return {
     theme: media('(prefers-contrast: more)') ? 'contrast' : 'dark',
     captionSize: 'l',
     readable: false,
     reduceMotion: media('(prefers-reduced-motion: reduce)'),
+  };
+}
+function personalDefaults(): PersonalPrefs {
+  return {
     language: (typeof navigator !== 'undefined' && navigator.language.split('-')[0]) || 'en',
     interests: '',
     shareInterests: false,
@@ -43,47 +48,46 @@ const listeners = new Set<() => void>();
 
 function read(): Prefs {
   if (current) return current;
-  const d = defaults();
+  const display = loadPrefs();
+  let personal: Partial<PersonalPrefs> | null = null;
   try {
-    const display = JSON.parse(
-      localStorage.getItem(DISPLAY_KEY) ?? 'null',
-    ) as Partial<DisplayPrefs> | null;
-    const personal = JSON.parse(
+    personal = JSON.parse(
       localStorage.getItem(PERSONAL_KEY) ?? 'null',
     ) as Partial<PersonalPrefs> | null;
-    current = { ...d, ...display, ...personal };
   } catch {
-    current = d;
+    personal = null;
   }
+  const d = displayDefaults();
+  current = {
+    theme: display.theme ?? d.theme,
+    captionSize: display.captionSize ?? d.captionSize,
+    readable: display.readable ?? d.readable,
+    reduceMotion: display.reduceMotion ?? d.reduceMotion,
+    ...personalDefaults(),
+    ...personal,
+  };
   return current;
 }
 
-/** Set the <html> attributes the theme reads. Safe to call before React renders. */
-export function applyPrefs(p: DisplayPrefs = read()): void {
-  const el = document.documentElement.dataset;
-  el.theme = p.theme;
-  el.captionSize = p.captionSize;
-  el.readable = String(p.readable);
-  el.motion = p.reduceMotion ? 'reduce' : 'full';
+/** Re-apply the shell's root attributes (main.tsx does this at startup too). */
+export function applyPrefs(): void {
+  applyRootPrefs();
 }
 
 function write(next: Prefs, mirror: boolean): void {
   current = next;
   const { theme, captionSize, readable, reduceMotion, language, interests, shareInterests } = next;
+  const accessibility: AccessibilityPrefs = { theme, captionSize, readable, reduceMotion };
+  setRootPrefs(accessibility);
   try {
-    localStorage.setItem(
-      DISPLAY_KEY,
-      JSON.stringify({ theme, captionSize, readable, reduceMotion }),
-    );
     localStorage.setItem(PERSONAL_KEY, JSON.stringify({ language, interests, shareInterests }));
   } catch {
     // Private mode: this visit only.
   }
-  applyPrefs(next);
   listeners.forEach((l) => l());
   if (mirror) {
     const body: PrefsRequest = {
-      accessibility: { theme, captionSize, readable, reduceMotion },
+      accessibility,
       language,
       // Interests are sent only after the person explicitly opted in on Settings.
       ...(shareInterests && interests.trim() ? { interests: interests.trim() } : {}),

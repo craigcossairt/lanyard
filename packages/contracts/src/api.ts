@@ -75,11 +75,20 @@ export const RoleLinkResponse = z.object({
 });
 export type RoleLinkResponse = z.infer<typeof RoleLinkResponse>;
 
-// GET /events/:eventId/search?q=
-export const SearchQuery = z.object({
-  q: z.string().min(1).max(200),
-  limit: z.coerce.number().int().min(1).max(50).optional(),
-});
+// GET /events/:eventId/search?q=&track=&level=&from=&to=
+export const SearchQuery = z
+  .object({
+    q: z.string().trim().min(1).max(200),
+    limit: z.coerce.number().int().min(1).max(50).optional(),
+    track: z.string().min(1).max(100).optional(),
+    level: z.string().min(1).max(40).optional(),
+    from: IsoDateTime.optional(),
+    to: IsoDateTime.optional(),
+  })
+  .refine((value) => !value.from || !value.to || Date.parse(value.from) < Date.parse(value.to), {
+    message: 'from must precede to',
+    path: ['to'],
+  });
 export const SearchHit = z.object({
   session: Session,
   score: z.number(),

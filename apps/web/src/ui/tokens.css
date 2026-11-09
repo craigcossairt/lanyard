@@ -1,0 +1,192 @@
+/*
+ * Lanyard design tokens. Every colour, size and duration in the app comes from here.
+ * Decided in grill-design round 1 (docs/design/grill.html, docs/decision-log.md).
+ *
+ * Switches live on <html>, set by <DisplayPrefsProvider>:
+ *   data-theme="dark|light|contrast"   data-caption-size="s|m|l|xl|xxl"
+ *   data-readable="true"               data-motion="reduce"
+ */
+
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('./fonts/atkinson-hyperlegible-next-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('./fonts/atkinson-hyperlegible-next-latin-700-normal.woff2') format('woff2');
+}
+
+:root {
+  /* Type */
+  --font-sans:
+    'Atkinson Hyperlegible Next', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-3xl: 2.75rem;
+  --leading: 1.5;
+  --caption-leading: 1.35;
+  /* Speaker stage mode: captions and questions read from 10 m on a projector. */
+  --stage-size: clamp(2.5rem, 4.6vw, 5.5rem);
+
+  /* Space (4 px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Shape */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --border-w: 1px;
+  --target-min: 44px;
+
+  /* Motion */
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* Layers */
+  --z-sticky: 10;
+  --z-sheet: 40;
+  --z-toast: 50;
+
+  /* Layout */
+  --side-w: 400px;
+  --sheet-w: 420px;
+}
+
+/* Dark is the default: the stage and the room are dim, projectors glare. */
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+  --color-bg: #0b0d12;
+  --color-surface: #141821;
+  --color-surface-2: #1d2230;
+  --color-border: #2e3547;
+  /* Edges that identify a control (inputs): 3:1 against every surface (WCAG 1.4.11). */
+  --color-border-strong: #6e7891;
+  --color-text: #eef1f6;
+  --color-text-muted: #a9b1c2;
+  --color-accent: #b69cff;
+  --color-on-accent: #150a33;
+  --color-focus: #5ad8ff;
+  --color-ok: #4fd69c;
+  --color-ok-bg: #0f2a20;
+  --color-warn: #f5bd4f;
+  --color-warn-bg: #2d2310;
+  --color-crit: #ff7b7b;
+  --color-crit-bg: #331617;
+  --color-info: #79b8ff;
+  --color-info-bg: #122238;
+  --color-caption-bg: #05060a;
+  --color-caption-text: #fffdf6;
+  --color-caption-interim: #9aa3b5;
+  --color-scrim: rgb(0 0 0 / 0.6);
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --color-bg: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-surface-2: #eceef3;
+  --color-border: #cfd4de;
+  --color-border-strong: #7c8496;
+  --color-text: #10131c;
+  --color-text-muted: #4a5266;
+  --color-accent: #5b34d6;
+  --color-on-accent: #ffffff;
+  --color-focus: #0b57d0;
+  --color-ok: #0a7a45;
+  --color-ok-bg: #e3f5ec;
+  --color-warn: #8a5a00;
+  --color-warn-bg: #fdf1d8;
+  --color-crit: #c0262d;
+  --color-crit-bg: #fde6e6;
+  --color-info: #1f5fbf;
+  --color-info-bg: #e3eefc;
+  --color-caption-bg: #ffffff;
+  --color-caption-text: #0b0d12;
+  --color-caption-interim: #5b6375;
+  --color-scrim: rgb(16 19 28 / 0.45);
+}
+
+[data-theme='contrast'] {
+  color-scheme: dark;
+  --color-bg: #000000;
+  --color-surface: #000000;
+  --color-surface-2: #121212;
+  --color-border: #ffffff;
+  --color-border-strong: #ffffff;
+  --color-text: #ffffff;
+  --color-text-muted: #f0f0f0;
+  --color-accent: #ffe14d;
+  --color-on-accent: #000000;
+  --color-focus: #00e5ff;
+  --color-ok: #5cff9d;
+  --color-ok-bg: #000000;
+  --color-warn: #ffd23f;
+  --color-warn-bg: #000000;
+  --color-crit: #ff8a8a;
+  --color-crit-bg: #000000;
+  --color-info: #8fd0ff;
+  --color-info-bg: #000000;
+  --color-caption-bg: #000000;
+  --color-caption-text: #ffff66;
+  --color-caption-interim: #ffffff;
+  --color-scrim: rgb(0 0 0 / 0.8);
+  --border-w: 2px;
+}
+
+/* Caption sizes: L is the default; XXL fits about 3 words a line on a phone. */
+:root,
+[data-caption-size='l'] {
+  --caption-size: 2.125rem;
+}
+[data-caption-size='s'] {
+  --caption-size: 1.25rem;
+}
+[data-caption-size='m'] {
+  --caption-size: 1.625rem;
+}
+[data-caption-size='xl'] {
+  --caption-size: 2.75rem;
+}
+[data-caption-size='xxl'] {
+  --caption-size: 3.625rem;
+}
+
+/* Readable spacing: the dyslexia-friendly option. Same font, more air. */
+[data-readable='true'] {
+  --readable-tracking: 0.04em;
+  --readable-words: 0.14em;
+  --leading: 1.7;
+  --caption-leading: 1.7;
+}
+
+[data-motion='reduce'] {
+  --dur-fast: 0ms;
+  --dur-base: 0ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+  }
+}

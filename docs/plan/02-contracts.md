@@ -96,7 +96,7 @@ Roles are carried by a signed token: attendee (issued on join), or speaker, orga
 | GET `/events/:eventId/ops` | organizer | Room grid snapshot | WS4 |
 | GET `/events/:eventId/ops/stream` | organizer | SSE ops stream | WS4 |
 | GET `/events/:eventId/ops/simulation` | organizer | Read `SimulationStatus`; CNH Demos only | WS4 |
-| POST `/events/:eventId/ops/simulation` | organizer | `SimulationControlRequest` `{ running, attendees? }`; start or stop a SIMULATED crowd of 1–200 attendees (default 40) | WS4 |
+| POST `/events/:eventId/ops/simulation` | organizer | `SimulationControlRequest` `{ running, attendees?, mode? }`; start or stop a SIMULATED crowd of 1–200 attendees (default 40); mode defaults to `crowd` | WS4 |
 | POST `/events/:eventId/alerts/:id/reroute` | organizer | Push alternatives to attendees of a full room | WS4 |
 | POST `/events/:eventId/reroute/accept` | attendee | Body `{ suggestionId }`; idempotently count acceptance, return `{ accepted, sessionId }`. Client then joins via the normal presence route | WS4 |
 | GET `/events/:eventId/rooms/:roomId/history` | organizer | Occupancy and signal series | WS4 |
@@ -106,7 +106,7 @@ Errors use a JSON body with `error.code` and `error.message`. Every route valida
 
 The ops snapshot's `RoomStatus` includes optional `questionCount` (a nonnegative integer). Reroute recommendations include optional `suggestionId` for the acceptance route; WS4 always supplies it on new suggestions.
 
-The P2 crowd simulator is visibly labelled **SIMULATED**, is restricted to `cnh-demos`, and requires concurrent Main Stage and Side Stage sessions. `SimulationStatus` contains `{ simulated: true, running, stopping, attendees, startedAt?, endsAt? }` with UTC timestamps. Only one run may exist at a time. New simulated activity stops after at most ten minutes; `stopping` remains true while normal presence-leave calls remove the simulated attendees. A new run is refused until cleanup completes. All simulated presence, questions and signals use the normal attendee handlers and their metrics; the simulator does not write WS2's live-state keys directly.
+The demo-critical simulator is visibly labelled **SIMULATED**, is restricted to `cnh-demos`, and requires concurrent Main Stage and Side Stage sessions. `SimulationStatus` contains `{ simulated: true, mode?, running, stopping, attendees, startedAt?, endsAt? }` with UTC timestamps. `mode` is `crowd` (default, existing behavior) or `demo` (a deterministic 150-second recording scenario). Demo mode uses 40 virtual attendees, scripted speaker captions, paraphrased question waves and votes, one louder burst, staged overflow at 60 seconds, and simulated acceptance only after an organizer requests reroute. Captions use the normal transcript route with a server-minted speaker token, held only in memory. All synthetic content is labelled SIMULATED. Only one run may exist at a time. New simulated activity stops after at most ten minutes; `stopping` remains true while cleanup removes simulated attendees and synthetic content. A new run is refused until cleanup completes. All simulated presence, questions, votes, captions, signals and reroute acceptance use normal handlers and their metrics; the simulator does not write WS2's live-state keys directly. Cleanup is scoped to records created by that run and must preserve real conference data.
 
 ## 5. Realtime messages (SSE, fanned out via Valkey channels)
 Channels: `session:<id>`, `ops:<eventId>`, `user:<anonId>`. Each message has `type`, `at` and a `payload` (`RealtimeMessage` in `packages/contracts`; build one with `realtime(type, payload)`). Payload ids are named `chunkId`, `questionId`, `clusterId`, `sessionId`, `roomId`.
@@ -124,7 +124,17 @@ Channels: `session:<id>`, `ops:<eventId>`, `user:<anonId>`. Each message has `ty
 | `reroute.suggested` | user | recommendation |
 | `session.status` | session, ops | live or ended |
 
-The client reconnects with exponential backoff and refetches the snapshot after reconnecting.
+**Stream lifecycle (the platform gateway ends every response at 15 s):**
+- Every realtime message carries an SSE `id:` (`<ms>-<seq>`, globally ordered across channels). The bus keeps about 60 s of messages per channel (capped) for replay.
+- The server ends each response cleanly at about 12 s with `event: reconnect` (`data: {"reason":"max-stream"}`, `retry: 0`).
+- The client reconnects **immediately**, sending `Last-Event-ID`. The server replays every message after that id, deduplicated and in order.
+- `event: ready` reports `{ channels, retryMs, live, resumed }`:
+  - `live:false` means subscriptions are still pending, and a `ready {live:true}` follows.
+  - `resumed:true` means the gap was replayed, so the client keeps its state and routes skip the full `snapshot`.
+  - `resumed:false` (no id, or an expired or trimmed id) means the route sends its `snapshot` frame, or the client refetches its snapshot.
+- Unannounced ends and errors: the first retry is immediate when the stream had been healthy for at least 5 s; after that, exponential backoff.
+- Comment heartbeats (`: hb`) every 5 s.
+- Types: `SseReady` and `SseReconnect` in `packages/contracts`. Web client: `useSse` (`apps/web/src/app/sse.ts`).
 
 ### Valkey live-state keys
 
@@ -138,6 +148,7 @@ WS2 writes live state; WS4 reads it through the core `ctx.kv` client (500 ms tim
 - WS2 treats an SSE disconnect as leave after a 30 s grace.
 - WS4 stores suggestions as `reroute:{suggestionId}` HASH `{anonId, alertId, fromRoomId, toSessionId}`, TTL 15 min.
 - WS4 owns `ops:cnh-demos:simulation` (bounded run metadata retained until cleanup), its `:lease` (20-second elected runner lease), and `:stop:{runId}` (24-hour stop request). These keys contain no tokens. Persisted actor IDs use a `sim_` prefix and are never metric labels or logged.
+- Demo runs also own `ops:cnh-demos:simulation:{runId}:dispatched` (SET of fixed script action IDs), `:questions` and `:chunks` (SETs of returned synthetic record IDs), and `:offers` (HASH actor index to reroute suggestion). These bounded ledgers survive restarts and are removed only after scoped WS2 cleanup succeeds. They contain no tokens or transcript/question text.
 
 The ops rules open an overflow alert at occupancy ≥90%, and a signal-spike alert at ≥5 `lost` or `louder` signals within the rolling 60-second window. Acceptance increments `conf.reroute.accepted` once per suggestion; normal presence handles the subsequent session move.
 

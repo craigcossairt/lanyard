@@ -1,0 +1,196 @@
+/* Shell pages (landing, join, QR) and dev tools. Tokens only: every theme stays in contrast. */
+
+.shell,
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-8);
+}
+.muted {
+  color: var(--color-text-muted);
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 28rem;
+}
+.error {
+  color: var(--color-crit);
+}
+
+/* ---------- Brand ---------- */
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 700;
+  font-size: var(--text-lg);
+  letter-spacing: -0.01em;
+}
+.wordmark svg {
+  width: 1.4em;
+  height: 1.4em;
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.wordmark-link {
+  color: inherit;
+  text-decoration: none;
+}
+.wordmark--lg {
+  font-size: var(--text-2xl);
+}
+.page__brand {
+  margin-bottom: var(--space-7);
+}
+.page__foot {
+  margin-top: var(--space-6);
+  font-size: var(--text-sm);
+}
+
+/* ---------- Landing ---------- */
+.landing__hero h1 {
+  margin: 0 0 var(--space-3);
+  font-size: clamp(2.25rem, 7vw, 4rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.landing__lede {
+  max-width: 40rem;
+  margin: 0 0 var(--space-7);
+  font-size: var(--text-lg);
+  color: var(--color-text-muted);
+}
+.landing__doors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-4);
+  margin: 0 0 var(--space-6);
+  padding: 0;
+  list-style: none;
+}
+.door {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.door h3 {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+.door p {
+  margin: 0;
+  flex: 1;
+}
+.door__icon {
+  width: 2rem;
+  height: 2rem;
+  color: var(--color-accent);
+}
+.door .ly-btn {
+  align-self: flex-start;
+  text-decoration: none;
+}
+.door__note {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  flex: 0 !important;
+}
+.landing__event {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.landing__event h2 {
+  margin: var(--space-2) 0 var(--space-1);
+  font-size: var(--text-2xl);
+}
+.landing__event p {
+  margin: 0;
+}
+.landing__event-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.landing__event-actions .ly-btn {
+  text-decoration: none;
+}
+
+/* ---------- Join ---------- */
+.join h1 {
+  margin: 0 0 var(--space-5);
+  font-size: var(--text-3xl);
+}
+.join select {
+  min-height: var(--target-min);
+  padding: 0 var(--space-3);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: var(--border-w) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+.join__label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-weight: 700;
+}
+
+/* ---------- QR (front-of-room screen) ---------- */
+.qr {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  min-height: 100vh;
+  padding: var(--space-6);
+}
+.qr__text {
+  max-width: 28rem;
+}
+.qr__text h1 {
+  margin: var(--space-5) 0 var(--space-3);
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  line-height: 1.05;
+}
+.qr__lede {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-xl);
+}
+.qr__url {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+.qr__code {
+  width: min(70vh, 80vw, 36rem);
+  height: auto;
+  border-radius: var(--radius-lg);
+}
+
+/* ---------- Dev role switcher ---------- */
+.role-switcher {
+  position: fixed;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  z-index: var(--z-toast);
+  font-size: var(--text-sm);
+}
+.role-switcher ul {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-2);
+  background: var(--color-surface-2);
+  border: var(--border-w) solid var(--color-border);
+  border-radius: var(--radius-md);
+}

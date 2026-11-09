@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-caption-size="l">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lanyard · grill-design · Round 1: attendee live session</title>
+<style>
+/* ============ TOKENS (shared by every variant; variants may not override) ============ */
+@font-face{font-family:"Atkinson Hyperlegible Next";font-weight:400;font-display:swap;src:url(../../apps/web/src/ui/fonts/atkinson-hyperlegible-next-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Atkinson Hyperlegible Next";font-weight:700;font-display:swap;src:url(../../apps/web/src/ui/fonts/atkinson-hyperlegible-next-latin-700-normal.woff2) format("woff2")}
+:root{
+  --font-sans:"Atkinson Hyperlegible Next",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --text-xs:.75rem;--text-sm:.875rem;--text-md:1rem;--text-lg:1.25rem;--text-xl:1.5rem;--text-2xl:2rem;--text-3xl:2.75rem;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--space-6:32px;--space-7:48px;--space-8:64px;
+  --radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-pill:999px;
+  --dur-fast:120ms;--dur-base:220ms;--ease:cubic-bezier(.2,.7,.2,1);
+  --z-sticky:10;--z-sheet:40;--z-toast:50;
+  --border-w:1px;
+}
+:root,[data-theme=dark]{
+  --color-bg:#0b0d12;--color-surface:#141821;--color-surface-2:#1d2230;--color-border:#2e3547;
+  --color-text:#eef1f6;--color-text-muted:#a9b1c2;--color-accent:#b69cff;--color-on-accent:#150a33;--color-focus:#5ad8ff;
+  --color-ok:#4fd69c;--color-ok-bg:#0f2a20;--color-warn:#f5bd4f;--color-warn-bg:#2d2310;--color-crit:#ff7b7b;--color-crit-bg:#331617;--color-info:#79b8ff;--color-info-bg:#122238;
+  --color-caption-bg:#05060a;--color-caption-text:#fffdf6;--color-caption-interim:#9aa3b5;
+}
+[data-theme=light]{
+  --color-bg:#f5f6f8;--color-surface:#ffffff;--color-surface-2:#eceef3;--color-border:#cfd4de;
+  --color-text:#10131c;--color-text-muted:#4a5266;--color-accent:#5b34d6;--color-on-accent:#ffffff;--color-focus:#0b57d0;
+  --color-ok:#0a7a45;--color-ok-bg:#e3f5ec;--color-warn:#8a5a00;--color-warn-bg:#fdf1d8;--color-crit:#c0262d;--color-crit-bg:#fde6e6;--color-info:#1f5fbf;--color-info-bg:#e3eefc;
+  --color-caption-bg:#ffffff;--color-caption-text:#0b0d12;--color-caption-interim:#5b6375;
+}
+[data-theme=contrast]{
+  --color-bg:#000;--color-surface:#000;--color-surface-2:#121212;--color-border:#ffffff;
+  --color-text:#fff;--color-text-muted:#f0f0f0;--color-accent:#ffe14d;--color-on-accent:#000;--color-focus:#00e5ff;
+  --color-ok:#5cff9d;--color-ok-bg:#000;--color-warn:#ffd23f;--color-warn-bg:#000;--color-crit:#ff8a8a;--color-crit-bg:#000;--color-info:#8fd0ff;--color-info-bg:#000;
+  --color-caption-bg:#000;--color-caption-text:#ffff66;--color-caption-interim:#ffffff;
+  --border-w:2px;
+}
+[data-caption-size=s]{--caption-size:1.25rem}
+[data-caption-size=m]{--caption-size:1.625rem}
+[data-caption-size=l]{--caption-size:2.125rem}
+[data-caption-size=xl]{--caption-size:2.75rem}
+[data-caption-size=xxl]{--caption-size:3.625rem}
+[data-readable=true]{--readable-tracking:.04em;--readable-words:.14em;--readable-leading:1.7}
+[data-motion=reduce]{--dur-fast:0ms;--dur-base:0ms}
+@media (prefers-reduced-motion:reduce){:root{--dur-fast:0ms;--dur-base:0ms}}
+
+/* ============ HARNESS (not part of the design) ============ */
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:var(--font-sans);background:#2a2d35;color:#eef1f6;}
+.h-bar{position:sticky;top:0;z-index:100;background:#15171c;border-bottom:1px solid #333;padding:8px 12px;display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;font:13px/1.3 system-ui,sans-serif}
+.h-bar fieldset{border:0;margin:0;padding:0;display:flex;gap:4px;align-items:center}
+.h-bar legend{float:left;margin-right:6px;color:#9aa;font-weight:600}
+.h-bar label{display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:5px;background:#23262e;cursor:pointer}
+.h-bar label:has(input:checked){background:#5b34d6;color:#fff}
+.h-bar input[type=radio]{position:absolute;opacity:0;pointer-events:none}
+.h-bar label:has(input:focus-visible){outline:2px solid #5ad8ff}
+.h-belief{background:#1b1e25;color:#dfe3ea;padding:8px 14px;font:14px/1.4 system-ui,sans-serif;border-bottom:1px solid #333}
+.h-belief b{color:#c9b8ff}
+.h-stage{display:flex;justify-content:center;padding:20px 12px 60px}
+.frame{width:390px;height:800px;border-radius:28px;overflow:hidden;position:relative;background:var(--color-bg);color:var(--color-text);box-shadow:0 0 0 10px #111,0 20px 60px #0008;container-type:inline-size;font-family:var(--font-sans);letter-spacing:var(--readable-tracking,normal);word-spacing:var(--readable-words,normal)}
+.frame.desk{width:1180px;height:760px;border-radius:10px;box-shadow:0 0 0 6px #111,0 20px 60px #0008}
+.frame *{box-sizing:border-box}
+
+/* ============ SHARED PRIMITIVES (candidate components; identical in every variant) ============ */
+.frame :focus-visible{outline:3px solid var(--color-focus);outline-offset:2px}
+.p-btn{font:inherit;font-weight:700;font-size:var(--text-md);min-height:44px;padding:0 var(--space-4);border-radius:var(--radius-md);border:var(--border-w) solid var(--color-border);background:var(--color-surface-2);color:var(--color-text);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);cursor:pointer;transition:transform var(--dur-fast) var(--ease)}
+.p-btn:active{transform:scale(.97)}
+.p-btn.primary{background:var(--color-accent);color:var(--color-on-accent);border-color:var(--color-accent)}
+.p-btn.ghost{background:transparent;border-color:transparent}
+.p-btn svg,.p-ic{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.p-pill{display:inline-flex;align-items:center;gap:6px;font-size:var(--text-sm);font-weight:700;padding:3px 10px;border-radius:var(--radius-pill);border:var(--border-w) solid currentColor;line-height:1.3;white-space:nowrap}
+.p-pill.live{color:var(--color-crit);background:var(--color-crit-bg)}
+.p-pill.live::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;animation:pulse 1.6s infinite}
+[data-motion=reduce] .p-pill.live::before{animation:none}
+@media (prefers-reduced-motion:reduce){.p-pill.live::before{animation:none}}
+@keyframes pulse{50%{opacity:.35}}
+.p-pill.ok{color:var(--color-ok);background:var(--color-ok-bg)}.p-pill.warn{color:var(--color-warn);background:var(--color-warn-bg)}.p-pill.info{color:var(--color-info);background:var(--color-info-bg)}
+.p-muted{color:var(--color-text-muted)}
+.p-caps{font-size:var(--caption-size);line-height:var(--readable-leading,1.35);color:var(--color-caption-text);font-weight:400}
+.p-caps p{margin:0 0 .55em;max-width:32ch}
+.frame.desk .p-caps p{max-width:42ch}
+.p-caps .interim{color:var(--color-caption-interim)}
+.p-caps .new{animation:capin var(--dur-base) var(--ease)}
+@keyframes capin{from{opacity:0;transform:translateY(6px)}}
+.p-caps .spk{display:block;font-size:var(--text-sm);font-weight:700;color:var(--color-accent);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.2em}
+.p-jump{position:absolute;left:50%;transform:translateX(-50%);bottom:var(--space-4);z-index:var(--z-sticky)}
+.p-sig{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.p-sigb{font:inherit;min-height:64px;border-radius:var(--radius-md);border:var(--border-w) solid var(--color-border);background:var(--color-surface);color:var(--color-text);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:var(--text-xs);font-weight:700;cursor:pointer;padding:6px 2px;line-height:1.1;text-align:center}
+.p-sigb[aria-pressed=true]{background:var(--color-accent);color:var(--color-on-accent);border-color:var(--color-accent)}
+.p-q{display:grid;grid-template-columns:auto 1fr;gap:var(--space-3);padding:var(--space-3);border-radius:var(--radius-md);background:var(--color-surface);border:var(--border-w) solid var(--color-border)}
+.p-q.mine{border-color:var(--color-accent);box-shadow:inset 3px 0 0 var(--color-accent)}
+.p-q .lbl{font-weight:700;font-size:var(--text-md);margin:0 0 2px}
+.p-q .txt{margin:0;font-size:var(--text-sm);color:var(--color-text-muted);line-height:1.45}
+.p-q .meta{margin-top:6px;font-size:var(--text-sm);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.p-vote{font:inherit;width:52px;min-height:52px;border-radius:var(--radius-md);border:var(--border-w) solid var(--color-border);background:var(--color-surface-2);color:var(--color-text);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;cursor:pointer;font-size:var(--text-md)}
+.p-vote[aria-pressed=true]{background:var(--color-accent);color:var(--color-on-accent);border-color:var(--color-accent)}
+.p-vote svg{width:18px;height:18px}
+.p-sheetwrap{position:absolute;inset:0;z-index:var(--z-sheet);display:flex;align-items:flex-end;background:#0009}
+.frame.desk .p-sheetwrap{justify-content:flex-end;align-items:stretch}
+.p-sheet{width:100%;max-height:86%;overflow:auto;background:var(--color-surface);border-top:var(--border-w) solid var(--color-border);border-radius:var(--radius-lg) var(--radius-lg) 0 0;padding:var(--space-4) var(--space-4) var(--space-6);animation:sheetin var(--dur-base) var(--ease)}
+.frame.desk .p-sheet{width:420px;max-height:none;border-radius:0;border-left:var(--border-w) solid var(--color-border)}
+@keyframes sheetin{from{transform:translateY(30px);opacity:0}}
+.p-sheet h2{margin:0;font-size:var(--text-xl)}
+.p-sheethd{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-3)}
+.p-toast{position:absolute;left:var(--space-3);right:var(--space-3);top:var(--space-3);z-index:var(--z-toast);background:var(--color-text);color:var(--color-bg);padding:var(--space-3) var(--space-4);border-radius:var(--radius-md);font-weight:700;display:flex;gap:10px;align-items:center;animation:sheetin var(--dur-base) var(--ease)}
+.frame.desk .p-toast{left:auto;width:380px}
+.p-banner{display:flex;gap:10px;align-items:center;padding:var(--space-2) var(--space-3);background:var(--color-warn-bg);color:var(--color-warn);border-bottom:var(--border-w) solid currentColor;font-weight:700;font-size:var(--text-sm)}
+.p-banner .p-btn{min-height:36px;margin-left:auto;font-size:var(--text-sm)}
+.p-sk{background:linear-gradient(90deg,var(--color-surface-2),var(--color-surface),var(--color-surface-2));background-size:200% 100%;animation:sk 1.4s infinite linear;border-radius:var(--radius-sm)}
+[data-motion=reduce] .p-sk{animation:none}
+@keyframes sk{to{background-position:-200% 0}}
+.p-empty{text-align:center;padding:var(--space-6) var(--space-4);color:var(--color-text-muted)}
+.p-empty strong{display:block;color:var(--color-text);font-size:var(--text-lg);margin-bottom:6px}
+.p-input{font:inherit;font-size:var(--text-md);width:100%;min-height:48px;padding:var(--space-3);border-radius:var(--radius-md);border:var(--border-w) solid var(--color-border);background:var(--color-bg);color:var(--color-text);resize:none}
+.p-stale{opacity:.55}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ============ VARIANT A: Caption stage ============ */
+.va{height:100%;display:flex;flex-direction:column;background:var(--color-caption-bg)}
+.va-hd{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-3) var(--space-4);border-bottom:var(--border-w) solid var(--color-border);background:var(--color-bg)}
+.va-title{font-weight:700;font-size:var(--text-sm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.va-caps{flex:1;overflow:auto;padding:var(--space-5) var(--space-5) var(--space-7);position:relative}
+.va-dock{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-2);padding:var(--space-2) var(--space-3) var(--space-4);border-top:var(--border-w) solid var(--color-border);background:var(--color-bg)}
+.va-dock .p-btn{flex-direction:column;min-height:60px;font-size:var(--text-xs);padding:4px;gap:3px;position:relative}
+.va-badge{position:absolute;top:4px;right:10px;background:var(--color-accent);color:var(--color-on-accent);border-radius:var(--radius-pill);font-size:11px;padding:0 6px;min-width:20px}
+@container (min-width:900px){.va{display:grid;grid-template-columns:1fr 400px;grid-template-rows:auto 1fr auto}.va-hd{grid-column:1/-1}.va-caps{grid-row:2/4}.va-dock{grid-column:2;grid-row:3}.va-side{display:block!important;grid-column:2;grid-row:2;overflow:auto;padding:var(--space-4);background:var(--color-bg);border-left:var(--border-w) solid var(--color-border)}.va-dock{border-left:var(--border-w) solid var(--color-border)}}
+
+/* ============ VARIANT B: Tabs ============ */
+.vb{height:100%;display:flex;flex-direction:column}
+.vb-hd{padding:var(--space-3) var(--space-4) 0;background:var(--color-surface)}
+.vb-hd h1{font-size:var(--text-lg);margin:6px 0 2px;line-height:1.25}
+.vb-tabs{display:flex;gap:0;margin-top:var(--space-3)}
+.vb-tab{font:inherit;flex:1;min-height:48px;background:none;border:0;border-bottom:3px solid transparent;color:var(--color-text-muted);font-weight:700;cursor:pointer;font-size:var(--text-md)}
+.vb-tab[aria-selected=true]{color:var(--color-text);border-bottom-color:var(--color-accent)}
+.vb-panel{flex:1;overflow:auto;padding:var(--space-4);position:relative}
+.vb-panel.caps{background:var(--color-caption-bg);padding:var(--space-5)}
+.vb-foot{padding:var(--space-2) var(--space-3) var(--space-4);background:var(--color-surface);border-top:var(--border-w) solid var(--color-border)}
+.vb-fab{position:absolute;right:var(--space-4);bottom:var(--space-4)}
+@container (min-width:900px){.vb-body{display:grid!important;grid-template-columns:1.4fr 1fr;flex:1;min-height:0}.vb-tabs{display:none}.vb-body>.vb-panel{display:block!important;border-left:var(--border-w) solid var(--color-border)}}
+
+/* ============ VARIANT C: One feed ============ */
+.vc{height:100%;display:flex;flex-direction:column}
+.vc-hd{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-3) var(--space-4);border-bottom:var(--border-w) solid var(--color-border)}
+.vc-feed{flex:1;overflow:auto;padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3);position:relative;background:var(--color-caption-bg)}
+.vc-cap{font-size:var(--caption-size);line-height:var(--readable-leading,1.35);color:var(--color-caption-text);max-width:34ch}
+.vc-evt{align-self:center;font-size:var(--text-sm);color:var(--color-text-muted);display:flex;gap:6px;align-items:center;padding:4px 12px;border-radius:var(--radius-pill);border:var(--border-w) dashed var(--color-border)}
+.vc-q{align-self:flex-end;max-width:85%;background:var(--color-surface-2);border-radius:var(--radius-lg) var(--radius-lg) 4px var(--radius-lg);padding:var(--space-3);font-size:var(--text-md);border:var(--border-w) solid var(--color-border)}
+.vc-q.mine{background:var(--color-accent);color:var(--color-on-accent)}
+.vc-comp{display:flex;gap:var(--space-2);padding:var(--space-2) var(--space-3) var(--space-4);border-top:var(--border-w) solid var(--color-border);background:var(--color-surface);align-items:flex-end}
+.vc-quick{display:flex;gap:6px;overflow:auto;padding:var(--space-2) var(--space-3) 0;background:var(--color-surface)}
+.vc-quick .p-btn{min-height:40px;font-size:var(--text-sm);white-space:nowrap;padding:0 12px}
+.vc-quick .p-btn[aria-pressed=true]{background:var(--color-accent);color:var(--color-on-accent)}
+
+/* ============ VARIANT D: Split ============ */
+.vd{height:100%;display:flex;flex-direction:column}
+.vd-hd{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-4);background:var(--color-surface);border-bottom:var(--border-w) solid var(--color-border);font-size:var(--text-sm)}
+.vd-caps{flex:0 0 44%;overflow:auto;padding:var(--space-4) var(--space-5);background:var(--color-caption-bg);position:relative;border-bottom:var(--border-w) solid var(--color-border)}
+.vd-low{flex:1;overflow:auto;padding:var(--space-3);display:flex;flex-direction:column;gap:var(--space-3)}
+.vd-ask{display:flex;gap:var(--space-2)}
+.vd-sec{display:flex;justify-content:space-between;align-items:baseline;margin:var(--space-2) 0 0}
+.vd-sec h2{font-size:var(--text-md);margin:0}
+@container (min-width:900px){.vd{display:grid;grid-template-columns:1.5fr 1fr;grid-template-rows:auto 1fr}.vd-hd{grid-column:1/-1}.vd-caps{border-bottom:0;border-right:var(--border-w) solid var(--color-border);padding:var(--space-6)}}
+
+/* ============ VARIANT E: Remote control ============ */
+.ve{height:100%;display:flex;flex-direction:column}
+.ve-tick{background:var(--color-caption-bg);padding:var(--space-3) var(--space-4);border-bottom:var(--border-w) solid var(--color-border);cursor:pointer}
+.ve-tick .p-caps{font-size:min(var(--caption-size),1.25rem);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ve-tick .p-caps p{margin:0;max-width:none}
+.ve-main{flex:1;overflow:auto;padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-4)}
+.ve-main h1{font-size:var(--text-xl);margin:0;line-height:1.2}
+.ve-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3)}
+.ve-grid .p-sigb{min-height:96px;font-size:var(--text-md);border-radius:var(--radius-lg)}
+.ve-grid .p-sigb svg{width:30px;height:30px}
+.ve-grid .p-sigb:last-child{grid-column:1/-1;min-height:72px;flex-direction:row;gap:10px}
+.ve-ask{min-height:64px;font-size:var(--text-lg);border-radius:var(--radius-lg)}
+@container (min-width:900px){.ve-main{display:grid;grid-template-columns:1fr 1fr;align-content:start}.ve-main h1{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<form class="h-bar" id="ctl" aria-label="Prototype controls">
+  <fieldset><legend>Variant</legend>
+    <label><input type="radio" name="v" value="a" checked>A Caption stage</label>
+    <label><input type="radio" name="v" value="b">B Tabs</label>
+    <label><input type="radio" name="v" value="c">C One feed</label>
+    <label><input type="radio" name="v" value="d">D Split</label>
+    <label><input type="radio" name="v" value="e">E Remote</label>
+  </fieldset>
+  <fieldset><legend>State</legend>
+    <label><input type="radio" name="s" value="live" checked>Live</label>
+    <label><input type="radio" name="s" value="loading">Loading</label>
+    <label><input type="radio" name="s" value="empty">Empty</label>
+    <label><input type="radio" name="s" value="error">Error</label>
+    <label><input type="radio" name="s" value="lots">Too much</label>
+  </fieldset>
+  <fieldset><legend>Width</legend>
+    <label><input type="radio" name="w" value="phone" checked>Phone</label>
+    <label><input type="radio" name="w" value="desk">Desktop</label>
+  </fieldset>
+  <fieldset><legend>Theme</legend>
+    <label><input type="radio" name="t" value="dark" checked>Dark</label>
+    <label><input type="radio" name="t" value="light">Light</label>
+    <label><input type="radio" name="t" value="contrast">High contrast</label>
+  </fieldset>
+  <fieldset><legend>Caption</legend>
+    <label><input type="radio" name="cs" value="s">S</label>
+    <label><input type="radio" name="cs" value="m">M</label>
+    <label><input type="radio" name="cs" value="l" checked>L</label>
+    <label><input type="radio" name="cs" value="xl">XL</label>
+    <label><input type="radio" name="cs" value="xxl">XXL</label>
+  </fieldset>
+  <fieldset><legend>Access</legend>
+    <label><input type="checkbox" name="rd">Readable</label>
+    <label><input type="checkbox" name="rm">Reduce motion</label>
+  </fieldset>
+</form>
+<div class="h-belief" id="belief"></div>
+<div class="h-stage"><div class="frame" id="frame"></div></div>
+
+<script>
+const BELIEFS={
+ a:"<b>A · Caption stage.</b> Reading is the job. Captions own the whole screen; ask, questions, react and catch-up are one thumb away in sheets. Bet: most people in the room just want to follow along.",
+ b:"<b>B · Tabs.</b> Familiar app shape. Captions / Questions / Catch-up each get the full screen; signals are a permanent strip so they're never more than 0 taps away.",
+ c:"<b>C · One feed.</b> The room is a conversation. Captions, merged questions and crowd signals interleave in one chat-like stream with a messenger composer. (Pushback candidate: mixes reading with noise.)",
+ d:"<b>D · Split.</b> No navigation at all. Captions fixed on top, ask + signals + live question list underneath. Dense, everything visible, nothing hidden.",
+ e:"<b>E · Remote control.</b> Participation first. Your phone is a remote for the room: giant signal buttons and Ask; captions shrink to a 2-line ticker you tap to expand. (Deliberately crosses the 'captions are the centrepiece' rule.)"
+};
+const IC={
+ slower:'<path d="M12 14l-4-4"/><path d="M3.3 17A9 9 0 1 1 20.7 17"/>',
+ louder:'<path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/>',
+ cantsee:'<path d="m3 3 18 18"/><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.2 4"/><path d="M6.6 6.6C3.8 8.4 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/>',
+ lost:'<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+ thumbs:'<path d="M7 10v12"/><path d="M15 5.9 14 10h5.8a2 2 0 0 1 1.9 2.6l-2.3 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.8a2 2 0 0 0 1.8-1.1L12 2a3.1 3.1 0 0 1 3 3.9z"/>',
+ ask:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+ catchup:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+ up:'<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>',
+ down:'<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
+ x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+ people:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
+ list:'<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/>',
+ wifioff:'<path d="m2 2 20 20"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.8a15 15 0 0 1 4.2-2.7"/><path d="M10.7 5.1a15 15 0 0 1 11.3 3.7"/><path d="M5 12.9a10 10 0 0 1 5.2-2.8"/><path d="M12 20h.01"/>',
+ aa:'<path d="M3 18 8 6l5 12"/><path d="M4.5 14h7"/><path d="M15 18v-4.5a2.5 2.5 0 0 1 5 0V18"/><path d="M15 15.5h5"/>',
+ check:'<path d="M20 6 9 17l-5-5"/>'
+};
+const ic=(n,c='')=>`<svg class="p-ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${IC[n]}</svg>`;
+const SIGNALS=[['slower','Slower'],['louder','Louder'],['cantsee',"Can't see"],['lost','Lost me'],['thumbs','Got it']];
+
+const CAPS=[
+ ["Priya Raman","So the first thing to understand is that eBPF lets you run sandboxed programs inside the kernel without changing kernel source."],
+ [null,"For security folks, that means you can observe every exec, every file open, every network connection, at very low overhead."],
+ [null,"The classic mistake is treating it like a firewall. It isn't. It's a sensor first."],
+ [null,"Let's look at a real trace from a compromised pod. You'll see the shell spawn here, and then an outbound connection to an IP nobody recognises."],
+ [null,"Tetragon and Falco both sit on top of this. Tetragon can also enforce, by killing the process in-kernel before the syscall returns."],
+ [null,"Now, the overhead question. We measured under two percent CPU on a busy node with about forty policies loaded."],
+ [null,"The part people skip is tuning. Default rules will page you about every kubectl exec your own SREs run."],
+ [null,"So the pattern we recommend: start in observe-only, baseline a week, then promote the noisy rules to enforcement one at a time."],
+];
+const MORE=["Here's the policy file. Notice the selector matches on the binary path and the namespace label together.","If you only take one thing away: sensor first, enforcement second, and always baseline."];
+const QS=[
+ {id:1,label:"Overhead on large clusters?",txt:"How does the overhead scale past 500 nodes, and does it differ between Tetragon and Falco?",n:14,votes:31,mine:true},
+ {id:2,label:"Kernel version requirements",txt:"Which kernel versions do we need for BTF / CO-RE to work without shipping headers?",n:6,votes:12},
+ {id:3,label:"Running alongside a service mesh",txt:"Does this conflict with Cilium or Istio sidecars already hooking the same points?",n:3,votes:7},
+ {id:4,label:"Getting started on EKS",txt:"Any gotchas on managed Kubernetes like EKS or GKE Autopilot?",n:1,votes:2},
+];
+const LONGQ={id:9,label:"Long question about multi-tenant policy ownership, audit trails and what happens when two teams' enforcement rules disagree in the same namespace",txt:"We run a platform with about forty tenant teams and each one wants to own their own runtime policies, but our security team needs a guaranteed baseline that can't be overridden, so how do you structure ownership, review and audit of TracingPolicies so that a tenant can't accidentally weaken the baseline, and what does the failure mode look like if two policies conflict on the same binary?",n:213,votes:1204};
+const CATCH=["Priya introduced eBPF as a <b>sensor first, not a firewall</b>.","Walked a real trace: shell spawn in a compromised pod, then an unknown outbound connection.","Tetragon can <b>enforce in-kernel</b>; Falco alerts. Both build on the same hooks.","Measured overhead: <b>under 2% CPU</b> with ~40 policies.","Advice: observe-only for a week, then promote noisy rules one at a time."];
+
+const S={v:'a',s:'live',w:'phone',t:'dark',cs:'l',rd:false,rm:false,sheet:null,toast:null,pressed:{},voted:{1:true},tab:'caps',capN:5,interim:"and the rule here is that",expanded:false,stuck:false};
+
+function title(){return S.s==='lots'?"eBPF for Security Folks: Tracing Without Tears, Enforcing Without Fear, and Everything We Learned Running Tetragon at Scale Across 4,000 Nodes":"eBPF for Security Folks: Tracing Without Tears"}
+function room(){return S.s==='lots'?"Hall F, Level 2, Overflow Annex (step-free via lift B)":"Room 255 B"}
+function count(){return S.s==='lots'?"2,184":S.s==='empty'?"3":"142"}
+function questions(){if(S.s==='empty'||S.s==='loading')return[];if(S.s==='lots'){const a=[LONGQ,...QS];for(let i=0;i<14;i++)a.push({id:20+i,label:`Question cluster ${i+5}`,txt:"Another distinct question from the room.",n:1,votes:1});return a}return QS}
+
+function capsHTML(clsP=''){
+ if(S.s==='loading')return `<div aria-busy="true"><span class="sr">Loading captions</span>${[90,75,95,60].map(w=>`<div class="p-sk" style="height:calc(var(--caption-size)*.9);width:${w}%;margin-bottom:.6em"></div>`).join('')}</div>`;
+ if(S.s==='empty')return `<div class="p-empty"><strong>Captions start when Priya does</strong>The session begins at 10:30. Keep this open; text appears here automatically.</div>`;
+ const list=S.s==='lots'?[...CAPS,...MORE.map(t=>[null,t]),...CAPS]:CAPS.slice(0,S.capN);
+ const out=list.map(([spk,t],i)=>`<p class="${i===list.length-1&&S.s==='live'?'new':''}">${spk?`<span class="spk">${spk}</span>`:''}${t}</p>`).join('');
+ return `<div role="log" aria-live="polite" aria-label="Live captions" class="p-caps ${S.s==='error'?'p-stale':''}">${out}</div>${S.s==='live'||S.s==='lots'?`<p class="p-caps" aria-hidden="true"><span class="interim">${S.interim}…</span></p>`:''}${S.stuck?`<button class="p-btn primary p-jump" data-act="jump">${ic('down')} Jump to live</button>`:''}`;
+}
+function banner(){return S.s==='error'?`<div class="p-banner" role="status">${ic('wifioff')} Reconnecting… captions paused at 10:42 <button class="p-btn" data-act="retry">Retry now</button></div>`:''}
+function liveHead(){return `<span class="p-pill live">LIVE</span>`}
+function sigHTML(){return `<div class="p-sig" role="group" aria-label="Tell the speaker">${SIGNALS.map(([k,l])=>`<button class="p-sigb" data-sig="${k}" aria-pressed="${!!S.pressed[k]}">${ic(k)}<span>${S.pressed[k]?'Sent':l}</span></button>`).join('')}</div>`}
+function qItem(q){const v=!!S.voted[q.id];const others=q.n-1;return `<li class="p-q ${q.mine?'mine':''}"><button class="p-vote" data-vote="${q.id}" aria-pressed="${v}" aria-label="Upvote: ${q.label}. ${q.votes+(v&&!q.mine?1:0)} votes">${ic('up')}<span>${q.votes+(v&&!q.mine?1:0)}</span></button><div><p class="lbl">${q.label}</p><p class="txt">${q.txt}</p><div class="meta">${q.mine?`<span class="p-pill info">${ic('check')} You + ${others} others</span>`:`<span class="p-muted">${q.n} ${q.n===1?'person':'people'} asked</span>`}</div></div></li>`}
+function qList(){const qs=questions();if(S.s==='loading')return `<div aria-busy="true">${[1,2,3].map(()=>`<div class="p-sk" style="height:84px;margin-bottom:10px"></div>`).join('')}</div>`;if(!qs.length)return `<div class="p-empty"><strong>No questions yet</strong>Ask anonymously. Similar questions get merged so the speaker sees what the room wants.</div>`;if(S.s==='error')return `<div class="p-empty" style="padding:var(--space-4)"><strong>Can't load questions</strong>We'll retry automatically. Your question is saved and sends when you're back.</div>`;return `<ul style="list-style:none;margin:0;padding:0;display:grid;gap:10px" aria-label="Questions, most votes first">${qs.map(qItem).join('')}</ul>`}
+function askForm(compact){return `<form data-form="ask" style="display:grid;gap:8px"><label for="askq" class="${compact?'sr':''}" style="font-weight:700">Ask anonymously</label><textarea id="askq" class="p-input" rows="${compact?1:3}" placeholder="Type your question…"></textarea><button class="p-btn primary" type="submit">Send question</button></form>`}
+
+function sheet(){if(!S.sheet)return'';const map={
+ ask:['Ask anonymously',`<p class="p-muted" style="margin-top:0">No name attached. If someone already asked something similar, you'll join them.</p>${askForm(false)}`],
+ qs:['Questions',qList()],
+ react:['Tell the speaker',`<p class="p-muted" style="margin-top:0">Anonymous. Counts show on the speaker's screen for 60 seconds.</p>${sigHTML()}`],
+ catch:['Catch me up · last 10 min',S.s==='error'?`<div class="p-empty"><strong>Summary unavailable</strong>We'll try again when you're reconnected.</div>`:`<ul style="padding-left:1.1em;line-height:var(--readable-leading,1.5);font-size:var(--text-lg);margin:0;display:grid;gap:10px">${CATCH.map(c=>`<li>${c}</li>`).join('')}</ul><p class="p-muted" style="font-size:var(--text-sm)">AI summary of the live captions. May miss details.</p>`],
+ aa:['Display',settingsHTML()]
+ }[S.sheet];
+ return `<div class="p-sheetwrap" data-act="close"><div class="p-sheet" role="dialog" aria-modal="true" aria-labelledby="sh-t" onclick="event.stopPropagation()"><div class="p-sheethd"><h2 id="sh-t">${map[0]}</h2><button class="p-btn ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>${map[1]}</div></div>`}
+function settingsHTML(){const r=(n,v,l)=>`<button class="p-btn ${S[n]===v?'primary':''}" data-set="${n}:${v}" aria-pressed="${S[n]===v}">${l}</button>`;return `<div style="display:grid;gap:var(--space-4)"><div><h3 style="margin:0 0 6px;font-size:var(--text-md)">Caption size</h3><div style="display:flex;gap:6px;flex-wrap:wrap">${['s','m','l','xl','xxl'].map(v=>r('cs',v,v.toUpperCase())).join('')}</div></div><div><h3 style="margin:0 0 6px;font-size:var(--text-md)">Colours</h3><div style="display:flex;gap:6px;flex-wrap:wrap">${r('t','dark','Dark')}${r('t','light','Light')}${r('t','contrast','High contrast')}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="p-btn ${S.rd?'primary':''}" data-tog="rd" aria-pressed="${S.rd}">Readable spacing</button><button class="p-btn ${S.rm?'primary':''}" data-tog="rm" aria-pressed="${S.rm}">Reduce motion</button></div></div>`}
+function toast(){return S.toast?`<div class="p-toast" role="status">${ic('check')} ${S.toast}</div>`:''}
+const aaBtn=()=>`<button class="p-btn ghost" data-sheet="aa" aria-label="Display settings" style="padding:0 10px">${ic('aa')}</button>`;
+
+const V={
+ a(){return `<div class="va">${banner()}<header class="va-hd">${liveHead()}<span class="va-title">${title()}</span><span class="p-muted" style="font-size:var(--text-sm);display:flex;gap:4px;align-items:center">${ic('people')}${count()}</span>${aaBtn()}</header>
+  <main class="va-caps" data-scroll>${capsHTML()}</main>
+  <aside class="va-side" style="display:none" aria-label="Questions"><h2 style="font-size:var(--text-lg);margin:0 0 10px">Questions</h2>${qList()}<h2 style="font-size:var(--text-lg);margin:20px 0 10px">Tell the speaker</h2>${sigHTML()}</aside>
+  <nav class="va-dock" aria-label="Session actions"><button class="p-btn primary" data-sheet="ask">${ic('ask')}Ask</button><button class="p-btn" data-sheet="qs">${ic('list')}Questions<span class="va-badge">${questions().length||''}</span></button><button class="p-btn" data-sheet="react">${ic('thumbs')}React</button><button class="p-btn" data-sheet="catch">${ic('catchup')}Catch up</button></nav></div>`},
+ b(){const tab=(k,l)=>`<button class="vb-tab" role="tab" aria-selected="${S.tab===k}" data-tab="${k}">${l}</button>`;const panel=S.tab==='caps'?`<div class="vb-panel caps" data-scroll role="tabpanel">${capsHTML()}</div>`:S.tab==='qs'?`<div class="vb-panel" role="tabpanel">${qList()}<button class="p-btn primary vb-fab" data-sheet="ask">${ic('ask')} Ask</button></div>`:`<div class="vb-panel" role="tabpanel"><ul style="padding-left:1.1em;line-height:1.5;font-size:var(--text-lg);display:grid;gap:10px;margin:0">${S.s==='live'||S.s==='lots'?CATCH.map(c=>`<li>${c}</li>`).join(''):'<p class="p-muted">Nothing to catch up on yet.</p>'}</ul></div>`;
+  return `<div class="vb">${banner()}<header class="vb-hd"><div style="display:flex;gap:8px;align-items:center">${liveHead()}<span class="p-muted" style="font-size:var(--text-sm)">${room()} · ${count()} here</span><span style="margin-left:auto">${aaBtn()}</span></div><h1>${title()}</h1><div class="vb-tabs" role="tablist">${tab('caps','Captions')}${tab('qs',`Questions ${questions().length||''}`)}${tab('catch','Catch up')}</div></header><div class="vb-body" style="display:contents">${panel}<div class="vb-panel" style="display:none">${qList()}</div></div><footer class="vb-foot" aria-label="Tell the speaker">${sigHTML()}</footer></div>`},
+ c(){let items='';if(S.s==='loading')items=capsHTML();else if(S.s==='empty')items=`<div class="p-empty"><strong>Waiting for Priya</strong>Captions, questions and the room's reactions will appear here.</div>`;else{const caps=S.s==='lots'?[...CAPS,...CAPS]:CAPS.slice(0,S.capN);caps.forEach(([s,t],i)=>{items+=`<p class="vc-cap">${t}</p>`;if(i===1)items+=`<div class="vc-evt">${ic('slower')} 8 people asked to slow down</div>`;if(i===2)items+=`<div class="vc-q mine"><b>You + 13 others</b><br>How does the overhead scale past 500 nodes?</div>`;if(i===3)items+=`<div class="vc-q">Which kernel versions do we need? <span class="p-muted">· 6 people</span></div>`;if(i===4)items+=`<div class="vc-evt">${ic('thumbs')} 23 people: got it</div>`});}
+  return `<div class="vc">${banner()}<header class="vc-hd">${liveHead()}<b style="flex:1;font-size:var(--text-sm);overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${title()}</b><button class="p-btn ghost" data-sheet="catch" aria-label="Catch me up">${ic('catchup')}</button>${aaBtn()}</header><main class="vc-feed ${S.s==='error'?'p-stale':''}" data-scroll role="log" aria-live="polite" aria-label="Session feed">${items}${S.stuck?`<button class="p-btn primary p-jump" data-act="jump">${ic('down')} Jump to live</button>`:''}</main><div class="vc-quick" role="group" aria-label="Quick reactions">${SIGNALS.map(([k,l])=>`<button class="p-btn" data-sig="${k}" aria-pressed="${!!S.pressed[k]}">${ic(k)} ${S.pressed[k]?'Sent':l}</button>`).join('')}</div><form class="vc-comp" data-form="ask"><label for="askq" class="sr">Ask anonymously</label><textarea id="askq" class="p-input" rows="1" placeholder="Ask anonymously…"></textarea><button class="p-btn primary" type="submit" aria-label="Send question">${ic('up')}</button></form></div>`},
+ d(){return `<div class="vd">${banner()}<header class="vd-hd">${liveHead()}<b style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${title()}</b><span class="p-muted">${count()}</span><button class="p-btn ghost" data-sheet="catch" aria-label="Catch me up">${ic('catchup')}</button>${aaBtn()}</header><main class="vd-caps" data-scroll>${capsHTML()}</main><section class="vd-low" aria-label="Participate">${sigHTML()}<form data-form="ask" class="vd-ask"><label for="askq" class="sr">Ask anonymously</label><textarea id="askq" class="p-input" rows="1" placeholder="Ask anonymously…"></textarea><button class="p-btn primary" type="submit">Ask</button></form><div class="vd-sec"><h2>Questions</h2><span class="p-muted" style="font-size:var(--text-sm)">most votes first</span></div>${qList()}</section></div>`},
+ e(){return `<div class="ve">${banner()}<button class="ve-tick" data-sheet="capsfull" aria-label="Expand captions" style="font:inherit;text-align:left;border:0;width:100%;color:inherit">${S.s==='live'||S.s==='lots'?`<div class="p-caps"><p>${(S.s==='lots'?CAPS:CAPS.slice(0,S.capN)).slice(-1)[0][1]}</p></div>`:capsHTML()}</button><main class="ve-main"><h1>${title()}</h1><button class="p-btn primary ve-ask" data-sheet="ask">${ic('ask')} Ask a question</button><div class="ve-grid" role="group" aria-label="Tell the speaker">${SIGNALS.map(([k,l])=>`<button class="p-sigb" data-sig="${k}" aria-pressed="${!!S.pressed[k]}">${ic(k)}<span>${S.pressed[k]?'Sent':l}</span></button>`).join('')}</div><button class="p-btn" data-sheet="qs">${ic('list')} ${questions().length} questions · you + 13 others</button><button class="p-btn" data-sheet="catch">${ic('catchup')} Catch me up</button></main></div>`},
+};
+
+const frame=document.getElementById('frame');
+function render(){
+ const r=document.documentElement;r.dataset.theme=S.t;r.dataset.captionSize=S.cs;r.dataset.readable=S.rd;r.dataset.motion=S.rm?'reduce':'full';
+ frame.className='frame'+(S.w==='desk'?' desk':'');
+ document.getElementById('belief').innerHTML=BELIEFS[S.v];
+ let sh=S.sheet==='capsfull'?`<div class="p-sheetwrap" data-act="close"><div class="p-sheet" role="dialog" aria-modal="true" aria-label="Captions" style="background:var(--color-caption-bg)" onclick="event.stopPropagation()"><div class="p-sheethd"><span></span><button class="p-btn ghost" data-act="close" aria-label="Close">${ic('x')}</button></div>${capsHTML()}</div></div>`:sheet();
+ const sc=frame.querySelector('[data-scroll]');const st=sc&&S.stuck?sc.scrollTop:null;
+ frame.innerHTML=V[S.v]()+sh+toast();
+ const ns=frame.querySelector('[data-scroll]');if(ns){if(st!==null)ns.scrollTop=st;else ns.scrollTop=ns.scrollHeight;ns.onscroll=()=>{const atEnd=ns.scrollHeight-ns.scrollTop-ns.clientHeight<40;if(S.stuck===atEnd){S.stuck=!atEnd;const b=ns.querySelector('.p-jump');if(!atEnd&&!b)ns.insertAdjacentHTML('beforeend',`<button class="p-btn primary p-jump" data-act="jump">${ic('down')} Jump to live</button>`);if(atEnd&&b)b.remove()}}}
+}
+document.getElementById('ctl').addEventListener('change',e=>{const f=e.target;if(f.type==='checkbox')S[f.name]=f.checked;else S[f.name]=f.value;S.sheet=null;S.stuck=false;render()});
+function syncCtl(){const c=document.getElementById('ctl');for(const k of ['t','cs']){const i=c.querySelector(`input[name=${k}][value=${S[k]}]`);if(i)i.checked=true}c.rd.checked=S.rd;c.rm.checked=S.rm}
+frame.addEventListener('click',e=>{const b=e.target.closest('[data-sheet],[data-act],[data-sig],[data-vote],[data-tab],[data-set],[data-tog]');if(!b)return;const d=b.dataset;
+ if(d.sheet)S.sheet=d.sheet;
+ if(d.act==='close'&&(e.target===b||b.tagName==='BUTTON'))S.sheet=null;
+ if(d.act==='jump'){S.stuck=false}
+ if(d.act==='retry'){S.toast='Reconnected. Captions resumed.';setTimeout(()=>{S.toast=null;render()},2500)}
+ if(d.sig){S.pressed[d.sig]=true;S.toast='Sent anonymously. Priya sees it for 60 s.';setTimeout(()=>{S.pressed[d.sig]=false;S.toast=null;render()},2500)}
+ if(d.vote){S.voted[d.vote]=!S.voted[d.vote]}
+ if(d.tab)S.tab=d.tab;
+ if(d.set){const[k,v]=d.set.split(':');S[k]=v;syncCtl()}
+ if(d.tog){S[d.tog]=!S[d.tog];syncCtl()}
+ render()});
+frame.addEventListener('submit',e=>{e.preventDefault();S.sheet=null;S.toast='Merged: you and 13 others asked this. Priya sees it as one question.';setTimeout(()=>{S.toast=null;render()},3500);render()});
+if(window.self!==window.top)document.body.style.background='transparent';
+// Deep-link any state: grill.html#v=b&s=error&t=light&w=desk&sheet=catch
+for(const [k,v] of new URLSearchParams(location.hash.slice(1))){S[k]=v==='true'?true:v==='false'?false:v}
+if(S.bare){document.querySelector('.h-bar').style.display='none';document.getElementById('belief').style.display='none'}
+if(location.hash){const c=document.getElementById('ctl');for(const k of ['v','s','w','t','cs']){const i=c.querySelector(`input[name=${k}][value="${S[k]}"]`);if(i)i.checked=true}c.rd.checked=S.rd;c.rm.checked=S.rm}
+let tick=0;setInterval(()=>{if(S.s!=='live'||S.sheet)return;tick++;const words=["and the rule here is that","the selector has to match","so you can see how the"];S.interim=words[tick%3];if(tick%3===0&&S.capN<CAPS.length){S.capN++;if(!S.stuck)render();}else{const i=frame.querySelector('.interim');if(i)i.textContent=S.interim+'…'}},2200);
+render();
+</script>
+</body>
+</html>

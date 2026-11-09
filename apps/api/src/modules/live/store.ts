@@ -39,6 +39,8 @@ export const keys = {
   voters: (qid: string) => `live:q:${qid}:voters`, // SET anonId
   rate: (sid: string, anonId: string, type: string) => `live:rl:${sid}:${anonId}:${type}`,
   conns: (anonId: string) => `live:conns:${anonId}`, // INT open SSE streams
+  // Demo engine: chunk ids published by a simulated speaker (`sim_*`) on cnh-demos.
+  syntheticChunks: (sub: string) => `synthetic:chunks:${sub}`, // SET chunkId
   graceLeft: (anonId: string) => `live:graceleft:${anonId}`, // STRING sessionId left by grace
   catchUp: (sid: string, minutes: number, minute: number) =>
     `live:catchup:${sid}:${minutes}:${minute}`, // STRING CatchUpResponse JSON, 120 s

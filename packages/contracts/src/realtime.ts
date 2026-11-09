@@ -85,3 +85,17 @@ export function realtime<T extends RealtimeType>(
 ): Extract<RealtimeMessage, { type: T }> {
   return { type, at: new Date().toISOString(), payload } as Extract<RealtimeMessage, { type: T }>;
 }
+
+/** SSE control frames (02-contracts section 5, "Stream lifecycle"). Not RealtimeMessages. */
+export interface SseReady {
+  channels: ChannelKind[];
+  retryMs: number;
+  /** false: subscriptions still pending; a ready {live:true} follows. */
+  live: boolean;
+  /** true: the gap after Last-Event-ID was replayed; no snapshot needed. */
+  resumed: boolean;
+}
+export interface SseReconnect {
+  reason: 'max-stream';
+}
+export const SSE_CONTROL_EVENTS = ['ready', 'reconnect', 'snapshot', 'error'] as const;

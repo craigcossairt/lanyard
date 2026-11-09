@@ -1,0 +1,576 @@
+{
+  "kind": "PersesDashboard",
+  "apiVersion": "perses.dev/v1alpha1",
+  "metadata": {
+    "name": "lanyard-conference-ops"
+  },
+  "spec": {
+    "display": {
+      "name": "Conference Ops",
+      "description": "Lanyard: the conference as a distributed system. Rooms are services, attendees are traffic."
+    },
+    "duration": "1h",
+    "refreshInterval": "30s",
+    "datasources": {
+      "default": {
+        "name": "default",
+        "plugin": {
+          "kind": "PrometheusDataSource"
+        }
+      }
+    },
+    "panels": {
+      "rooms_over_slo": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Rooms at or over 90% capacity",
+            "description": "Rooms whose occupancy / capacity >= 0.9 right now (SLO threshold)."
+          },
+          "plugin": {
+            "kind": "StatChart",
+            "spec": {
+              "calculation": "last-number"
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "count((max by (event, room) ({otel_metric_name=\"conf.room.occupancy\"}) / max by (event, room) ({otel_metric_name=\"conf.room.capacity\"})) >= 0.9) or vector(0)"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "sse_clients": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Live SSE clients",
+            "description": "Open realtime connections across all app replicas (per-replica gauge, so summed)."
+          },
+          "plugin": {
+            "kind": "StatChart",
+            "spec": {
+              "calculation": "last-number"
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "sum({otel_metric_name=\"conf.sse.clients\"})"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "fanout_p95_now": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Question fanout p95 (ms)",
+            "description": "Session channel (what the speaker console reads). SLO: p95 < 1000 ms."
+          },
+          "plugin": {
+            "kind": "StatChart",
+            "spec": {
+              "calculation": "last-number"
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "histogram_quantile(0.95, sum(rate({otel_metric_name=\"conf.realtime.fanout_ms\", channel_kind=\"session\"}[5m])))"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "llm_cost_1h": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "LLM cost, last hour (USD)",
+            "description": "From OpenLIT GenAI spans (Dash0 gen_ai metrics)."
+          },
+          "plugin": {
+            "kind": "StatChart",
+            "spec": {
+              "calculation": "last-number"
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "sum(increase({otel_metric_name=\"dash0.gen_ai.usage.cost\", service_name=~\"lanyard-(app|worker)\"}[1h]))"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "occupancy": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Room occupancy (% of capacity)",
+            "description": "Leader-emitted gauges, max-aggregated. Red line in the SLO: 0.9."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "max by (event, room) ({otel_metric_name=\"conf.room.occupancy\"}) / max by (event, room) ({otel_metric_name=\"conf.room.capacity\"})"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "attendees": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Session attendees",
+            "description": "Per session, max-aggregated across leader identities."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "max by (event, session) ({otel_metric_name=\"conf.session.attendees\"})"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "signals": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Audience signals per minute",
+            "description": "slower / louder / cant_see / lost / thumbs_up / too_cold / too_hot."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "sum by (type) (rate({otel_metric_name=\"conf.signals\"}[2m])) * 60"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "questions": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Questions per minute, and dedup merges",
+            "description": "Questions asked per session; merged=true means Elasticsearch joined it to an existing cluster."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "sum by (session) (rate({otel_metric_name=\"conf.questions\"}[2m])) * 60"
+                  }
+                }
+              }
+            },
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "sum by (merged) (rate({otel_metric_name=\"conf.question.dedup\"}[2m])) * 60"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "fanout": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Realtime fanout latency (ms)",
+            "description": "p50 / p95 by channel kind. SLO: question fanout p95 < 1000 ms."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "histogram_quantile(0.95, sum by (channel_kind) (rate({otel_metric_name=\"conf.realtime.fanout_ms\"}[5m])))"
+                  }
+                }
+              }
+            },
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "histogram_quantile(0.5, sum by (channel_kind) (rate({otel_metric_name=\"conf.realtime.fanout_ms\"}[5m])))"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "caption_lag": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Caption lag p95 (ms)",
+            "description": "Accessibility target: p95 < 1500 ms."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "histogram_quantile(0.95, sum by (session) (rate({otel_metric_name=\"conf.caption.lag_ms\"}[5m])))"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "sse_by_kind": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "SSE clients by channel kind",
+            "description": "Load evidence during the demo."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "sum by (channel_kind) ({otel_metric_name=\"conf.sse.clients\"})"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "reroute": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Reroutes suggested vs accepted (per min)",
+            "description": "Outcome of the organizer reroute action."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "sum by (room) (rate({otel_metric_name=\"conf.reroute.suggested\"}[5m])) * 60"
+                  }
+                }
+              }
+            },
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "sum by (room) (rate({otel_metric_name=\"conf.reroute.accepted\"}[5m])) * 60"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "llm_tokens": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "LLM tokens per minute",
+            "description": "Input and output tokens from GenAI spans."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "sum(rate({otel_metric_name=\"dash0.gen_ai.tokens.input\", service_name=~\"lanyard-(app|worker)\"}[5m])) * 60"
+                  }
+                }
+              }
+            },
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "sum(rate({otel_metric_name=\"dash0.gen_ai.tokens.output\", service_name=~\"lanyard-(app|worker)\"}[5m])) * 60"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "http_p95": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "API latency p95 (s)",
+            "description": "http.server.request.duration for lanyard-app."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {}
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "histogram_quantile(0.95, sum(rate({otel_metric_name=\"http.server.request.duration\", service_name=\"lanyard-app\"}[5m])))"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "layouts": [
+      {
+        "kind": "Grid",
+        "spec": {
+          "items": [
+            {
+              "x": 0,
+              "y": 0,
+              "width": 6,
+              "height": 4,
+              "content": {
+                "$ref": "#/spec/panels/rooms_over_slo"
+              }
+            },
+            {
+              "x": 6,
+              "y": 0,
+              "width": 6,
+              "height": 4,
+              "content": {
+                "$ref": "#/spec/panels/sse_clients"
+              }
+            },
+            {
+              "x": 12,
+              "y": 0,
+              "width": 6,
+              "height": 4,
+              "content": {
+                "$ref": "#/spec/panels/fanout_p95_now"
+              }
+            },
+            {
+              "x": 18,
+              "y": 0,
+              "width": 6,
+              "height": 4,
+              "content": {
+                "$ref": "#/spec/panels/llm_cost_1h"
+              }
+            },
+            {
+              "x": 0,
+              "y": 4,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/occupancy"
+              }
+            },
+            {
+              "x": 12,
+              "y": 4,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/attendees"
+              }
+            },
+            {
+              "x": 0,
+              "y": 12,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/signals"
+              }
+            },
+            {
+              "x": 12,
+              "y": 12,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/questions"
+              }
+            },
+            {
+              "x": 0,
+              "y": 20,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/fanout"
+              }
+            },
+            {
+              "x": 12,
+              "y": 20,
+              "width": 12,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/caption_lag"
+              }
+            },
+            {
+              "x": 0,
+              "y": 28,
+              "width": 8,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/sse_by_kind"
+              }
+            },
+            {
+              "x": 8,
+              "y": 28,
+              "width": 8,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/reroute"
+              }
+            },
+            {
+              "x": 16,
+              "y": 28,
+              "width": 8,
+              "height": 8,
+              "content": {
+                "$ref": "#/spec/panels/llm_tokens"
+              }
+            },
+            {
+              "x": 0,
+              "y": 36,
+              "width": 24,
+              "height": 7,
+              "content": {
+                "$ref": "#/spec/panels/http_p95"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

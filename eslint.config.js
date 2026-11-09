@@ -25,6 +25,7 @@ export default tseslint.config(
       'apps/worker/**/*.ts',
       'packages/**/*.ts',
       'scripts/**/*.{js,mjs,cjs}',
+      'docs/evidence/dash0/*.mjs',
       '*.{js,mjs,cjs,ts}',
     ],
     languageOptions: { globals: globals.node },

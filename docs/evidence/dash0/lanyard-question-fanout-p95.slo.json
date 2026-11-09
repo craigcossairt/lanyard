@@ -1,0 +1,57 @@
+{
+  "apiVersion": "openslo/v1",
+  "kind": "SLO",
+  "metadata": {
+    "name": "lanyard-question-fanout-p95",
+    "labels": {
+      "team": "lanyard",
+      "slo": "question-fanout"
+    },
+    "annotations": {
+      "dash0.com/display-name": "Lanyard: question fanout under 1 s"
+    }
+  },
+  "spec": {
+    "description": "95% of session-channel fanouts (questions, plus captions and attendance on the same channel) reach subscribers such as the speaker console within 1000 ms (conf.realtime.fanout_ms, channel_kind=session, native histogram), i.e. p95 < 1 s.",
+    "service": "lanyard-app",
+    "budgetingMethod": "Occurrences",
+    "timeWindow": [
+      {
+        "duration": "28d",
+        "isRolling": true
+      }
+    ],
+    "indicator": {
+      "metadata": {
+        "name": "question-fanout-under-1s"
+      },
+      "spec": {
+        "ratioMetric": {
+          "counter": false,
+          "good": {
+            "metricSource": {
+              "type": "Prometheus",
+              "spec": {
+                "query": "histogram_fraction(0, 1000, increase({otel_metric_name=\"conf.realtime.fanout_ms\", channel_kind=\"session\"}[5m])) * histogram_count(increase({otel_metric_name=\"conf.realtime.fanout_ms\", channel_kind=\"session\"}[5m]))"
+              }
+            }
+          },
+          "total": {
+            "metricSource": {
+              "type": "Prometheus",
+              "spec": {
+                "query": "histogram_count(increase({otel_metric_name=\"conf.realtime.fanout_ms\", channel_kind=\"session\"}[5m]))"
+              }
+            }
+          }
+        }
+      }
+    },
+    "objectives": [
+      {
+        "displayName": "p95 fanout < 1 s",
+        "target": 0.95
+      }
+    ]
+  }
+}

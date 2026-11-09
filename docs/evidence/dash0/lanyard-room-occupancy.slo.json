@@ -1,0 +1,57 @@
+{
+  "apiVersion": "openslo/v1",
+  "kind": "SLO",
+  "metadata": {
+    "name": "lanyard-room-occupancy",
+    "labels": {
+      "team": "lanyard",
+      "slo": "room-occupancy"
+    },
+    "annotations": {
+      "dash0.com/display-name": "Lanyard: rooms under 90% capacity"
+    }
+  },
+  "spec": {
+    "description": "Room-minutes below 90% of capacity (conf.room.occupancy / conf.room.capacity, leader gauges aggregated with max). Each evaluation counts every room once.",
+    "service": "lanyard-app",
+    "budgetingMethod": "Occurrences",
+    "timeWindow": [
+      {
+        "duration": "28d",
+        "isRolling": true
+      }
+    ],
+    "indicator": {
+      "metadata": {
+        "name": "rooms-under-90pct"
+      },
+      "spec": {
+        "ratioMetric": {
+          "counter": false,
+          "good": {
+            "metricSource": {
+              "type": "Prometheus",
+              "spec": {
+                "query": "count((max by (event, room) ({otel_metric_name=\"conf.room.occupancy\"}) / max by (event, room) ({otel_metric_name=\"conf.room.capacity\"})) < 0.9) or vector(0)"
+              }
+            }
+          },
+          "total": {
+            "metricSource": {
+              "type": "Prometheus",
+              "spec": {
+                "query": "count(max by (event, room) ({otel_metric_name=\"conf.room.capacity\"}) > 0)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "objectives": [
+      {
+        "displayName": "95% of room-time under 90% capacity",
+        "target": 0.95
+      }
+    ]
+  }
+}

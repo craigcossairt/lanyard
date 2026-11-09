@@ -84,6 +84,7 @@ function recordQuestion(qid: string): void {
               id: qid,
               version,
               version_type: 'external',
+              refresh: 'wait_for',
               document: { ...q, intent: h.intent },
             },
             o,

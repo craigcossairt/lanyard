@@ -32,3 +32,23 @@ This is an in-sample smoke calibration, not a measured production accuracy
 claim. The helper returns its score so callers retain evidence. Recalibrate if
 the endpoint/model changes; do not reuse this numeric threshold for ELSER or
 RRF scores. Empty/incomplete searches never claim a duplicate match.
+
+## Demo recovery (2026-11-09)
+
+The trial inference endpoint returned HTTP 429 with an explicit eight-second
+quota refill window. A single-document probe first recovered at
+2026-11-09T23:12:29.540Z; it returned no Retry-After or rate-limit headers.
+The original overflow group's three scores were 0.8262, 0.7155 and 0.7334,
+all below the unchanged 0.848 threshold. Revised wording and measured scores
+are in `data/seed/demo-question-*`. All eight proposed anchor comparisons
+completed before 23:22Z and merged: overflow 0.9570/0.9083, late arrival
+0.9609/0.9615, grouping 0.9587/0.9492, captions 0.9644/0.9492. Original-wording
+measurements remain partial after a timeout; missing pairs are not passes.
+
+`scripts/es/demo-pairs.ts` scores isolated synthetic records through the actual
+helper and deletes only its own ids. Its CLI-only fetch transport works around
+local client transport failures; `--diagnostic-timeout` explicitly allows 15 s
+for scoring, separate from the approved production 4 s dedup-only budget. `--resume`
+continues measured pairs with ten-second pauses. Background question writes
+wait for ES refresh; this does not bypass inference rate limits or guarantee
+that every subsequent semantic query completes inside its deadline.

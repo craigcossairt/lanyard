@@ -22,16 +22,39 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+          # Secrets (ES, OpenAI, Typesafe, OTLP, Dash0, token signing) come only
+          # from the app-credentials Secret, which is kept outside git.
+          envFrom:
+            - secretRef:
+                name: app-credentials
           env:
             - name: TEAM_NAME
               value: "lanyard"
+            - name: ROLE
+              value: "app"
+            - name: PORT
+              value: "8080"
+            - name: PUBLIC_BASE_URL
+              value: "https://lanyard.cnh.radarhq.io"
+            - name: EVENT_TZ
+              value: "America/Denver"
+            - name: VALKEY_URL
+              value: "redis://valkey:6379"
+            - name: OTEL_SERVICE_NAME
+              value: "lanyard-app"
+            # Set by kustomize from the image tag (the git SHA); see
+            # replacements in kustomization.yaml.
+            - name: SERVICE_VERSION
+              value: "dev"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "deployment.environment=hackathon,service.version=$(SERVICE_VERSION)"
           resources:
             requests:
-              cpu: 100m
-              memory: 128Mi
+              cpu: 200m
+              memory: 256Mi
             limits:
               cpu: 500m
-              memory: 256Mi
+              memory: 512Mi
           readinessProbe:
             httpGet:
               path: /readyz

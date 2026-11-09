@@ -21,6 +21,8 @@ interface State {
   attendance: { count: number; capacity: number } | null;
   /** What attendees see: snapshot tail plus every caption.appended, from any source. */
   captions: CaptionLine[];
+  /** Epoch ms when the newest caption arrived (snapshot tail uses its endedAt). */
+  lastCaptionAt: number | null;
   ended: boolean;
 }
 
@@ -69,6 +71,11 @@ function reducer(state: State, action: Action): State {
         .map((c) => ({ chunkId: c.chunkId, seq: c.seq, text: c.text }))
         .sort((a, b) => a.seq - b.seq)
         .slice(-MAX_CAPTIONS),
+      lastCaptionAt: (() => {
+        const last = p.captions[p.captions.length - 1];
+        const t = last?.endedAt ? Date.parse(last.endedAt) : NaN;
+        return Number.isFinite(t) ? t : null;
+      })(),
       ended: p.status === 'ended',
     };
   }
@@ -83,6 +90,7 @@ function reducer(state: State, action: Action): State {
           seq: m.payload.seq,
           text: m.payload.text,
         }),
+        lastCaptionAt: Date.now(),
       };
     case 'question.created':
     case 'question.updated':
@@ -148,6 +156,7 @@ const initial: State = {
   signals: {},
   attendance: null,
   captions: [],
+  lastCaptionAt: null,
   ended: false,
 };
 

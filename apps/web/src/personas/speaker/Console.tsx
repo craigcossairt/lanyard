@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import type { Session } from '@lanyard/contracts';
 import { buildClusterViews } from '../attendee/components/QuestionList';
@@ -10,6 +10,8 @@ import { useSpeechCaptions } from './lib/captions';
 import { useSpeakerConsole } from './lib/console';
 
 const STAGE_KEY = 'lanyard.speaker.stage';
+const PREVIEW_LINES = 6;
+const LIVE_WINDOW_MS = 15_000;
 
 export default function ConsoleRoute() {
   const { id = '' } = useParams();
@@ -87,7 +89,20 @@ function Console({ id }: { id: string }) {
     live.captions.length > 0
       ? live.captions.map((c) => ({ id: c.chunkId, text: c.text }))
       : captions.recent.map((text, i) => ({ id: `local-${i}`, text }));
-  const captionsLive = lines.length > 0;
+  // Only the tail is rendered (full history stays in state); keep it scrolled to the latest.
+  const visible = lines.slice(-PREVIEW_LINES);
+  const previewRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = previewRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [visible.length, visible[visible.length - 1]?.id, captions.interim]);
+  // "Live" means a caption arrived in the last 15 s from any source, not just that history exists.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 5_000);
+    return () => clearInterval(t);
+  }, []);
+  const captionsLive = live.lastCaptionAt !== null && now - live.lastCaptionAt < LIVE_WINDOW_MS;
 
   return (
     <div className={`sp-page${stage ? ' sp-page--stage' : ''}`}>
@@ -184,8 +199,13 @@ function Console({ id }: { id: string }) {
           <div className="at-sr-only" aria-live="polite" aria-atomic="true">
             {lines[lines.length - 1]?.text ?? ''}
           </div>
-          <div className="sp-captions" aria-label="What attendees see">
-            {lines.map((line) => (
+          <div
+            ref={previewRef}
+            className="sp-captions"
+            aria-label="What attendees see"
+            style={{ maxHeight: '40vh', overflowY: 'auto' }}
+          >
+            {visible.map((line) => (
               <p key={line.id} className="sp-captions__final">
                 {line.text}
               </p>

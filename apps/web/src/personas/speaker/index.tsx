@@ -1,7 +1,7 @@
 // Speaker persona: mounted by the WS0 shell under /s (default export renders the routes).
 import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router';
-import { DisplayPrefsProvider, ToastProvider } from '../../ui';
+import { ToastProvider } from '../../ui';
 import '../../ui/styles.css';
 import './speaker.css';
 
@@ -18,16 +18,14 @@ function Loading() {
 
 export default function SpeakerRoutes() {
   return (
-    <DisplayPrefsProvider>
-      <ToastProvider>
-        <Suspense fallback={<Loading />}>
-          <Routes>
-            <Route index element={<SessionPicker />} />
-            <Route path=":id" element={<Console />} />
-            <Route path="*" element={<SessionPicker />} />
-          </Routes>
-        </Suspense>
-      </ToastProvider>
-    </DisplayPrefsProvider>
+    <ToastProvider>
+      <Suspense fallback={<Loading />}>
+        <Routes>
+          <Route index element={<SessionPicker />} />
+          <Route path=":id" element={<Console />} />
+          <Route path="*" element={<SessionPicker />} />
+        </Routes>
+      </Suspense>
+    </ToastProvider>
   );
 }

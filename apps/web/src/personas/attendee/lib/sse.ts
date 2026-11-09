@@ -62,6 +62,13 @@ export function useSse(
     let attempt = 0;
     let controller: AbortController | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    // Backoff base from the server's `ready.retryMs` hint, when it sends one.
+    let retryMs = MIN_BACKOFF_MS;
+    // `ready {live:false}` means the server built the snapshot before its bus subscription
+    // was live, so messages in that gap are lost. On the following `live:true` we reconnect
+    // so the server sends a fresh snapshot (live state comes only from that event).
+    let degraded = false;
+    let resync = false;
 
     const connect = async () => {
       if (stopped) return;
@@ -85,7 +92,22 @@ export function useSse(
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
           buffer = parseEvents(buffer, (type, data) => {
-            if (type === 'ready' || type === 'error') return;
+            if (type === 'ready') {
+              try {
+                const r = JSON.parse(data) as { retryMs?: number; live?: boolean };
+                if (r.retryMs) retryMs = r.retryMs;
+                if (r.live === false) degraded = true;
+                else if (degraded) {
+                  degraded = false;
+                  resync = true;
+                  controller?.abort();
+                }
+              } catch {
+                // Ignore a malformed ready frame.
+              }
+              return;
+            }
+            if (type === 'error') return;
             try {
               const msg = JSON.parse(data) as StreamEvent;
               if (msg && typeof msg === 'object' && 'type' in msg) handler.current(msg);
@@ -98,8 +120,15 @@ export function useSse(
         // Fall through to the backoff below (network error, abort, or non-2xx).
       }
       if (stopped) return;
+      if (resync) {
+        // Deliberate reconnect for a fresh snapshot: no backoff.
+        resync = false;
+        attempt = Math.max(attempt, 1);
+        timer = setTimeout(connect, 0);
+        return;
+      }
       attempt += 1;
-      const wait = Math.min(MAX_BACKOFF_MS, MIN_BACKOFF_MS * 2 ** Math.min(attempt, 4));
+      const wait = Math.min(MAX_BACKOFF_MS, retryMs * 2 ** Math.min(attempt, 4));
       setStatus('reconnecting');
       timer = setTimeout(connect, wait + Math.random() * 250);
     };

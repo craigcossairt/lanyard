@@ -142,6 +142,19 @@ export const NetworkingProfileRequest = z.object({
 export type NetworkingProfileRequest = z.infer<typeof NetworkingProfileRequest>;
 export const NetworkingProfileResponse = z.object({ saved: z.literal(true) });
 export type NetworkingProfileResponse = z.infer<typeof NetworkingProfileResponse>;
+export const MyNetworkingResponse = z.discriminatedUnion('optedIn', [
+  z.object({ optedIn: z.literal(false) }),
+  z.object({
+    optedIn: z.literal(true),
+    profile: z.object({
+      linkedinUrl: z.string().url(),
+      needs: z.string().max(240),
+      offers: z.string().max(240),
+      interests: z.string().max(500),
+    }),
+  }),
+]);
+export type MyNetworkingResponse = z.infer<typeof MyNetworkingResponse>;
 export const RemoveNetworkingResponse = z.object({ removed: z.literal(true) });
 export type RemoveNetworkingResponse = z.infer<typeof RemoveNetworkingResponse>;
 export const NetworkingSuggestionsResponse = z.object({

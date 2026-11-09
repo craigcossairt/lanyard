@@ -6,6 +6,7 @@ import {
   eventDate,
   formatTime,
   METRICS,
+  MyNetworkingResponse,
   NetworkingProfile,
   NetworkingProfileRequest,
   RealtimeMessage,
@@ -63,6 +64,8 @@ test('networking profile requires explicit valid LinkedIn profile details', () =
   };
   assert.ok(NetworkingProfile.safeParse(profile).success);
   assert.ok(NetworkingProfileRequest.safeParse(profile).success);
+  assert.ok(MyNetworkingResponse.safeParse({ optedIn: true, profile }).success);
+  assert.ok(MyNetworkingResponse.safeParse({ optedIn: false }).success);
   for (const linkedinUrl of [
     'http://www.linkedin.com/in/example-1',
     'https://linkedin.com/company/example',

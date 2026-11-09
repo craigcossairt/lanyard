@@ -81,6 +81,7 @@ Roles are carried by a signed token: attendee (issued on join), or speaker, orga
 | GET and PUT `/me/schedule` | attendee | My schedule | WS3 |
 | PUT `/me/prefs` | attendee | Accessibility prefs, language, interests (opt-in) | WS3 |
 | PUT `/me/networking` | attendee | Explicitly opt in or update a networking profile (`NetworkingProfileRequest`) | WS7 |
+| GET `/me/networking` | attendee | Read this attendee's own opt-in state and profile fields | WS7 |
 | DELETE `/me/networking` | attendee | Remove consent and delete the caller's `cnh-people` profile | WS7 |
 | GET `/events/:eventId/networking/suggestions` | attendee | Event-scoped suggestions for other opted-in attendees; excludes self and returns handle, LinkedIn URL and optional one-line reason | WS7 |
 | POST `/sessions/:id/presence` | attendee | Join or leave session (drives occupancy) | WS2 |

@@ -40,7 +40,7 @@ async function main() {
       const row = { group: pair.group, original: pair.original, paraphrase: pair.paraphrase, score: result.score, merged: result.clusterId === pair.id };
       rows.push(row);
       console.log(JSON.stringify(row));
-      await writeFile(output, JSON.stringify({ measuredAt: new Date().toISOString(), threshold: QUESTION_CLUSTER_THRESHOLD, diagnosticTimeoutMs: process.argv.includes('--diagnostic-timeout') ? 15_000 : 2000, rows }, null, 2) + '\n');
+      await writeFile(output, JSON.stringify({ measuredAt: new Date().toISOString(), threshold: QUESTION_CLUSTER_THRESHOLD, diagnosticTimeoutMs: process.argv.includes('--diagnostic-timeout') ? 15_000 : 4000, rows }, null, 2) + '\n');
       await new Promise(resolve => setTimeout(resolve, 10000));
     }
     phase = 'write';

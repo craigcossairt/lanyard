@@ -40,8 +40,10 @@ quota refill window. A single-document probe first recovered at
 2026-11-09T23:12:29.540Z; it returned no Retry-After or rate-limit headers.
 The original overflow group's three scores were 0.8262, 0.7155 and 0.7334,
 all below the unchanged 0.848 threshold. Revised wording and measured scores
-are in `data/seed/demo-question-*`. Measurements are partial if the endpoint
-rejects or times out; do not interpret missing pairs as successful matches.
+are in `data/seed/demo-question-*`. All eight proposed anchor comparisons
+completed before 23:22Z and merged: overflow 0.9570/0.9083, late arrival
+0.9609/0.9615, grouping 0.9587/0.9492, captions 0.9644/0.9492. Original-wording
+measurements remain partial after a timeout; missing pairs are not passes.
 
 `scripts/es/demo-pairs.ts` scores isolated synthetic records through the actual
 helper and deletes only its own ids. Its CLI-only fetch transport works around

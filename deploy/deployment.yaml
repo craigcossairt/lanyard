@@ -95,6 +95,15 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
+          # Radar investigation chat_RjOgOymzUJCDCUUF: during rollouts, readiness
+          # and liveness fired before the app bound :8080 ("connection
+          # refused"). Hold them until /healthz answers (up to 60 s).
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 2
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /readyz

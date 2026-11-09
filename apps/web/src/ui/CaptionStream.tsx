@@ -9,6 +9,11 @@ export interface CaptionLine {
   text: string;
   /** Set when the speaker changes; shown as a small label above the line. */
   speaker?: string;
+  /**
+   * Language of `text` (BCP-47). Set it when the words are not in the page language,
+   * so a Spanish UI does not make English captions get a Spanish pronunciation.
+   */
+  lang?: string;
 }
 
 export interface CaptionStreamProps {
@@ -116,7 +121,7 @@ export function CaptionStream({
           <>
             <ol className="ly-caps__log" role="log" aria-live="polite" aria-label={label}>
               {lines.map((l) => (
-                <li key={l.id} className="ly-caps__line">
+                <li key={l.id} className="ly-caps__line" lang={l.lang}>
                   {l.speaker && <span className="ly-caps__speaker">{l.speaker}</span>}
                   {l.text}
                 </li>

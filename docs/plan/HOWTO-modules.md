@@ -57,6 +57,8 @@ What core gives you (`apps/api/src/core/`):
 | Realtime | `ctx.bus.publish(channel, realtime(type, payload))`, `ctx.bus.subscribe(channel, fn)` |
 | Counters | `ctx.kv` (ioredis, 500 ms timeout). It's `undefined` without Valkey, so keep an in-memory fallback |
 | Fast decisions | `moderate(text)` returns allow, hide or review. `decide('intent', { state, question, labels, defaultLabel })` uses Jev (1 s, span `jev.<name>`) |
+| LLM text | `llm({ purpose, model: 'chat' \| 'fast', messages, timeoutMs?, json? })` returns `{ text, inputTokens, outputTokens }`. Span `llm.<purpose>` with model and tokens; 20 s default (catch-up: 8000) (#30) |
+| Worker jobs | `runJob(name, payload, { wait?, timeoutMs? })` (#30) |
 | Time | `core/time`: store and send UTC ISO (`nowIso()`). Render only through `formatTime` and `formatRange` (event timezone) |
 | Metrics | `metrics.getMeter('lanyard')` with names from `METRICS`. Attributes may be event, room, session, type or channel_kind only |
 | Logs | `ctx.logger` / `req.log` (pino, trace ids added automatically) |
@@ -65,7 +67,29 @@ Rules: never put question text, caption text, prefs or anonIds in logs, spans or
 
 ## Worker job (`apps/worker/src/jobs/<name>/`)
 
-Same owner as the related module. A job is a function registered with the worker runner. It can be triggered over HTTP from the API (`POST $WORKER_URL/jobs/<name>`, trace context propagates) and/or scheduled every N seconds. The full pattern lands with the WS0 worker-core PR. Until then, import API core helpers from the worker by relative path (`../../../api/src/core/es`); tsup bundles them.
+Same owner as the related module. This is in #30.
+
+1. Create `apps/worker/src/jobs/<name>/index.ts`:
+
+```ts
+import { defineJob } from '../../../../api/src/core/jobs';
+import { llm } from '../../../../api/src/core/llm';
+
+export default defineJob<{ sessionId: string }, { label: string }>({
+  name: 'cluster-label',
+  // everySec: 60,      // optional: also run on a timer (never overlaps itself)
+  // timeoutMs: 25_000, // the trigger gets a 504 after this
+  async run({ sessionId }, ctx) {          // ctx: same ModuleContext as API modules (bus, kv, logger)
+    const { text } = await llm({ purpose: 'cluster_label', model: 'fast', messages: [...] });
+    return { label: text.trim() };
+  },
+});
+```
+
+2. Add one line to `apps/worker/src/jobs/index.ts`.
+3. Trigger it from an API module: `await runJob('cluster-label', { sessionId })` (from `core/jobs`), which returns the result. Use `{ wait: false }` for fire-and-forget (202). The trace continues into the worker as span `job.<name>`. API routes must not block more than 8 s, so pass `timeoutMs` or use `wait: false`.
+
+The worker imports API core by relative path; tsup bundles it. Every core wrapper (ES, bus, kv, Jev, `llm`) works the same in the worker.
 
 ## Persona folder (`apps/web/src/personas/<persona>/`)
 

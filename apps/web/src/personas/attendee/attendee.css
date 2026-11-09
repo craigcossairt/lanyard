@@ -378,8 +378,14 @@
     scroll-behavior: auto;
   }
 }
+/* Reconnecting: dashed edge (shows in every theme, including contrast) and the interim caption
+   colour instead of opacity, so text keeps >= 4.5:1. */
 .at-captions__box--stale {
-  opacity: 0.7;
+  border-style: dashed;
+}
+.at-captions__box--stale .at-captions__line,
+.at-captions__box--stale .at-captions__line--latest {
+  color: var(--color-caption-interim);
 }
 .at-captions__line {
   margin: 0 0 0.6em;
@@ -560,8 +566,10 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
 }
+/* Answered: dashed edge and flat background plus the "Answered" pill. No opacity: text keeps contrast. */
 .at-question--answered {
-  opacity: 0.75;
+  background: transparent;
+  border-style: dashed;
 }
 .at-question__body {
   flex: 1;

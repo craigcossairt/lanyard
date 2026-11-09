@@ -19,7 +19,9 @@ export async function request(path, { method = 'GET', body, timeoutMs = 2_000, a
 export function fail(error) {
   // fetch errors may contain sensitive URLs; emit only controlled messages.
   const message = /^(ES_URL|Elasticsearch |Semantic |Bulk |Seed |Smoke )/.test(error.message)
-    ? error.message : error.name === 'TimeoutError' ? 'Elasticsearch operation timed out' : 'Elasticsearch operation failed; check connectivity and input';
+    ? error.message
+    : error.name === 'AssertionError' ? 'Smoke assertion failed'
+    : error.name === 'TimeoutError' ? 'Elasticsearch operation timed out' : 'Elasticsearch operation failed; check connectivity and input';
   console.error(JSON.stringify({ error: message }));
   process.exitCode = 1;
 }

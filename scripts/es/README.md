@@ -4,11 +4,15 @@ Run with Node 22+ from the repo root. No npm install is required. Credentials
 come only from `ES_URL` (the HTTPS `.es.` host) and `ES_API_KEY` at runtime:
 
 ```sh
-node --env-file=/Users/craigcossairt/cnh-2026/lanyard/.env scripts/es/verify.mjs
-node --env-file=/Users/craigcossairt/cnh-2026/lanyard/.env scripts/es/setup.mjs
-node --env-file=/Users/craigcossairt/cnh-2026/lanyard/.env scripts/es/seed.mjs
-node --env-file=/Users/craigcossairt/cnh-2026/lanyard/.env scripts/es/smoke.mjs
+node --env-file=.env scripts/es/verify.mjs
+node --env-file=.env scripts/es/setup.mjs
+node --env-file=.env scripts/es/seed.mjs
+node --env-file=.env scripts/es/smoke.mjs
 ```
+
+Use your gitignored local `.env`, or replace `.env` in these commands with the
+existing external credentials file path. Worktree agents must use that external
+file at runtime and must not copy it into the worktree.
 
 `verify` lists inference endpoint ids/task types, creates a unique temporary
 index, indexes one document via `text` → `semantic` copy, runs semantic search, and deletes the probe index

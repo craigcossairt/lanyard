@@ -33,7 +33,13 @@ export const mappings = {
   'cnh-booths': { ...keywords('id eventId tags'), ...text('vendorName'), ...searchable('description'), semantic },
 };
 
-export async function setup({ recreate = false } = {}) {
+export async function setup({ recreate = false, confirmDestructive = false } = {}) {
+  if (recreate) {
+    console.error(JSON.stringify({ action: 'recreate-plan', indices: Object.keys(mappings) }));
+    if (!confirmDestructive) {
+      throw new Error('Seed reset refused: --recreate requires --i-understand-this-deletes-live-data');
+    }
+  }
   for (const [index, properties] of Object.entries(mappings)) {
     const exists = await request(`/${index}`, { method: 'HEAD', allow404: true, timeoutMs: 10_000 });
     if (exists && !recreate) {
@@ -46,6 +52,9 @@ export async function setup({ recreate = false } = {}) {
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  setup({ recreate: process.argv.includes('--recreate') }).catch(fail);
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  setup({
+    recreate: process.argv.includes('--recreate'),
+    confirmDestructive: process.argv.includes('--i-understand-this-deletes-live-data'),
+  }).catch(fail);
 }

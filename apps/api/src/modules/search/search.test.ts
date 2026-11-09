@@ -90,6 +90,17 @@ test('search route and retrieval helpers smoke', async (t) => {
     (
       await app.inject({
         method: 'POST',
+        url: '/api/events/event/ask',
+        headers,
+        payload: { question: 'What was discussed?' },
+      })
+    ).statusCode,
+    403,
+  );
+  assert.equal(
+    (
+      await app.inject({
+        method: 'POST',
         url: '/api/events/event/plan-my-day',
         payload: { interests: 'kernel' },
       })

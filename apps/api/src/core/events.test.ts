@@ -31,8 +31,12 @@ test('join, config and role-links (ES unconfigured)', async () => {
   assert.equal(body.role, 'attendee');
   assert.equal(verifyToken(KEY, body.token).sub, body.anonId);
 
-  // GET event without ES: clear 503, pod stays ready.
-  const ev = await app.inject('/api/events/cnh-demos');
+  // GET event needs a token; without ES: clear 503, pod stays ready.
+  assert.equal((await app.inject('/api/events/cnh-demos')).statusCode, 401);
+  const ev = await app.inject({
+    url: '/api/events/cnh-demos',
+    headers: { authorization: `Bearer ${body.token}` },
+  });
   assert.equal(ev.statusCode, 503);
   assert.equal(ev.json().error.code, 'es_unavailable');
   assert.equal((await app.inject('/readyz')).statusCode, 200);

@@ -30,7 +30,12 @@ if (!role.success || !values.event || !key) {
 }
 
 const base = values['base-url'] ?? process.env.PUBLIC_BASE_URL ?? 'https://lanyard.cnh.radarhq.io';
-const ttl = Number(values['ttl-hours']) * 3600;
+const ttlHours = Number(values['ttl-hours']);
+if (!Number.isFinite(ttlHours) || ttlHours <= 0 || ttlHours > 24 * 14) {
+  console.error('--ttl-hours must be a number between 0 and 336');
+  process.exit(2);
+}
+const ttl = Math.round(ttlHours * 3600);
 const { token, claims } = signToken(
   key,
   { sub: newId(role.data), role: role.data, eventId: values.event },

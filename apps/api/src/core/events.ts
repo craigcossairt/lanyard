@@ -91,7 +91,7 @@ export function getNowNext(
         o,
       ),
     );
-    const all = docs(res.hits.hits as Hit[], Session);
+    const all = docs(res.hits.hits as Hit[], Session).filter((s) => s.status !== 'ended');
     const now = all.filter((s) => s.startsAt <= iso || s.status === 'live');
     const upcoming = all.filter((s) => s.startsAt > iso && s.status !== 'live');
     const firstStart = upcoming[0]?.startsAt;
@@ -110,9 +110,16 @@ export function registerEventRoutes(app: FastifyInstance, ctx: ModuleContext): v
 
   app.get<{ Params: { eventId: string } }>(
     '/api/events/:eventId',
+    { preHandler: requireRole() },
     async (req): Promise<EventView> => {
-      const event = await getEvent(req.params.eventId);
-      const [rooms, nowNext] = await Promise.all([getRooms(event.id), getNowNext(event.id)]);
+      const claims = authOf(req);
+      const full = await getEvent(req.params.eventId);
+      if (claims.eventId !== full.id)
+        throw new HttpError(403, 'forbidden', 'Token is for another event');
+      // The join code is only for organizers (they hand it out).
+      const { joinCode, ...rest } = full;
+      const event = claims.role === 'organizer' ? { ...rest, joinCode } : rest;
+      const [rooms, nowNext] = await Promise.all([getRooms(full.id), getNowNext(full.id)]);
       return { event, rooms, ...nowNext };
     },
   );

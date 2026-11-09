@@ -378,7 +378,11 @@
     scroll-behavior: auto;
   }
 }
-/* Reconnecting: dim with the interim caption colour, not opacity, so text keeps >= 4.5:1. */
+/* Reconnecting: dashed edge (shows in every theme, including contrast) and the interim caption
+   colour instead of opacity, so text keeps >= 4.5:1. */
+.at-captions__box--stale {
+  border-style: dashed;
+}
 .at-captions__box--stale .at-captions__line,
 .at-captions__box--stale .at-captions__line--latest {
   color: var(--color-caption-interim);

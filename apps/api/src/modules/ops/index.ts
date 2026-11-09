@@ -62,7 +62,7 @@ export function createOpsModule(read = readOps) {
         SimulationStatus.parse(await simulation.status(req.params.eventId)));
       app.post<{ Params: { eventId: string } }>('/events/:eventId/ops/simulation', organizer, async req => {
         const body = parse(SimulationControlRequest, req.body);
-        return SimulationStatus.parse(await simulation.control(req.params.eventId, body.running, body.attendees));
+        return SimulationStatus.parse(await simulation.control(req.params.eventId, body.running, body.attendees, body.mode));
       });
       app.post<{ Params: { eventId: string; id: string } }>(
         '/events/:eventId/alerts/:id/reroute',

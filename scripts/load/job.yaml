@@ -1,0 +1,69 @@
+# One-off load-test Job (not in deploy/, so Argo CD does not own or prune it).
+# Rename metadata.name for each run (load-001, load-002, ...). See README.md.
+# Budget: 250m/256Mi requests, 500m/512Mi limits, reserved in PR #2's budget.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: load-001
+  namespace: team-lanyard
+  labels:
+    app: load
+spec:
+  backoffLimit: 0
+  # Hard stop: 600 s max run + 30 s grace inside the script, + margin here.
+  activeDeadlineSeconds: 720
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: load
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: load
+          # The app image already has Node 22 and runs as uid 1000.
+          image: ghcr.io/craigcossairt/lanyard:latest
+          command: [node, /load/attendees.mjs]
+          env:
+            - name: TARGET
+              value: "http://app.team-lanyard.svc"
+            - name: EVENT_ID
+              value: "kubecon-na-2026"
+            - name: JOIN_CODE
+              value: "KUBECON26"
+            - name: SESSION_ID
+              value: "kubecon-session-1289969"
+            - name: ATTENDEES
+              value: "300"
+            - name: DURATION_S
+              value: "300"
+            - name: RAMP_S
+              value: "60"
+            - name: MAX_RPS
+              value: "40"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: script
+              mountPath: /load
+              readOnly: true
+      volumes:
+        - name: script
+          configMap:
+            name: load-script

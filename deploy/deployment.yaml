@@ -14,6 +14,17 @@ spec:
       labels:
         app: app
     spec:
+      # Radar Checks: the app never calls the Kubernetes API.
+      automountServiceAccountToken: false
+      # Radar Checks: spread replicas across nodes when possible (soft, so a
+      # small cluster still schedules them).
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: app
       containers:
         - name: app
           image: app
@@ -97,7 +108,16 @@ spec:
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false
+            # Radar Checks: read-only root; only /tmp is writable.
+            readOnlyRootFilesystem: true
             seccompProfile:
               type: RuntimeDefault
             capabilities:
               drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi

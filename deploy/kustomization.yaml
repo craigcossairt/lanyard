@@ -11,6 +11,7 @@ resources:
   - valkey.yaml
   - worker.yaml
   - hpa.yaml
+  - pdb.yaml
 # Copy the image tag (the git SHA the deploy bot sets below) into each
 # workload's SERVICE_VERSION env var, which feeds OTEL_RESOURCE_ATTRIBUTES.
 replacements:

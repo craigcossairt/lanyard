@@ -20,8 +20,12 @@ export default defineModule({
         try {
           return await askConference(eventId, parse(AskRequest, req.body).question, deadline);
         } catch (error) {
-          if (error instanceof HttpError && error.code === 'generation_pending')
-            reply.header('Retry-After', '2');
+          if (error instanceof HttpError && error.code === 'generation_pending') {
+            return reply.code(202).header('Retry-After', '2').send({
+              answer: 'Preparing an answer. Retry shortly.',
+              citations: [],
+            });
+          }
           throw error;
         }
       },

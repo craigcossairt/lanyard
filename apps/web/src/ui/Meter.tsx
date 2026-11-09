@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { cx } from './cx';
 
 export interface MeterProps {
@@ -28,6 +28,7 @@ export function Meter({
   size = 'default',
   className,
 }: MeterProps) {
+  const labelId = useId();
   const ratio = max > 0 ? Math.min(1, Math.max(0, value / max)) : 0;
   const tone =
     critAt !== undefined && ratio >= critAt
@@ -48,7 +49,9 @@ export function Meter({
       )}
     >
       <div className="ly-meter__head">
-        <span className="ly-meter__label">{label}</span>
+        <span id={labelId} className="ly-meter__label">
+          {label}
+        </span>
         <span className="ly-meter__value">{text}</span>
       </div>
       <div
@@ -58,7 +61,7 @@ export function Meter({
         aria-valuemax={max}
         aria-valuenow={value}
         aria-valuetext={text}
-        aria-label={typeof label === 'string' ? label : undefined}
+        aria-labelledby={labelId}
       >
         <div className="ly-meter__fill" style={{ width: `${ratio * 100}%` }} />
       </div>

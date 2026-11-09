@@ -4,7 +4,7 @@ export { Button, IconButton, type ButtonProps, type IconButtonProps } from './Bu
 export { StatusPill, LivePill, type Tone, type StatusPillProps } from './StatusPill';
 export { Card, type CardProps } from './Card';
 export { Sheet, type SheetProps } from './Sheet';
-export { ToastProvider, useToast } from './Toast';
+export { ToastProvider, ToastOutlet, useToast } from './Toast';
 export { Tabs, type TabItem, type TabsProps } from './Tabs';
 export { TextInput, TextArea, type TextInputProps, type TextAreaProps } from './Field';
 export { CaptionStream, type CaptionLine, type CaptionStreamProps } from './CaptionStream';

@@ -77,7 +77,7 @@ Copy the shape of `AttendeeLiveExample` in `Gallery.tsx`: `CaptionStage` + `Capt
 | `StatusPill`, `LivePill` | Tones ok, warn, crit, info and neutral, each with a default icon. |
 | `Card` | Surface container; `selected` adds the accent edge. |
 | `Sheet` | Bottom sheet on phones, right drawer at 900 px and wider. `open`, `onClose`, `title`, `description`. |
-| `ToastProvider`, `useToast` | `toast(text, { icon, ms })`. Polite, never takes focus, no actions. |
+| `ToastProvider`, `useToast`, `ToastOutlet` | `toast(text, { icon, ms })`. Polite, never takes focus, no actions. While a `Sheet` is open the toast renders inside it (the page behind a modal is inert); `Sheet` includes its outlet. Put `<ToastOutlet />` in any other modal `<dialog>` you build. |
 | `Tabs` | `items=[{ id, label, panel }]`, `value`, `onChange`, `label`. |
 | `TextInput`, `TextArea` | `label` (required; `hideLabel` keeps it for screen readers), `hint`, `error`. |
 | `CaptionStream` | Live captions with auto-follow, Jump to live, and a live region. |

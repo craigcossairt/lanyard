@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { IconButton } from './Button';
+import { ToastOutlet } from './Toast';
 import { cx } from './cx';
 
 export interface SheetProps {
@@ -68,6 +69,8 @@ export function Sheet({
         )}
         {open && children}
       </div>
+      {/* Toasts sent while this sheet is open render here: the page behind is inert. */}
+      <ToastOutlet />
     </dialog>
   );
 }

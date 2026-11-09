@@ -61,11 +61,36 @@ function publishCluster(c: QuestionCluster) {
   );
 }
 
-/** ES record update off the hot path; Valkey already holds the live value. */
-function recordUpdate(qid: string, doc: Partial<Question>) {
-  es(ES_INDICES.questions, 'update', (c, o) =>
-    c.update({ index: ES_INDICES.questions, id: qid, doc }, o),
-  ).catch(() => logger.warn('question record update failed'));
+/**
+ * Write the ES record (WS1's dedup corpus) off the hot path; Valkey holds the live value.
+ * Each write carries the full current state and a Valkey-side version (external
+ * versioning), so a delayed or reordered write can never overwrite a newer one.
+ */
+function recordQuestion(qid: string): void {
+  void kv()
+    .multi()
+    .hincrby(keys.question(qid), 'ver', 1)
+    .hgetall(keys.question(qid))
+    .exec()
+    .then((res) => {
+      const version = Number(res?.[0]?.[1]);
+      const h = (res?.[1]?.[1] ?? {}) as Record<string, string>;
+      const q = toQuestion(h);
+      if (!q || !version) return;
+      return es(ES_INDICES.questions, 'index', (c, o) =>
+        c.index(
+          {
+            index: ES_INDICES.questions,
+            id: qid,
+            version,
+            version_type: 'external',
+            document: { ...q, intent: h.intent },
+          },
+          o,
+        ),
+      );
+    })
+    .catch(() => logger.warn('question record failed (or superseded)'));
 }
 
 async function loadQuestion(qid: string): Promise<Question> {
@@ -78,8 +103,12 @@ async function loadCluster(cid: string): Promise<QuestionCluster | undefined> {
   return toCluster(await kv().hgetall(keys.cluster(cid)));
 }
 
-/** KEYS: voters, question, cluster. ARGV: anonId. Returns {added, votes}. */
-const VOTE = `if redis.call('SADD', KEYS[1], ARGV[1]) == 0 then
+/**
+ * KEYS: voters, question, cluster. ARGV: anonId. Returns {added, votes}; added = -1 when
+ * the question is hidden (checked inside the script, so a racing hide can't take a vote).
+ */
+const VOTE = `if redis.call('HGET', KEYS[2], 'status') == 'hidden' then return {-1, 0} end
+if redis.call('SADD', KEYS[1], ARGV[1]) == 0 then
   return {0, tonumber(redis.call('HGET', KEYS[2], 'votes') or '0')} end
 local v = redis.call('HINCRBY', KEYS[2], 'votes', 1)
 if redis.call('EXISTS', KEYS[3]) == 1 then redis.call('HINCRBY', KEYS[3], 'votes', 1) end
@@ -143,7 +172,11 @@ export function registerQuestions(app: FastifyInstance): void {
           defaultLabel: 'deep_dive',
         }),
         findQuestionCluster({ eventId: s.eventId, sessionId: s.id, questionId: qid, text }).catch(
-          () => ({ clusterId: null, score: 0 }),
+          (err: unknown) => {
+            // Degrade to "new cluster"; log the error code only, never the text.
+            logger.warn({ code: (err as { code?: string }).code }, 'question dedup failed');
+            return { clusterId: null, score: 0 };
+          },
         ),
       ]);
       const status = mod.label === 'hide' ? 'hidden' : 'open';
@@ -190,13 +223,7 @@ export function registerQuestions(app: FastifyInstance): void {
         .lpush(keys.questions(s.id), qid)
         .incr(keys.questionCount(s.id))
         .exec();
-      // Valkey holds the live value; the ES record (and WS1's dedup corpus) follows.
-      es(ES_INDICES.questions, 'index', (c, o) =>
-        c.index(
-          { index: ES_INDICES.questions, id: qid, document: { ...q, intent: intent.label } },
-          o,
-        ),
-      ).catch(() => logger.warn('question record failed'));
+      recordQuestion(qid);
 
       questionsCounter.add(1, { event: s.eventId, session: s.id });
       if (status === 'open') {
@@ -229,6 +256,7 @@ export function registerQuestions(app: FastifyInstance): void {
         claims.sub,
       )) as [number, number];
       q.votes = Number(votes);
+      if (added === -1) throw new HttpError(404, 'question_not_found', 'No such question');
       if (added === 0) return { questionId: q.id, votes: q.votes };
       const cluster = await loadCluster(q.clusterId);
       // The most-voted question represents its cluster.
@@ -241,7 +269,7 @@ export function registerQuestions(app: FastifyInstance): void {
           await r.hset(keys.cluster(cluster.id), 'representativeQuestionId', q.id);
         }
       }
-      recordUpdate(q.id, { votes: q.votes });
+      recordQuestion(q.id);
       await Promise.all([
         publishQuestion('question.updated', q),
         cluster ? publishCluster(cluster) : undefined,
@@ -301,7 +329,7 @@ export function registerQuestions(app: FastifyInstance): void {
           .sadd(keys.clusters(q.sessionId), cluster.id)
           .exec();
       }
-      recordUpdate(q.id, { status });
+      recordQuestion(q.id);
       await Promise.all([
         publishQuestion('question.updated', q),
         cluster ? publishCluster(cluster) : undefined,

@@ -6,7 +6,7 @@ export function SimulationNotice({ status, timezone }: { status?: SimulationStat
   return <p className="ops-sim-notice" role="status" aria-live="polite">
     <strong>SIMULATED</strong>{' '}
     {!status ? 'Checking crowd status…' : status.stopping ? `Stopping · removing ${status.attendees} virtual attendees`
-      : status.running ? `${status.attendees} virtual attendees · auto-stop ${status.endsAt ? formatTime(status.endsAt, timezone) : 'within 10 minutes'}`
+      : status.running ? `${status.mode === 'demo' ? 'Demo scenario · ' : ''}${status.attendees} virtual attendees · auto-stop ${status.endsAt ? formatTime(status.endsAt, timezone) : 'within 10 minutes'}`
       : 'Crowd simulator is stopped'}
     {(status?.running || status?.stopping) && <span>Virtual activity is included in the room readings below.</span>}
   </p>;
@@ -41,8 +41,8 @@ export function SimulationControls({ eventId, timezone }: { eventId: string; tim
     return () => { gone = true; invalidate(); clearInterval(timer); };
   }, [path]);
 
-  async function toggle() {
-    const body = SimulationControlRequest.safeParse({ running: !status?.running, attendees });
+  async function toggle(mode: 'crowd' | 'demo' = 'crowd') {
+    const body = SimulationControlRequest.safeParse({ running: !status?.running, attendees: mode === 'demo' ? 40 : attendees, mode });
     if (!body.success) { setActionError('Choose between 1 and 200 virtual attendees.'); return; }
     const version = ++generation.current;
     mutation.current = true;
@@ -63,10 +63,15 @@ export function SimulationControls({ eventId, timezone }: { eventId: string; tim
     <div>
       <SimulationNotice status={status} timezone={timezone} />
       <p className="ops-sim-help">CNH Demos only · 200 people maximum · stops after 10 minutes</p>
+      <p className="ops-sim-help">Demo scenario: 40 people · captions and questions · overflow at 1 minute · click Reroute · auto-stop at 2:30, then clean reset.</p>
       <p role="status" aria-live="polite">{pollError}</p>
       <p role="status" aria-live="polite">{actionError}</p>
     </div>
     <div className="ops-sim-actions">
+      {!status?.running && <button onClick={() => void toggle('demo')}
+        disabled={pending || !status || status.stopping || Boolean(pollError)}>
+        {status?.stopping && status.mode === 'demo' ? 'Cleaning up demo…' : 'Demo scenario'}
+      </button>}
       <label>Virtual attendees <input type="number" min="1" max="200" value={attendees}
         disabled={pending || status?.running || status?.stopping}
         onChange={event => { setAttendees(Number(event.target.value)); setActionError(''); }} /></label>

@@ -40,10 +40,11 @@ test('organizer room exposes health, occupancy and stale state without relying o
     'https://app.dash0.com/dashboards/conference',
   );
   const simulation = renderToStaticMarkup(createElement(SimulationNotice, {
-    status: { simulated: true, running: true, stopping: false, attendees: 40, endsAt: '2026-11-09T21:00:00Z' },
+    status: { simulated: true, mode: 'demo', running: true, stopping: false, attendees: 40, endsAt: '2026-11-09T21:00:00Z' },
     timezone: 'America/Denver',
   }));
   assert.match(simulation, /SIMULATED/);
+  assert.match(simulation, /Demo scenario/);
   assert.match(simulation, /40 virtual attendees/);
   assert.match(simulation, /auto-stop 2:00 PM/);
   assert.match(simulation, /Virtual activity is included/);

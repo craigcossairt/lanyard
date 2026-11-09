@@ -3,10 +3,13 @@ import { SpanStatusCode, trace } from '@opentelemetry/api';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { actorId, ambientAction, createCrowd, nextBatch, type Action } from '../../../../worker/src/jobs/sim/scenario';
+import { DEMO_DURATION_MS } from '../../../../worker/src/jobs/sim/demo';
 import type { ModuleContext } from '../../core/context';
 import { getNowNext, getRooms } from '../../core/events';
 import { HttpError } from '../../core/errors';
 import { signToken } from '../../core/tokens';
+import { cleanupSynthetic } from '../live/cleanup';
+import { createDemoRunner } from './demo-runner';
 
 const EVENT = 'cnh-demos';
 const STATE = 'ops:cnh-demos:simulation';
@@ -15,6 +18,7 @@ const State = z.object({
   id: z.string().uuid(), sessions: z.tuple([z.string().min(1), z.string().min(1)]),
   attendees: z.number().int().min(1).max(200), startedAt: z.iso.datetime(), endsAt: z.iso.datetime(),
   stopping: z.boolean(), cursor: z.number().int().min(0).max(400), step: z.number().int().min(-1),
+  mode: z.enum(['crowd', 'demo']).default('crowd'),
 }).refine(s => Date.parse(s.endsAt) - Date.parse(s.startedAt) <= 600_000);
 type State = z.infer<typeof State>;
 const TAKE = `if redis.call('GET', KEYS[1]) == ARGV[1] then
@@ -45,6 +49,8 @@ export function createSimulation(app: FastifyInstance, ctx: ModuleContext,
   };
   const stopKey = (s: State) => `${STATE}:stop:${s.id}`;
   const save = (s: State, done = false) => kv().eval(SAVE, 2, LEASE, STATE, owner, done ? '' : JSON.stringify(s));
+  const demo = createDemoRunner(app, ctx, records => cleanupSynthetic(ctx, records),
+    async () => await kv().get(LEASE) === owner, deps.now);
   async function act(s: State, action: Action) {
     if (action.kind !== 'leave' && deps.now() >= Date.parse(s.endsAt)) return;
     const token = signToken(ctx.config.tokenSigningKey!, {
@@ -64,14 +70,16 @@ export function createSimulation(app: FastifyInstance, ctx: ModuleContext,
     await tracer.startActiveSpan('ops.simulation.tick', { attributes: { event: EVENT } }, async span => {
       try {
         if (closed || !ctx.kv || !ctx.config.tokenSigningKey) return;
-        if (Number(await kv().eval(TAKE, 1, LEASE, owner)) !== 1) return;
+        if (Number(await kv().eval(TAKE, 1, LEASE, owner)) !== 1) { demo.detach(); return; }
         const state = await read();
-        if (!state) return;
+        if (!state) { demo.detach(); return; }
         if (!state.stopping && (deps.now() >= Date.parse(state.endsAt) || await kv().exists(stopKey(state)))) {
           state.stopping = true;
           state.cursor = 0;
           await save(state); // Persist cleanup intent before any leave; survives process restart.
         }
+        if (state.mode === 'demo' && !state.stopping) { await demo.step(state); return; }
+        if (state.stopping) demo.detach();
         const batch = nextBatch(state, deps.now());
         if (!batch.done) {
           const results = await Promise.allSettled(batch.actions.map(a => act(state, a)));
@@ -79,6 +87,7 @@ export function createSimulation(app: FastifyInstance, ctx: ModuleContext,
           state.cursor += batch.actions.length;
           await save(state);
         } else if (state.stopping) {
+          if (state.mode === 'demo') await demo.cleanup(state);
           await save(state, true);
           await kv().del(stopKey(state));
         } else {
@@ -102,11 +111,11 @@ export function createSimulation(app: FastifyInstance, ctx: ModuleContext,
     const state = await read();
     const stopping = state ? state.stopping || deps.now() >= Date.parse(state.endsAt) || Boolean(await kv().exists(stopKey(state))) : false;
     return { simulated: true as const, running: Boolean(state) && !stopping, stopping,
-      attendees: state?.attendees ?? 0, startedAt: state?.startedAt, endsAt: state?.endsAt };
+      mode: state?.mode, attendees: state?.attendees ?? 0, startedAt: state?.startedAt, endsAt: state?.endsAt };
   }
   return {
     status, tick,
-    async control(eventId: string, running: boolean, attendees = 40) {
+    async control(eventId: string, running: boolean, attendees = 40, mode: 'crowd' | 'demo' = 'crowd') {
       await status(eventId);
       if (!running) {
         const state = await read();
@@ -114,7 +123,10 @@ export function createSimulation(app: FastifyInstance, ctx: ModuleContext,
       } else {
         if (!app.hasRoute({ method: 'POST', url: '/api/sessions/:id/presence' }) ||
           !app.hasRoute({ method: 'POST', url: '/api/sessions/:id/signals' }) ||
-          !app.hasRoute({ method: 'POST', url: '/api/sessions/:id/questions' })) {
+          !app.hasRoute({ method: 'POST', url: '/api/sessions/:id/questions' }) ||
+          (mode === 'demo' && (!app.hasRoute({ method: 'POST', url: '/api/sessions/:id/transcript' }) ||
+            !app.hasRoute({ method: 'POST', url: '/api/questions/:id/vote' }) ||
+            !app.hasRoute({ method: 'POST', url: '/api/events/:eventId/reroute/accept' })))) {
           throw new HttpError(503, 'simulation_unavailable', 'Attendee routes are not ready');
         }
         const [rooms, schedule] = await Promise.all([deps.rooms(EVENT), deps.schedule(EVENT)]);
@@ -123,7 +135,9 @@ export function createSimulation(app: FastifyInstance, ctx: ModuleContext,
           return schedule.now.find(s => s.roomId === room?.id && s.status !== 'ended');
         });
         if (!sessions[0] || !sessions[1]) throw new HttpError(409, 'simulation_sessions', 'Start concurrent Main Stage and Side Stage sessions first');
-        const state: State = { ...createCrowd(randomUUID(), [sessions[0].id, sessions[1].id], attendees, deps.now()), step: -1 };
+        const state: State = { ...createCrowd(randomUUID(), [sessions[0].id, sessions[1].id],
+          mode === 'demo' ? 40 : attendees, deps.now()), step: -1, mode };
+        if (mode === 'demo') state.endsAt = new Date(deps.now() + DEMO_DURATION_MS).toISOString();
         if (!await kv().set(STATE, JSON.stringify(state), 'NX')) {
           throw new HttpError(409, 'simulation_active', 'A simulation is already running or cleaning up');
         }
@@ -136,6 +150,6 @@ export function createSimulation(app: FastifyInstance, ctx: ModuleContext,
       }, 1000);
       timer.unref();
     },
-    async close() { closed = true; clearInterval(timer); await pending; },
+    async close() { closed = true; clearInterval(timer); await pending; await demo.close(); },
   };
 }

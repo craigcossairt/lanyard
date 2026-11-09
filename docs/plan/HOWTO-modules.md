@@ -6,7 +6,8 @@ The short version for WS1 to WS8. The types come from `@lanyard/contracts` (`pac
 
 ```sh
 npm install
-ENV_FILE=/Users/craigcossairt/cnh-2026/lanyard/.env npm run dev   # api :8080, worker :8081, web :5173 (proxies /api)
+cp .env.example .env   # fill in (gitignored), or point ENV_FILE=<path to your .env>
+npm run dev            # api :8080, worker :8081, web :5173 (proxies /api); loads ./.env in dev
 npm run typecheck && npm run lint && npm test
 TOKEN_SIGNING_KEY=… npm run mint-link -- --role organizer --event cnh-demos   # prints /join#t=… link
 ```
@@ -84,7 +85,7 @@ export default function AttendeeRoutes() {
 The shell (`apps/web/src/app/`) provides:
 
 - `api.get/post/put/patch` with the Bearer token (`api.event(id)`, `api.join(id)`, `ApiError`).
-- `useSse(path, onMessage, { onReconnect })`: it streams with fetch plus the Authorization header, uses exponential backoff, and calls `onReconnect` so you can refetch the snapshot. **Never use EventSource or put a token in a URL.**
+- `useSse(path, onMessage, { onReconnect })`: it streams with fetch plus the Authorization header, uses exponential backoff, and calls `onReconnect` once the stream is live again (after the server's `ready`), so you can refetch the snapshot. **Never use EventSource or put a token in a URL.**
 - `useSession()`: the active claims (role, eventId, handle).
 - The `/join` page (join code, or a `#t=` role link) and the dev role switcher.
 - Theme variables and root attributes (`data-theme`, `data-caption-size`, `data-readable`, `data-motion`). Use only the CSS variables from the design system (`apps/web/src/ui/`, owned by the design thread).

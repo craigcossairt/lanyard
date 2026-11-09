@@ -3,9 +3,18 @@ import { test } from 'node:test';
 import type { Session } from '@lanyard/contracts';
 import { cachedGeneration } from './generation';
 import { generatePlan } from './plan';
+import { localDayWindow } from './day';
 import type { Generate } from './generation';
 
 test('plan smoke rejects invented ids, removes overlaps and caches pending work', async () => {
+  assert.deepEqual(localDayWindow('2026-11-10', 'America/Denver'), {
+    from: '2026-11-10T07:00:00.000Z',
+    to: '2026-11-11T07:00:00.000Z',
+  });
+  const spring = localDayWindow('2026-03-08', 'America/Denver');
+  assert.equal(Date.parse(spring.to) - Date.parse(spring.from), 23 * 3600_000);
+  const fall = localDayWindow('2026-11-01', 'America/Denver');
+  assert.equal(Date.parse(fall.to) - Date.parse(fall.from), 25 * 3600_000);
   const session: Session = {
     id: 'a',
     eventId: 'event',

@@ -10,6 +10,7 @@ import { getEvent } from '../../core/events';
 import { cachedGeneration, type Generate } from './generation';
 import { llm } from '../../core/llm';
 import { searchSessions } from './search';
+import { localDayWindow } from './day';
 
 export type PlanInput = z.infer<typeof PlanMyDayRequest>;
 
@@ -94,23 +95,16 @@ export async function planMyDay(
 ): Promise<PlanMyDayResponse> {
   const timezone = (await getEvent(eventId)).timezone;
   const date = input.date ?? eventDate(new Date().toISOString(), timezone);
-  if (
-    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
-    !Number.isFinite(Date.parse(`${date}T00:00:00Z`)) ||
-    new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) !== date
-  )
-    throw new HttpError(400, 'invalid_date', 'date must be a valid YYYY-MM-DD');
-  const midnight = Date.parse(`${date}T00:00:00Z`);
-  // Cover every IANA offset, then select the event-local calendar date exactly.
-  const window = {
-    from: new Date(midnight - 14 * 3600_000).toISOString(),
-    to: new Date(midnight + 38 * 3600_000).toISOString(),
-  };
-  const result = await searchSessions(eventId, {
-    q: input.interests.trim() || 'cloud native',
-    limit: 50,
-    ...window,
-  });
+  const window = localDayWindow(date, timezone);
+  const result = await searchSessions(
+    eventId,
+    {
+      q: input.interests.trim() || 'cloud native',
+      limit: 50,
+      ...window,
+    },
+    window.from,
+  );
   const candidates = result.hits
     .map((h) => h.session)
     .filter((s) => eventDate(s.startsAt, timezone) === date);

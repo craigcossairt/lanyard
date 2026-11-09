@@ -43,23 +43,23 @@ const events = [{
   startsAt: '2026-11-09T14:00:00.000Z', endsAt: '2026-11-13T01:00:00.000Z',
 }, {
   id: 'cnh-demos', name: 'CNH Demos', timezone: 'America/Denver', venueName: 'Cloud Native Hackathon, Salt Lake City',
-  joinCode: 'CNH26', startsAt: '2026-11-10T00:30:00.000Z', endsAt: '2026-11-10T02:00:00.000Z',
+  joinCode: 'CNH26', startsAt: '2026-11-09T19:00:00.000Z', endsAt: '2026-11-10T02:00:00.000Z',
 }];
 for (const [id, name, capacity, x] of [['main-stage', 'Main Stage', 30, 0], ['side-stage', 'Side Stage', 100, 20]]) {
   rooms.push({ id: `cnh-${id}`, eventId: 'cnh-demos', name, capacity, floor: 1, x, y: 0, accessibility: { stepFree: false, hearingLoop: false, quiet: false } });
 }
 sessions.push({
-  id: 'cnh-demos-opening', eventId: 'cnh-demos', roomId: 'cnh-main-stage', title: 'CNH Demos: opening',
+  id: 'cnh-demos-opening', eventId: 'cnh-demos', roomId: 'cnh-main-stage', title: 'CNH Demos: live demos',
   abstract: 'Welcome to the Cloud Native Hackathon demos. Organizers add team presentations live. Join the concurrent Hallway Track for open questions when Main Stage is full.',
   track: 'CNH Demos', level: 'Any Level', tags: ['hackathon', 'demos'], speakerIds: [], speakerNames: [],
-  startsAt: events[1].startsAt, endsAt: events[1].endsAt, status: 'scheduled',
+  startsAt: events[1].startsAt, endsAt: events[1].endsAt, status: 'live',
 }, {
   id: 'cnh-demos-hallway', eventId: 'cnh-demos', roomId: 'cnh-side-stage', title: 'Hallway Track: open Q&A',
   abstract: 'Meet cloud native builders for open Q&A about the hackathon demos, Kubernetes operations, observability, semantic search and accessible conference experiences. Seats are available when Main Stage fills up.',
   track: 'CNH Demos', level: 'Any Level', tags: ['hackathon', 'demos', 'questions'], speakerIds: [], speakerNames: [],
-  startsAt: events[1].startsAt, endsAt: events[1].endsAt, status: 'scheduled',
+  startsAt: events[1].startsAt, endsAt: events[1].endsAt, status: 'live',
 });
-const seed = { source, retrievedOn: '2026-11-09', notes: 'Public talk data only. Room capacities and x/y are demo fixtures; accessibility flags are unverified placeholders, not venue guidance. Status is initially scheduled.', events, rooms, speakers, sessions };
+const seed = { source, retrievedOn: '2026-11-09', notes: 'Public talk data only. Room capacities and x/y are demo fixtures; accessibility flags are unverified placeholders, not venue guidance. KubeCon sessions start scheduled; CNH demo fixture sessions are seeded live.', events, rooms, speakers, sessions };
 await mkdir(new URL('../../data/seed/', import.meta.url), { recursive: true });
 await writeFile(new URL('../../data/seed/conference.json', import.meta.url), `${JSON.stringify(seed, null, 2)}\n`);
 console.log(JSON.stringify(Object.fromEntries(['events', 'rooms', 'speakers', 'sessions'].map(key => [key, seed[key].length]))));

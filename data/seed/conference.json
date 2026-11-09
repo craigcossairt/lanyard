@@ -1,7 +1,7 @@
 {
   "source": "https://sessionize.com/api/v2/svi82w6c/view/All",
   "retrievedOn": "2026-11-09",
-  "notes": "Public talk data only. Room capacities and x/y are demo fixtures; accessibility flags are unverified placeholders, not venue guidance. Status is initially scheduled.",
+  "notes": "Public talk data only. Room capacities and x/y are demo fixtures; accessibility flags are unverified placeholders, not venue guidance. KubeCon sessions start scheduled; CNH demo fixture sessions are seeded live.",
   "events": [
     {
       "id": "kubecon-na-2026",
@@ -18,7 +18,7 @@
       "timezone": "America/Denver",
       "venueName": "Cloud Native Hackathon, Salt Lake City",
       "joinCode": "CNH26",
-      "startsAt": "2026-11-10T00:30:00.000Z",
+      "startsAt": "2026-11-09T19:00:00.000Z",
       "endsAt": "2026-11-10T02:00:00.000Z"
     }
   ],
@@ -16775,7 +16775,7 @@
       "id": "cnh-demos-opening",
       "eventId": "cnh-demos",
       "roomId": "cnh-main-stage",
-      "title": "CNH Demos: opening",
+      "title": "CNH Demos: live demos",
       "abstract": "Welcome to the Cloud Native Hackathon demos. Organizers add team presentations live. Join the concurrent Hallway Track for open questions when Main Stage is full.",
       "track": "CNH Demos",
       "level": "Any Level",
@@ -16785,9 +16785,9 @@
       ],
       "speakerIds": [],
       "speakerNames": [],
-      "startsAt": "2026-11-10T00:30:00.000Z",
+      "startsAt": "2026-11-09T19:00:00.000Z",
       "endsAt": "2026-11-10T02:00:00.000Z",
-      "status": "scheduled"
+      "status": "live"
     },
     {
       "id": "cnh-demos-hallway",
@@ -16804,9 +16804,9 @@
       ],
       "speakerIds": [],
       "speakerNames": [],
-      "startsAt": "2026-11-10T00:30:00.000Z",
+      "startsAt": "2026-11-09T19:00:00.000Z",
       "endsAt": "2026-11-10T02:00:00.000Z",
-      "status": "scheduled"
+      "status": "live"
     }
   ]
 }

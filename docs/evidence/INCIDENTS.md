@@ -143,6 +143,24 @@ Example trace `5daefec5a09af31922bcc1bf747fc9ec` (2.77 s): `POST /api/sessions/:
 - **What this shows:** the cluster absorbed the surge with no crash, OOM or restart, and recovered on its own. The latency root cause sits in Elasticsearch, outside Kubernetes, which is why Agent0 (spans) found it and Radar (cluster state) didn't. The two tools are complementary.
 - **Follow-up** (22:43Z, aimed at the drill window, the HPA and the CFS throttling): *(pending, added when it lands)*.
 
-### Re-run
+### Re-run (22:54–23:00Z): crash loop, a real outage (Radar issue `dd66c0ce35d63e27`)
 
-To do after fixes 1 and 2 ship, with the generator resized. Compare fanout p95, the ES question-index latency and the per-pod CPU spread.
+This was two Jobs of 150 attendees (`load-002a`, `load-002b`, so the generator wouldn't starve), after WS0's #59 rotation fix and **while WS4 ran the in-process SIMULATED demo scenario**.
+
+- **What broke:** from about 22:56 to 23:01Z both `app` pods were in **CrashLoopBackOff**, 6 restarts each (exit 0 after about 36 s). Liveness `/healthz` timed out ("context deadline exceeded"), and startup and readiness then saw connection refused. **Public 503s from 22:59 to 23:01Z; recovered at 23:01:04Z.**
+- **Radar:**
+  - `query_prometheus` showed a pod at **0.489 of its 0.5 CPU limit** (22:57:30Z).
+  - `get_events` showed the HPA **blind**: `FailedGetResourceMetric` "did not receive metrics for targeted pods (pods might be unready)" ×7+ from 22:59 to 23:00:28Z, so it never scaled past 2.
+- **Agent0** ([thread `01362a6d`](https://app.dash0.com/goto/agent0?thread_id=01362a6d-f19d-4279-97b5-81eb5cc6180c&dataset=default&org=a9f9b2dc-887f-4d05-afc5-e89af87f1f9f)), root cause: **the snapshot on every SSE connect.**
+  - Each `GET /api/sessions/:id/stream` issues **590 to 910 separate Valkey `hgetall`** calls, more than 99% of all `hgetall`.
+  - With the 12 s rotation, 300 clients means about 25 connects/s, or **about 17,500 `hgetall`/s**. Two pods managed about 3,400/s, roughly 5× short.
+  - The event loop sat at **100% from 22:55:30 to 23:00:30**, with lag p99 up to 3.11 s (baseline about 12 ms) and GC at 18 to 28% of wall time.
+  - Each restart dropped about 150 streams onto the survivor (a burst of about 100k `hgetall`).
+  - The simulator and ES dedup were victims, not causes. Recovery came when the load stopped.
+- **Lesson:** fixing incident B (rotation) multiplied the cost of a per-connect snapshot. A "cheap resume" has to skip the snapshot when `Last-Event-ID` is present.
+
+| Fix | Owner | Status |
+|---|---|---|
+| Liveness timeout 1 → 5 s, failureThreshold 3 → 6; readiness timeout 3 s; HPA `minReplicas` 2 → 3; app CPU limit 500m → 650m; worker `maxSurge: 0` (keeps the 4.0 CPU limits budget) | WS5 | [PR #84](https://github.com/craigcossairt/lanyard/pull/84) (stops the kill loop; Agent0: the worst lag of 3.1 s would not trip 6 × 5 s) |
+| Skip the snapshot on resume with `Last-Event-ID`; fetch the snapshot in one pipelined round trip or cache it per session | WS0 / WS2 | Raised as demo-blocking. About 100 phones means about 5,800 `hgetall`/s, still over two pods' capacity |
+| No load Jobs during recording; resize the generator (two Jobs) | WS5 | Done |

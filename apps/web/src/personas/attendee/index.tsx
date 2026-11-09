@@ -1,11 +1,14 @@
 // Attendee persona: mounted by the WS0 shell under /a (default export renders the routes).
 import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router';
-import { ToastProvider } from './components/Toast';
+import { ToastProvider } from '../../ui';
 import { applyPrefs } from './lib/prefs';
+// The design system's stylesheet. The shell can import it once in main.tsx instead;
+// importing it here too is harmless (Vite dedupes the module).
+import '../../ui/styles.css';
 import './attendee.css';
 
-// Saved display prefs take effect before the first screen paints.
+// Saved display prefs (the shell's store) take effect before the first screen paints.
 applyPrefs();
 
 const Home = lazy(() => import('./Home'));
@@ -16,7 +19,7 @@ const Settings = lazy(() => import('./Settings'));
 
 function Loading() {
   return (
-    <p className="at-page at-main at-muted" role="status">
+    <p className="at-page at-main ly-muted" role="status">
       Loading…
     </p>
   );

@@ -13,6 +13,18 @@ import { cachedSessions } from './lib/schedule';
 import { useEventId, useSession } from './lib/session';
 
 type SheetName = 'ask' | 'questions' | 'catchup' | 'reroute' | null;
+
+/** People never see a raw "No route for POST /api/..." message. */
+function friendly(err: unknown, feature: string, fallback: string): string {
+  if (err instanceof ApiError) {
+    if (err.status === 404) return `${feature} isn't available for this session yet.`;
+    if (err.status === 401 || err.status === 403)
+      return `Please rejoin the event to use ${feature.toLowerCase()}.`;
+    if (err.status === 429) return 'Easy there. Try again in a moment.';
+    return err.message || fallback;
+  }
+  return fallback;
+}
 const CATCH_UP_MINUTES = 10;
 
 /** Keyed by session id so a reroute to another room remounts with fresh state. */
@@ -94,6 +106,7 @@ function SessionLive({ id }: { id: string }) {
             onSent={(label) =>
               toast(`Sent “${label}” anonymously. The speaker sees it for 60 seconds.`)
             }
+            onFailed={(label) => toast(`Could not send “${label}”. Try again in a moment.`)}
           />
         </section>
       </main>
@@ -202,7 +215,7 @@ function AskSheet({
       );
       onAsked();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send your question. Try again.');
+      setError(friendly(err, 'Asking', 'Could not send your question. Try again.'));
     } finally {
       setBusy(false);
     }
@@ -274,7 +287,7 @@ function CatchUpSheet({
           alive &&
           setState({
             status: 'error',
-            error: e instanceof ApiError ? e.message : 'Could not summarise right now.',
+            error: friendly(e, 'Catch-up', 'Could not summarise right now.'),
           }),
       );
     return () => {

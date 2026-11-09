@@ -14,10 +14,11 @@ const COOLDOWN_MS = 30_000;
 interface Props {
   onSignal: (type: SignalType) => Promise<void>;
   onSent?: (label: string) => void;
+  onFailed?: (label: string) => void;
 }
 
 /** Five anonymous signals. Each is rate-limited client-side to match the API (1 per type per 30 s). */
-export function SignalBar({ onSignal, onSent }: Props) {
+export function SignalBar({ onSignal, onSent, onFailed }: Props) {
   const [sent, setSent] = useState<Partial<Record<SignalType, boolean>>>({});
   const timers = useRef<Partial<Record<SignalType, ReturnType<typeof setTimeout>>>>({});
 
@@ -29,6 +30,7 @@ export function SignalBar({ onSignal, onSent }: Props) {
       onSent?.(label);
     } catch {
       setSent((s) => ({ ...s, [type]: false }));
+      onFailed?.(label);
       return;
     }
     timers.current[type] = setTimeout(() => setSent((s) => ({ ...s, [type]: false })), COOLDOWN_MS);

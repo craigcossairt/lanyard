@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import type { PlanMyDayResponse, Session } from '@lanyard/contracts';
+import { Banner, Button, Card, TextArea } from '../../ui';
 import { AttendeeHeader } from './components/AttendeeHeader';
 import { SessionCard } from './components/SessionCard';
 import { api, ApiError } from './lib/api';
@@ -61,12 +62,8 @@ export default function PlanMyDay() {
       <AttendeeHeader title="Plan my day" handle={me?.handle} back />
       <main id="main" className="at-main">
         <form onSubmit={(e) => void submit(e)}>
-          <label htmlFor="plan-interests" className="at-label">
-            What are you here for?
-          </label>
-          <textarea
-            id="plan-interests"
-            className="at-textarea"
+          <TextArea
+            label="What are you here for?"
             value={interests}
             onChange={(e) => setInterests(e.target.value)}
             maxLength={500}
@@ -74,27 +71,27 @@ export default function PlanMyDay() {
             required
           />
           <div className="at-sheet__actions">
-            <button
+            <Button
+              variant="primary"
               type="submit"
-              className="at-btn at-btn--primary"
               disabled={state.status === 'loading' || !interests.trim()}
             >
               {state.status === 'loading' ? 'Planning…' : 'Build my day'}
-            </button>
-            <span className="at-muted">Uses the talk catalogue, cites every pick.</span>
+            </Button>
+            <span className="ly-muted">Uses the talk catalogue, cites every pick.</span>
           </div>
         </form>
 
-        <p role="status" aria-live="polite" className="at-muted">
+        <p role="status" aria-live="polite" className="ly-muted">
           {state.status === 'loading'
             ? 'Reading the schedule and picking talks that fit together…'
             : ''}
         </p>
 
         {state.status === 'error' && (
-          <div role="alert" className="at-error">
-            <p>{state.error}</p>
-          </div>
+          <Banner tone="warn" icon="warn">
+            {state.error}
+          </Banner>
         )}
 
         {state.status === 'done' && state.plan && (
@@ -102,15 +99,15 @@ export default function PlanMyDay() {
             <h2 id="plan-h">Your plan</h2>
             <p className="at-plan-summary">{state.plan.summary}</p>
             {addable.length > 0 && (
-              <button
-                type="button"
-                className="at-btn at-btn--primary at-block"
+              <Button
+                variant="primary"
+                block
                 aria-pressed={allAdded}
                 onClick={() => schedule.add(addable)}
                 disabled={allAdded}
               >
-                {allAdded ? '✓ All in my schedule' : `Add all ${addable.length} to my schedule`}
-              </button>
+                {allAdded ? 'All in my schedule' : `Add all ${addable.length} to my schedule`}
+              </Button>
             )}
             <div className="at-list" style={{ marginTop: 'var(--space-3)' }}>
               {items.map((it) =>
@@ -125,9 +122,9 @@ export default function PlanMyDay() {
                     onToggleSave={schedule.toggle}
                   />
                 ) : (
-                  <article key={it.sessionId} className="at-card">
+                  <Card as="article" key={it.sessionId} className="at-card">
                     <p className="at-card__reason">{it.reason}</p>
-                    <p className="at-muted">
+                    <p className="ly-muted">
                       Session details are loading.{' '}
                       <Link
                         to={`/a/search?q=${encodeURIComponent(it.reason.split(/[.,]/)[0] ?? '')}`}
@@ -135,12 +132,12 @@ export default function PlanMyDay() {
                         Find it in search
                       </Link>
                     </p>
-                  </article>
+                  </Card>
                 ),
               )}
             </div>
             {items.length === 0 && (
-              <p className="at-muted">
+              <p className="ly-muted">
                 No talks matched well enough. Try describing one topic at a time.
               </p>
             )}

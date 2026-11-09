@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router';
 import type { Session } from '@lanyard/contracts';
+import { Button, ErrorState, TextInput } from '../../ui';
 import { SessionCard } from './components/SessionCard';
 import { AttendeeHeader } from './components/AttendeeHeader';
 import { roomById, useEventView } from './lib/event';
@@ -42,21 +43,18 @@ export default function Home() {
       <AttendeeHeader eventName={view?.event.name} handle={me?.handle} />
       <main id="main" className="at-main">
         <form className="at-search" role="search" onSubmit={onSearch}>
-          <label htmlFor="home-q" className="at-sr-only">
-            Search talks
-          </label>
-          <input
-            id="home-q"
+          <TextInput
+            label="Search talks"
+            hideLabel
             name="q"
             type="search"
-            className="at-input"
             placeholder="Find a talk: “eBPF for security folks”"
             autoComplete="off"
             enterKeyHint="search"
           />
-          <button type="submit" className="at-btn at-btn--primary">
+          <Button variant="primary" type="submit" icon="search">
             Search
-          </button>
+          </Button>
         </form>
 
         <nav className="at-quick" aria-label="Shortcuts">
@@ -69,18 +67,15 @@ export default function Home() {
         </nav>
 
         {error && (
-          <div role="alert" className="at-error">
-            <p>{error}</p>
-            <button type="button" className="at-btn" onClick={reload}>
-              Try again
-            </button>
-          </div>
+          <ErrorState title="Could not load the schedule" onRetry={reload}>
+            {error}
+          </ErrorState>
         )}
 
         <section aria-labelledby="now-h" className="at-section">
           <h2 id="now-h">Happening now</h2>
-          {loading && !view && <p className="at-muted">Loading the schedule…</p>}
-          {view && view.now.length === 0 && <p className="at-muted">Nothing is live right now.</p>}
+          {loading && !view && <p className="ly-muted">Loading the schedule…</p>}
+          {view && view.now.length === 0 && <p className="ly-muted">Nothing is live right now.</p>}
           <div className="at-list">
             {view?.now.slice(0, MAX_NOW).map((s) => (
               <SessionCard
@@ -94,7 +89,7 @@ export default function Home() {
             ))}
           </div>
           {view && view.now.length > MAX_NOW && (
-            <p className="at-muted">
+            <p className="ly-muted">
               {view.now.length - MAX_NOW} more live talks.{' '}
               <Link to="/a/search">Search to find yours.</Link>
             </p>
@@ -103,7 +98,7 @@ export default function Home() {
 
         <section aria-labelledby="next-h" className="at-section">
           <h2 id="next-h">Up next</h2>
-          {view && view.next.length === 0 && <p className="at-muted">No more talks today.</p>}
+          {view && view.next.length === 0 && <p className="ly-muted">No more talks today.</p>}
           <div className="at-list">
             {view?.next.slice(0, MAX_NOW).map((s) => (
               <SessionCard
@@ -121,7 +116,7 @@ export default function Home() {
         <section aria-labelledby="mine-h" className="at-section">
           <h2 id="mine-h">My schedule</h2>
           {mine.length === 0 ? (
-            <p className="at-muted">
+            <p className="ly-muted">
               Nothing saved yet. Tap “My schedule” on a talk, or{' '}
               <Link to="/a/plan">let us plan your day</Link>.
             </p>

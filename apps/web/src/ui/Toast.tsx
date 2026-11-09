@@ -14,7 +14,12 @@ interface ToastMessage {
   id: number;
   text: string;
   icon: IconName;
-  host: Element;
+}
+
+/** The topmost open dialog's outlet, else the page's. */
+function pickHost(page: Element | null): Element | null {
+  const open = document.querySelectorAll('dialog[open] [data-toast-outlet]');
+  return open[open.length - 1] ?? page;
 }
 
 type ShowToast = (text: string, opts?: { icon?: IconName; ms?: number }) => void;
@@ -37,9 +42,12 @@ export function ToastOutlet() {
  *
  * While a Sheet is open, the page behind it is inert and painted under the modal's top layer,
  * so the toast goes into the topmost open dialog's outlet instead of the page's.
+ * The host follows dialogs opening and closing while the toast is up, so a toast never
+ * stays inside a closed sheet or under a sheet that opened after it.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<ToastMessage | null>(null);
+  const [host, setHost] = useState<Element | null>(null);
   const pageOutlet = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const seq = useRef(0);
@@ -51,13 +59,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     // Pick the outlet after React commits this event's updates, so "close the sheet, then
     // toast" lands on the page and "toast while the sheet stays open" lands in the sheet.
     timer.current = setTimeout(() => {
-      const open = document.querySelectorAll('dialog[open] [data-toast-outlet]');
-      const host = open[open.length - 1] ?? pageOutlet.current;
-      if (!host) return;
-      setToast({ id, text, icon: opts?.icon ?? 'check', host });
+      setHost(pickHost(pageOutlet.current));
+      setToast({ id, text, icon: opts?.icon ?? 'check' });
       timer.current = setTimeout(() => setToast(null), opts?.ms ?? 3500);
     }, 0);
   }, []);
+
+  // While a toast is up, re-pick its host whenever any dialog opens or closes.
+  useEffect(() => {
+    if (!toast) return;
+    const observer = new MutationObserver(() => setHost(pickHost(pageOutlet.current)));
+    observer.observe(document.body, { attributes: true, attributeFilter: ['open'], subtree: true });
+    return () => observer.disconnect();
+  }, [toast]);
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
@@ -71,13 +85,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         aria-live="polite"
         data-toast-outlet=""
       />
-      {toast?.host.isConnected &&
+      {toast &&
+        host?.isConnected &&
         createPortal(
           <div key={toast.id} className="ly-toast">
             <Icon name={toast.icon} />
             {toast.text}
           </div>,
-          toast.host,
+          host,
         )}
     </ToastContext.Provider>
   );

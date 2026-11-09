@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { EVENT_IDS, formatTime } from '@lanyard/contracts';
 import { useSession } from '../../app/session';
+import { Button, StatusPill } from '../../ui';
 import { Alerts } from './Alerts';
 import { AskConference } from './AskConference';
 import { ObservabilityLinks } from './ObservabilityLinks';
@@ -21,7 +22,7 @@ function Board({ eventId }: { eventId: string }) {
             ? 'Check the event connection and try again. Occupancy is never estimated.'
             : 'Loading rooms, attendance and audience signals.'}
         </p>
-        {error && <button onClick={refresh}>Retry readings</button>}
+        {error && <Button onClick={refresh}>Retry readings</Button>}
       </section>
     );
   const { snapshot, view, at } = data;
@@ -29,13 +30,13 @@ function Board({ eventId }: { eventId: string }) {
   return (
     <>
       <p className={`ops-live ${error ? 'ops-crit' : ''}`} role="status">
-        {error
+        <StatusPill tone={error ? 'crit' : stream === 'open' ? 'ok' : 'warn'}>{error
           ? 'Readings unavailable · showing last known state'
           : stream === 'open'
             ? 'Live stream connected'
             : stream === 'connecting'
               ? 'Connecting live stream · polling every 10 seconds'
-              : 'Stream reconnecting · polling every 10 seconds'}{' '}
+              : 'Stream reconnecting · polling every 10 seconds'}</StatusPill>{' '}
         <span>Updated {formatTime(at, view.event.timezone)}</span>
       </p>
       {eventId === EVENT_IDS.cnhDemos && <SimulationControls eventId={eventId} timezone={view.event.timezone} />}

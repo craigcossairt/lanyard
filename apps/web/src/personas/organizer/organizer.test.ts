@@ -28,7 +28,9 @@ test('organizer room exposes health, occupancy and stale state without relying o
     createElement(RoomCard, { status, timezone: 'America/Denver', stale: true }),
   );
   assert.match(html, /Last known: Overflow risk/);
-  assert.match(html, /aria-label="Main Stage occupancy"/);
+  assert.match(html, /aria-label="Main Stage"/);
+  assert.match(html, /role="meter"/);
+  assert.match(html, /aria-valuetext="27 \/ 30"/);
   assert.match(html, /90% occupied/);
   assert.match(html, /Questions/);
   assert.equal(roomHealth({ ...status, ratio: 0.5 }).kind, 'warn');

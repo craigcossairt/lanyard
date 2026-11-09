@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { formatTime, RerouteResponse, type OpsSnapshot } from '@lanyard/contracts';
 import { api } from '../../app/api';
+import { Button, Card, StatusPill } from '../../ui';
 
 export function Alerts({
   snapshot,
@@ -51,7 +52,9 @@ export function Alerts({
     <section className="ops-alerts" aria-labelledby="ops-alert-title">
       <div className="ops-section-heading">
         <h2 id="ops-alert-title">Incident feed</h2>
-        <span>{alerts.filter((a) => !a.resolvedAt).length} active</span>
+        <StatusPill tone={alerts.some(a => !a.resolvedAt) ? 'warn' : 'ok'}>
+          {alerts.filter((a) => !a.resolvedAt).length} active
+        </StatusPill>
       </div>
       <p className="ops-notice" role="status" aria-live="polite">
         {notice}
@@ -63,17 +66,17 @@ export function Alerts({
           {alerts.slice(0, 20).map((alert) => {
             const room = snapshot.rooms.find((r) => r.room.id === alert.roomId);
             return (
-              <li
+              <Card as="li"
                 key={alert.id}
                 className={`ops-incident ops-${alert.resolvedAt ? 'ok' : alert.severity}`}
               >
-                <span className="ops-badge">
+                <StatusPill tone={alert.resolvedAt ? 'ok' : alert.severity}>
                   {alert.resolvedAt
                     ? 'Resolved'
                     : alert.kind === 'overflow'
                       ? 'Capacity incident'
                       : 'Audience signal'}
-                </span>
+                </StatusPill>
                 <h3>{room?.room.name ?? 'Room'}</h3>
                 <p>
                   {alert.kind === 'overflow'
@@ -86,7 +89,7 @@ export function Alerts({
                   {formatTime(alert.resolvedAt ?? alert.openedAt, timezone)}
                 </time>
                 {!alert.resolvedAt && alert.kind === 'overflow' && (
-                  <button
+                  <Button block icon="route"
                     type="button"
                     disabled={stale || Boolean(pending) || Boolean(sent[alert.id])}
                     onClick={() => void reroute(alert.id)}
@@ -96,9 +99,9 @@ export function Alerts({
                       : sent[alert.id]
                         ? `Sent to ${sent[alert.id]} attendees`
                         : 'Reroute to nearby seats →'}
-                  </button>
+                  </Button>
                 )}
-              </li>
+              </Card>
             );
           })}
         </ol>

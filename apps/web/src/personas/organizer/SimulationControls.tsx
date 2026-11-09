@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatTime, SimulationControlRequest, SimulationStatus } from '@lanyard/contracts';
 import { api, ApiError } from '../../app/api';
+import { Button, Card, StatusPill, TextInput } from '../../ui';
 
 export function SimulationNotice({ status, timezone }: { status?: SimulationStatus; timezone: string }) {
   return <p className="ops-sim-notice" role="status" aria-live="polite">
-    <strong>SIMULATED</strong>{' '}
+    <StatusPill tone="warn">SIMULATED</StatusPill>{' '}
     {!status ? 'Checking crowd status…' : status.stopping ? `Stopping · removing ${status.attendees} virtual attendees`
       : status.running ? `${status.mode === 'demo' ? 'Demo scenario · ' : ''}${status.attendees} virtual attendees · auto-stop ${status.endsAt ? formatTime(status.endsAt, timezone) : 'within 10 minutes'}`
       : 'Crowd simulator is stopped'}
-    {(status?.running || status?.stopping) && <span>Virtual activity is included in the room readings below.</span>}
+    {(status?.running || status?.stopping) && <span className="ops-sim-context">Virtual activity is included in the room readings below.</span>}
   </p>;
 }
 
@@ -59,7 +60,7 @@ export function SimulationControls({ eventId, timezone }: { eventId: string; tim
       if (version === generation.current) setPending(false);
     }
   }
-  return <section className={`ops-sim ${status?.running || status?.stopping ? 'ops-sim-active' : ''}`} aria-label="SIMULATED crowd controls">
+  return <Card as="section" className={`ops-sim ${status?.running || status?.stopping ? 'ops-sim-active' : ''}`} aria-label="SIMULATED crowd controls">
     <div>
       <SimulationNotice status={status} timezone={timezone} />
       <p className="ops-sim-help">CNH Demos only · 200 people maximum · stops after 10 minutes</p>
@@ -68,16 +69,16 @@ export function SimulationControls({ eventId, timezone }: { eventId: string; tim
       <p role="status" aria-live="polite">{actionError}</p>
     </div>
     <div className="ops-sim-actions">
-      {!status?.running && <button onClick={() => void toggle('demo')}
+      {!status?.running && <Button variant="primary" size="lg" icon="people" onClick={() => void toggle('demo')}
         disabled={pending || !status || status.stopping || Boolean(pollError)}>
         {status?.stopping && status.mode === 'demo' ? 'Cleaning up demo…' : 'Demo scenario'}
-      </button>}
-      <label>Virtual attendees <input type="number" min="1" max="200" value={attendees}
+      </Button>}
+      <div className="ops-sim-count"><TextInput label="Virtual attendees" type="number" min="1" max="200" value={attendees}
         disabled={pending || status?.running || status?.stopping}
-        onChange={event => { setAttendees(Number(event.target.value)); setActionError(''); }} /></label>
-      <button onClick={() => void toggle()} disabled={pending || !status || status.stopping || Boolean(pollError && !status.running)}>
+        onChange={event => { setAttendees(Number(event.target.value)); setActionError(''); }} /></div>
+      <Button onClick={() => void toggle()} disabled={pending || !status || status.stopping || Boolean(pollError && !status.running)}>
         {pending ? 'Updating…' : status?.stopping ? 'Removing crowd…' : status?.running ? 'Stop simulated crowd' : 'Start simulated crowd'}
-      </button>
+      </Button>
     </div>
-  </section>;
+  </Card>;
 }

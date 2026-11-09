@@ -1,10 +1,11 @@
 import { formatRange, type OpsSnapshot, type Session } from '@lanyard/contracts';
+import { RoomTile } from '../../ui';
 
 export function roomHealth(status: OpsSnapshot['rooms'][number]) {
-  if (status.ratio >= 0.9) return { kind: 'crit', label: 'Overflow risk' };
+  if (status.ratio >= 0.9) return { kind: 'crit' as const, label: 'Overflow risk' };
   if (status.ratio >= 0.75 || (status.signals.lost ?? 0) >= 5 || (status.signals.louder ?? 0) >= 5)
-    return { kind: 'warn', label: 'Needs attention' };
-  return { kind: 'ok', label: 'Within capacity' };
+    return { kind: 'warn' as const, label: 'Needs attention' };
+  return { kind: 'ok' as const, label: 'Within capacity' };
 }
 
 export function RoomCard({
@@ -19,48 +20,23 @@ export function RoomCard({
   stale: boolean;
 }) {
   const health = roomHealth(status);
-  const titleId = `room-${status.room.id}`;
   return (
-    <article className={`ops-room ops-${health.kind}`} aria-labelledby={titleId}>
-      <header>
-        <h3 id={titleId}>{status.room.name}</h3>
-        <span className="ops-badge">
-          {stale ? 'Last known: ' : ''}
-          {health.label}
-        </span>
-      </header>
-      <p className="ops-occupancy">
-        <strong>{status.occupancy}</strong>
-        <span>/ {status.room.capacity} people</span>
-      </p>
-      <progress
-        aria-label={`${status.room.name} occupancy`}
-        value={status.occupancy}
-        max={Math.max(1, status.room.capacity)}
+    <div className="ops-room-service">
+      <RoomTile
+        name={status.room.name}
+        state={health.kind}
+        stateLabel={`${stale ? 'Last known: ' : ''}${health.label}`}
+        occupancy={status.occupancy}
+        capacity={status.room.capacity}
+        session={session ? `${session.title} · ${formatRange(session.startsAt, session.endsAt, timezone)}`
+          : 'Between sessions · Ready for the next conversation'}
+        stats={{ Questions: status.questionCount ?? '—', 'Lost · 60s': status.signals.lost ?? 0,
+          'Louder · 60s': status.signals.louder ?? 0 }}
       />
       <p className="ops-room-detail">
         {status.room.capacity ? `${Math.round(status.ratio * 100)}% occupied` : 'Room closed'}{' '}
         <span>Target: under 90%</span>
       </p>
-      <div className="ops-session">
-        <span className="ops-eyebrow">{session ? 'On stage now' : 'Between sessions'}</span>
-        <h4>{session?.title ?? 'Ready for the next conversation'}</h4>
-        {session && <p>{formatRange(session.startsAt, session.endsAt, timezone)}</p>}
-      </div>
-      <dl className="ops-room-stats">
-        <div>
-          <dt>Questions</dt>
-          <dd>{status.questionCount ?? '—'}</dd>
-        </div>
-        <div>
-          <dt>Lost · 60s</dt>
-          <dd>{status.signals.lost ?? 0}</dd>
-        </div>
-        <div>
-          <dt>Louder · 60s</dt>
-          <dd>{status.signals.louder ?? 0}</dd>
-        </div>
-      </dl>
-    </article>
+    </div>
   );
 }

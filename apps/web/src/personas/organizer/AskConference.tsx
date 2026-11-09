@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { AskRequest, AskResponse, type EventView } from '@lanyard/contracts';
 import { api } from '../../app/api';
+import { Button, Card, TextInput } from '../../ui';
 
 export function AskConference({ view }: { view: EventView }) {
   const [question, setQuestion] = useState('');
@@ -27,7 +28,7 @@ export function AskConference({ view }: { view: EventView }) {
   };
   const sessions = [...view.now, ...view.next];
   return (
-    <section className="ops-ask" aria-labelledby="ops-ask-title">
+    <Card as="section" className="ops-ask" aria-labelledby="ops-ask-title">
       <div className="ops-section-heading">
         <div>
           <span className="ops-eyebrow">Conference intelligence</span>
@@ -36,9 +37,8 @@ export function AskConference({ view }: { view: EventView }) {
         <span>Grounded in session transcripts and questions</span>
       </div>
       <form onSubmit={(event) => void ask(event)}>
-        <label htmlFor="ops-question">What would you like to understand?</label>
         <div className="ops-ask-input">
-          <input
+          <div className="ops-ask-field"><TextInput label="What would you like to understand?"
             id="ops-question"
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
@@ -46,10 +46,10 @@ export function AskConference({ view }: { view: EventView }) {
             placeholder="What are attendees asking about observability?"
             required
             disabled={pending}
-          />
-          <button type="submit" disabled={pending || !question.trim()}>
+          /></div>
+          <Button type="submit" icon="ask" disabled={pending || !question.trim()}>
             {pending ? 'Asking…' : 'Ask conference →'}
-          </button>
+          </Button>
         </div>
       </form>
       <p role="status" aria-live="polite" className="ops-notice">
@@ -88,6 +88,6 @@ export function AskConference({ view }: { view: EventView }) {
           )}
         </div>
       )}
-    </section>
+    </Card>
   );
 }

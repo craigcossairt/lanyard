@@ -9,6 +9,8 @@ resources:
   - service.yaml
   - httproute.yaml
   - valkey.yaml
+  - worker.yaml
+  - hpa.yaml
 # Copy the image tag (the git SHA the deploy bot sets below) into each
 # workload's SERVICE_VERSION env var, which feeds OTEL_RESOURCE_ATTRIBUTES.
 replacements:
@@ -25,6 +27,11 @@ replacements:
           name: app
         fieldPaths:
           - spec.template.spec.containers.[name=app].env.[name=SERVICE_VERSION].value
+      - select:
+          kind: Deployment
+          name: worker
+        fieldPaths:
+          - spec.template.spec.containers.[name=worker].env.[name=SERVICE_VERSION].value
 images:
   - name: app
     newName: ghcr.io/craigcossairt/lanyard

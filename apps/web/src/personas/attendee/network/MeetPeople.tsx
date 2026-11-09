@@ -142,7 +142,9 @@ export default function MeetPeople() {
               onClick={() => toggleOptIn(!optInSelected)}
               disabled={saving}
             >
-              I want to meet people at this event
+              {optInSelected
+                ? 'Networking is on — tap to opt out'
+                : 'I want to meet people at this event'}
             </Button>
 
             {optInSelected && (

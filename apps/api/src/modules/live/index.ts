@@ -1,6 +1,7 @@
 // WS2 live module: session stream (SSE), captions, presence, questions, signals, catch-up.
 // Valkey key schema: see store.ts `keys`.
 import { defineModule } from '../../core/module';
+import { registerCatchUp } from './catchup';
 import { registerPresence } from './presence';
 import { registerQuestions } from './questions';
 import { registerSignals } from './signals';
@@ -15,5 +16,6 @@ export default defineModule({
     registerPresence(app);
     registerQuestions(app);
     registerSignals(app);
+    registerCatchUp(app);
   },
 });

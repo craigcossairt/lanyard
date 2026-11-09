@@ -40,6 +40,8 @@ export const keys = {
   rate: (sid: string, anonId: string, type: string) => `live:rl:${sid}:${anonId}:${type}`,
   conns: (anonId: string) => `live:conns:${anonId}`, // INT open SSE streams
   graceLeft: (anonId: string) => `live:graceleft:${anonId}`, // STRING sessionId left by grace
+  catchUp: (sid: string, minutes: number, minute: number) =>
+    `live:catchup:${sid}:${minutes}:${minute}`, // STRING CatchUpResponse JSON, 120 s
 };
 
 /** The Valkey client; live writes need it (503 when VALKEY_URL is unset). */

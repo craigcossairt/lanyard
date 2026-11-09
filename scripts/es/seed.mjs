@@ -25,9 +25,25 @@ export function validate(seed) {
   }
 }
 
-export async function seed() {
+export async function seed({ refreshDemoWindow = false } = {}) {
   const fixture = await readSeed();
   validate(fixture);
+  if (refreshDemoWindow) {
+    const event = fixture.events.find(doc => doc.id === 'cnh-demos');
+    const ids = new Set(['cnh-demos-opening', 'cnh-demos-hallway']);
+    const sessions = fixture.sessions.filter(doc => doc.eventId === 'cnh-demos' && ids.has(doc.id));
+    if (!event || sessions.length !== 2) throw new Error('Seed demo refresh requires the event and both fixture sessions');
+    const rows = [
+      { index: 'cnh-events', source: event, doc: { startsAt: event.startsAt, endsAt: event.endsAt } },
+      ...sessions.map(source => ({ index: 'cnh-sessions', source, doc: { title: source.title, startsAt: source.startsAt, endsAt: source.endsAt, status: source.status } })),
+    ];
+    const body = rows.flatMap(row => [JSON.stringify({ update: { _index: row.index, _id: row.source.id } }), JSON.stringify({ doc: row.doc, upsert: row.source })]).join('\n') + '\n';
+    const result = await request('/_bulk', { method: 'POST', body, ndjson: true, timeoutMs: 120_000 });
+    if (result.items.length !== 3 || result.items.some(({ update }) => update.status !== 200 && update.status !== 201)) throw new Error('Bulk demo window refresh failed');
+    await request('/cnh-events,cnh-sessions/_refresh', { method: 'POST', timeoutMs: 60_000 });
+    console.log(JSON.stringify({ action: 'refresh-demo-window', documents: 3, noops: result.items.filter(({ update }) => update.result === 'noop').length }));
+    return;
+  }
   for (const entity of ['events', 'rooms', 'speakers', 'sessions']) {
     let created = 0;
     let kept = 0;
@@ -47,4 +63,6 @@ export async function seed() {
   await request('/cnh-events,cnh-rooms,cnh-speakers,cnh-sessions/_refresh', { method: 'POST', timeoutMs: 60_000 });
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) seed().catch(fail);
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  seed({ refreshDemoWindow: process.argv.includes('--refresh-demo-window') }).catch(fail);
+}

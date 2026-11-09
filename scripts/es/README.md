@@ -39,7 +39,8 @@ immediately searchable. It does not delete talks removed from a newer snapshot.
 The committed snapshot contains 480 public KubeCon talks, 703 public speakers,
 28 source rooms, and CNH Demos (2 rooms and 2 concurrent sessions). KubeCon's
 venue-local MST timestamps become UTC; both events use `America/Denver`.
-CNH Demos starts at 17:30 MST on November 9 (`2026-11-10T00:30:00Z`).
+CNH Demos covers 12:00–19:00 MST on November 9
+(`2026-11-09T19:00:00Z`–`2026-11-10T02:00:00Z`) for the drill and live demo.
 
 Refresh the public fixture with `node scripts/es/import-schedule.mjs`. The API
 URL comes from the [official schedule page](https://events.linuxfoundation.org/kubecon-cloudnativecon-north-america/program/schedule/).
@@ -49,8 +50,15 @@ demo fixtures, not official venue data. Accessibility flags are unverified
 placeholders and must not be presented as verified routing guidance.
 
 The CNH rooms have capacities 30 and 100; the Side Stage's open Q&A overlaps
-the Main Stage placeholder as an overflow destination. Both start scheduled;
+the Main Stage live-demos session as an overflow destination. Both are seeded live;
 organizers add team sessions and control live status later.
+
+To apply this fixture window to existing ES records, explicitly run
+`node --env-file=<existing-env-file> scripts/es/seed.mjs --refresh-demo-window`.
+This idempotently updates only the CNH event's bounds and the title/time/status
+of the two stable fixture session ids. It preserves other fields, room edits,
+organizer-added sessions, questions, transcripts and presence. Default seeding
+still creates missing records and preserves every existing record.
 
 `node scripts/es/smoke.mjs --offline` checks the fixture without credentials.
 The live smoke fuses event-filtered BM25 multi-match and semantic retrieval

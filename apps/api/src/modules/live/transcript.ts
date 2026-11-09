@@ -23,16 +23,45 @@ return 1`;
 /** Lag above this is a client clock problem, not a pipeline one: don't record it. */
 const MAX_PLAUSIBLE_LAG_MS = 60_000;
 
-function recordChunk(chunk: { id: string }, attempt = 1): void {
-  es(ES_INDICES.transcripts, 'index', (c, o) =>
-    c.index({ index: ES_INDICES.transcripts, id: chunk.id, document: chunk }, o),
-  ).catch(() => {
-    if (attempt < 2) setTimeout(() => recordChunk(chunk, attempt + 1), 500).unref();
-    else logger.warn('transcript record failed');
-  });
+// Pending background records (including a scheduled retry), drained on shutdown.
+const pending = new Set<Promise<void>>();
+const DRAIN_MS = 3_000;
+
+async function writeChunk(chunk: { id: string }): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await es(ES_INDICES.transcripts, 'index', (c, o) =>
+        c.index({ index: ES_INDICES.transcripts, id: chunk.id, document: chunk }, o),
+      );
+      return;
+    } catch (err) {
+      if (attempt >= 2) {
+        // Identifiers and the wrapper's sanitized error only: never the caption text.
+        logger.warn(
+          { chunkId: chunk.id, code: (err as { code?: string }).code },
+          'transcript record failed',
+        );
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
+}
+
+function recordChunk(chunk: { id: string }): void {
+  const p = writeChunk(chunk).finally(() => pending.delete(p));
+  pending.add(p);
 }
 
 export function registerTranscript(app: FastifyInstance): void {
+  // Graceful shutdown (rollouts): let acknowledged captions finish their ES record.
+  app.addHook('onClose', async () => {
+    if (pending.size === 0) return;
+    await Promise.race([
+      Promise.allSettled([...pending]),
+      new Promise((r) => setTimeout(r, DRAIN_MS).unref()),
+    ]);
+  });
   app.post<{ Params: { id: string } }>(
     '/sessions/:id/transcript',
     { preHandler: requireRole('speaker') },

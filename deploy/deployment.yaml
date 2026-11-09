@@ -63,6 +63,12 @@ spec:
               value: "America/Denver"
             - name: VALKEY_URL
               value: "redis://valkey:6379"
+            - name: LLM_MODEL_CHAT
+              value: "gpt-6.1-sol"
+            - name: LLM_MODEL_FAST
+              value: "gpt-5.4-mini"
+            - name: DASH0_RUM_ENDPOINT
+              value: "https://ingress.us-west-2.aws.dash0.com"
             - name: OTEL_SERVICE_NAME
               value: "lanyard-app"
             # Set by kustomize from the image tag (the git SHA); see

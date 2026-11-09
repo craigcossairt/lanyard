@@ -5,7 +5,7 @@ import { requireAuth } from './auth';
 import { loadConfig } from './config';
 import { defineModule } from './module';
 import { buildServer } from './server';
-import { openSse } from './sse';
+import { HEARTBEAT_MS, openSse } from './sse';
 import { signToken } from './tokens';
 
 const KEY = 'test-signing-key-not-a-secret';
@@ -39,6 +39,11 @@ test('SSE stream: bearer auth, session + user channel multiplexed', async () => 
   });
   assert.equal(res.status, 200);
   assert.match(res.headers.get('content-type') ?? '', /text\/event-stream/);
+  // Nothing may buffer or compress the stream between us and the client.
+  assert.match(res.headers.get('cache-control') ?? '', /no-transform/);
+  assert.equal(res.headers.get('x-accel-buffering'), 'no');
+  assert.equal(res.headers.get('content-encoding'), null);
+  assert.ok(HEARTBEAT_MS <= 5_000, 'heartbeat must beat the ~15 s ingress cut');
 
   const reader = res.body!.getReader();
   const dec = new TextDecoder();

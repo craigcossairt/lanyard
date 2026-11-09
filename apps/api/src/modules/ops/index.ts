@@ -1,10 +1,11 @@
-import { channels, Id, OpsSnapshot, RoomHistory } from '@lanyard/contracts';
+import { channels, Id, OpsSnapshot, RoomHistory, SimulationControlRequest, SimulationStatus } from '@lanyard/contracts';
 import { authOf, requireRole } from '../../core/auth';
 import { HttpError, parse } from '../../core/errors';
 import { defineModule } from '../../core/module';
 import { openSse } from '../../core/sse';
 import { opsUnavailable, readOps } from './snapshot';
 import { createOpsLoop, historyKey } from './loop';
+import { createSimulation } from './simulation';
 
 export function createOpsModule(read = readOps) {
   return defineModule({
@@ -17,6 +18,9 @@ export function createOpsModule(read = readOps) {
       app.addHook('onClose', async () => {
         await loop.close();
       });
+      const simulation = createSimulation(app, ctx);
+      app.addHook('onReady', async () => simulation.start());
+      app.addHook('onClose', async () => simulation.close());
       app.addHook('preHandler', requireRole('organizer'));
       app.addHook('preHandler', async (req) => {
         const eventId = parse(Id, (req.params as { eventId: string }).eventId);
@@ -46,6 +50,12 @@ export function createOpsModule(read = readOps) {
           }
         },
       );
+      app.get<{ Params: { eventId: string } }>('/events/:eventId/ops/simulation', async req =>
+        SimulationStatus.parse(await simulation.status(req.params.eventId)));
+      app.post<{ Params: { eventId: string } }>('/events/:eventId/ops/simulation', async req => {
+        const body = parse(SimulationControlRequest, req.body);
+        return SimulationStatus.parse(await simulation.control(req.params.eventId, body.running, body.attendees));
+      });
     },
   });
 }

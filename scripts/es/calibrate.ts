@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { es, initEs } from '../../apps/api/src/core/es';
+import { HttpError } from '../../apps/api/src/core/errors';
 import { completeSearch } from '../../apps/api/src/modules/search/response';
 
 interface Pair {
@@ -9,14 +10,17 @@ interface Pair {
   query: string;
   duplicate: boolean;
 }
+let phase = 'read-pairs';
 async function calibrate(): Promise<void> {
   const pairs: Pair[] = JSON.parse(
     await readFile(new URL('../../data/seed/question-pairs.json', import.meta.url), 'utf8'),
   );
+  phase = 'configure-client';
   initEs(process.env.ES_URL, process.env.ES_API_KEY);
   const index = `cnh-ws1-calibration-${randomUUID()}`;
   const rows: { id: string; duplicate: boolean; score: number }[] = [];
   try {
+    phase = 'setup-index';
     await es(
       'multi',
       'calibration-setup',
@@ -36,6 +40,7 @@ async function calibrate(): Promise<void> {
         ),
       60_000,
     );
+    phase = 'index-pairs';
     await es(
       'multi',
       'calibration-index',
@@ -57,6 +62,7 @@ async function calibrate(): Promise<void> {
       120_000,
     );
     await es('multi', 'calibration-refresh', (c, o) => c.indices.refresh({ index }, o), 60_000);
+    phase = 'search-pairs';
     for (const pair of pairs) {
       const result = await es('multi', 'calibration-search', (c, o) =>
         c
@@ -107,6 +113,7 @@ async function calibrate(): Promise<void> {
       pairs: rows,
       selected: best,
     };
+    phase = 'write-evidence';
     await writeFile(
       new URL('../../data/seed/question-calibration-results.json', import.meta.url),
       `${JSON.stringify(evidence, null, 2)}\n`,
@@ -123,7 +130,22 @@ async function calibrate(): Promise<void> {
     );
   }
 }
-calibrate().catch(() => {
-  console.error('Question calibration failed; no private text recorded');
+calibrate().catch((error: unknown) => {
+  const code = error instanceof HttpError ? error.code : (error as NodeJS.ErrnoException)?.code;
+  console.error(
+    JSON.stringify({
+      calibration: 'failed',
+      phase,
+      name: error instanceof Error ? error.name : 'Error',
+      code: code && /^[a-zA-Z_]+$/.test(code) ? code : undefined,
+      // JSON parse/fs errors can quote input text or paths; never print those messages.
+      message:
+        error instanceof HttpError
+          ? error.message
+          : error instanceof SyntaxError
+            ? 'Invalid calibration JSON'
+            : 'Calibration operation failed',
+    }),
+  );
   process.exitCode = 1;
 });

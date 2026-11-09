@@ -6,6 +6,8 @@ import { createBus, createValkeyClient, type Bus } from './bus';
 import type { Config } from './config';
 import { initEs } from './es';
 import { initJev } from './jev';
+import { initJobs } from './jobs';
+import { initLlm } from './llm';
 import { logger } from './logger';
 
 export interface ModuleContext {
@@ -24,6 +26,8 @@ export function initContext(config: Config): ModuleContext {
   if (!initEs(config.esUrl, config.esApiKey))
     logger.warn('ES_URL/ES_API_KEY not set: ES routes return 503');
   initJev(config.typesafeApiKey, config.openaiApiKey);
+  initLlm(config.openaiApiKey, config.llmModelChat, config.llmModelFast);
+  initJobs(config.workerUrl);
   ctx = {
     config,
     bus: createBus(config.valkeyUrl),

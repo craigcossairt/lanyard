@@ -7,6 +7,7 @@ import { AskConference } from './AskConference';
 import { ObservabilityLinks } from './ObservabilityLinks';
 import { RoomCard, roomHealth } from './RoomCard';
 import { useOps } from './useOps';
+import { SimulationControls } from './SimulationControls';
 import './organizer.css';
 
 function Board({ eventId }: { eventId: string }) {
@@ -37,6 +38,7 @@ function Board({ eventId }: { eventId: string }) {
               : 'Stream reconnecting · polling every 10 seconds'}{' '}
         <span>Updated {formatTime(at, view.event.timezone)}</span>
       </p>
+      {eventId === EVENT_IDS.cnhDemos && <SimulationControls eventId={eventId} timezone={view.event.timezone} />}
       <dl className="ops-summary">
         <div>
           <dt>People in rooms</dt>

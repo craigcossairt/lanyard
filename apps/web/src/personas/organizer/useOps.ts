@@ -11,9 +11,14 @@ export function useOps(eventId: string) {
   useEffect(() => {
     let cancelled = false;
     let pending = false;
+    let dirty = false;
     let deferred: ReturnType<typeof setTimeout> | undefined;
     const load = async () => {
-      if (pending || cancelled) return;
+      if (cancelled) return;
+      if (pending) {
+        dirty = true;
+        return;
+      }
       pending = true;
       try {
         const [snapshot, view] = await Promise.all([
@@ -28,6 +33,10 @@ export function useOps(eventId: string) {
         if (!cancelled) setError(true);
       } finally {
         pending = false;
+        if (dirty && !cancelled) {
+          dirty = false;
+          void load();
+        }
       }
     };
     // Coalesce fan-out bursts so 200 check-ins do not trigger 200 snapshots.

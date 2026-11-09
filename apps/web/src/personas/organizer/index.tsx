@@ -30,7 +30,9 @@ function Board({ eventId }: { eventId: string }) {
           ? 'Readings unavailable · showing last known state'
           : stream === 'open'
             ? 'Live stream connected'
-            : 'Stream reconnecting · polling every 10 seconds'}{' '}
+            : stream === 'connecting'
+              ? 'Connecting live stream · polling every 10 seconds'
+              : 'Stream reconnecting · polling every 10 seconds'}{' '}
         <span>Updated {formatTime(at, view.event.timezone)}</span>
       </p>
       <dl className="ops-summary">

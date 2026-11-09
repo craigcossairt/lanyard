@@ -2,7 +2,7 @@
 
 `attendees.mjs` simulates up to 300 attendees who join one session, hold its SSE stream open, and ask, vote and signal. It has no dependencies (Node 22+) and never logs tokens or question text; synthetic questions start with `[load]`.
 
-**Hard bounds** (clamped whatever you pass): 300 attendees, 600 s, 100 actions/s across all attendees. The process exits at `DURATION_S + 30` s regardless. Signals respect the contract rate limit (1 per type per 30 s per attendee).
+**Hard bounds** (clamped whatever you pass): 300 attendees, 600 s, 100 requests/s across all attendees, including stream opens and reconnects. The process exits at `DURATION_S + 30` s regardless. On SIGINT/SIGTERM (Ctrl-C, `kubectl delete job`) it stops all actions, sends each attendee's `leave` within a 15 s grace period, and exits with 130/143. Latency percentiles use reservoir sampling, so they cover the whole run. Signals respect the contract rate limit (1 per type per 30 s per attendee).
 
 | Env | Default | Meaning |
 |---|---|---|
@@ -27,7 +27,7 @@ A JSON progress line every 10 s, then a summary: per-route counts, status codes 
 Self-test without the app:
 
 ```sh
-node scripts/load/stub-server.mjs          # test fixture on :8099
+node scripts/load/stub-server.mjs          # test fixture on :8099 (STUB_STREAM_STATUS=401 makes streams fail)
 TARGET=http://localhost:8099 ATTENDEES=300 DURATION_S=30 node scripts/load/attendees.mjs
 ```
 

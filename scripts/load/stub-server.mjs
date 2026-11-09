@@ -33,6 +33,10 @@ createServer(async (req, res) => {
     return send(res, 200, { anonId, handle: 'Teal Otter', token: `stub.${anonId}` });
   }
   if (req.method === 'GET' && p[1] === 'sessions' && p[3] === 'stream') {
+    // STUB_STREAM_STATUS=401 (say) makes every stream fail, to test reconnects.
+    if (process.env.STUB_STREAM_STATUS) {
+      return send(res, Number(process.env.STUB_STREAM_STATUS), { error: { code: 'stub', message: 'stream refused' } });
+    }
     res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
     res.write(': connected\n\n');
     const set = streams.get(p[2]) ?? streams.set(p[2], new Set()).get(p[2]);

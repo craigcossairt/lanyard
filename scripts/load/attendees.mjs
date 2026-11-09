@@ -49,12 +49,25 @@ const QUESTIONS = [
   'Can you share the slides and the repo?',
 ];
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Sleeps are interruptible so a stop (signal or end of run) wakes everyone.
+const sleepers = new Set();
+const sleep = (ms) =>
+  new Promise((resolve) => {
+    const wake = () => { clearTimeout(t); sleepers.delete(wake); resolve(); };
+    const t = setTimeout(wake, Math.max(0, ms));
+    sleepers.add(wake);
+  });
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const enc = encodeURIComponent;
 const t0Run = Date.now();
 const until = t0Run + cfg.durationS * 1000;
 let stopping = false;
+const active = new Set(); // attendees, so a stop can abort their streams
+function stopAll() {
+  stopping = true;
+  for (const a of active) a.ctrl?.abort();
+  for (const wake of [...sleepers]) wake();
+}
 
 // ---- stats ---------------------------------------------------------------
 const MAX_SAMPLES = 50_000;
@@ -66,7 +79,16 @@ const stats = {
   sse: { open: 0, opened: 0, reconnects: 0, errors: 0, messages: 0 },
   fanoutMs: [],
 };
-const push = (arr, v) => { if (arr.length < MAX_SAMPLES) arr.push(v); };
+// Reservoir sampling (algorithm R): percentiles cover the whole run, not just
+// the first MAX_SAMPLES values. `arr.seen` counts every value offered.
+const push = (arr, v) => {
+  arr.seen = (arr.seen ?? 0) + 1;
+  if (arr.length < MAX_SAMPLES) arr.push(v);
+  else {
+    const j = Math.floor(Math.random() * arr.seen);
+    if (j < MAX_SAMPLES) arr[j] = v;
+  }
+};
 function record(route, status, ms) {
   const r = (stats.routes[route] ??= { n: 0, codes: {}, ms: [] });
   r.n++;
@@ -159,6 +181,9 @@ async function holdStream(a) {
   const route = 'stream';
   let backoff = 500;
   while (!stopping && Date.now() < until && !stats.unimplemented.has(route)) {
+    // Opens and reconnects share the global rate cap like every other request.
+    await takeToken();
+    if (stopping || Date.now() >= until) return;
     a.ctrl = new AbortController();
     const t = performance.now();
     try {
@@ -170,7 +195,10 @@ async function holdStream(a) {
       });
       record(route, res.status, performance.now() - t);
       if (res.status === 404) { stats.unimplemented.add(route); await res.text(); return; }
-      if (!res.ok || !res.body) throw new Error(`status ${res.status}`);
+      if (!res.ok || !res.body) {
+        await res.body?.cancel();
+        throw new Error(`status ${res.status}`);
+      }
       stats.sse.open++;
       stats.sse.opened++;
       backoff = 500;
@@ -194,7 +222,7 @@ async function holdStream(a) {
     }
     if (stopping || Date.now() >= until) return;
     stats.sse.reconnects++;
-    await sleep(backoff + Math.random() * backoff);
+    await sleep(Math.min(backoff + Math.random() * backoff, until - Date.now()));
     backoff = Math.min(backoff * 2, 10_000);
   }
 }
@@ -209,6 +237,7 @@ async function attendee(i) {
   if (!joined?.token) { stats.joinFailed++; return; }
   stats.joined++;
   const a = { token: joined.token, lastSignal: {}, ctrl: null };
+  active.add(a);
   const sid = enc(cfg.sessionId);
   await call('presence', 'POST', `/api/sessions/${sid}/presence`, { token: a.token, body: { kind: 'join' } });
   const stream = holdStream(a);
@@ -245,6 +274,7 @@ async function attendee(i) {
     body: { kind: 'leave' },
     force: true,
   });
+  active.delete(a);
 }
 
 // ---- reporting ------------------------------------------------------------
@@ -259,7 +289,7 @@ function summary() {
     joined: stats.joined,
     joinFailed: stats.joinFailed,
     sse: stats.sse,
-    fanoutMs: { n: stats.fanoutMs.length, p50: pct(stats.fanoutMs, 50), p95: fanoutP95, p99: pct(stats.fanoutMs, 99) },
+    fanoutMs: { n: stats.fanoutMs.seen ?? 0, sampled: stats.fanoutMs.length, p50: pct(stats.fanoutMs, 50), p95: fanoutP95, p99: pct(stats.fanoutMs, 99) },
     fanoutSlo: fanoutP95 === null ? 'no data' : fanoutP95 < 1000 ? 'pass (p95 < 1000 ms)' : 'FAIL (p95 >= 1000 ms)',
     generatorLoopLagP99Ms: Math.round(loopLag.percentile(99) / 1e6),
     notBuiltYet: [...stats.unimplemented],
@@ -278,12 +308,23 @@ function finish(reason) {
   finished = true;
   console.log(JSON.stringify({ done: true, reason, config: cfg, ...summary() }, null, 2));
 }
-for (const sig of ['SIGINT', 'SIGTERM']) {
-  process.on(sig, () => { stopping = true; finish(sig); process.exit(130); });
+// On SIGINT/SIGTERM (Ctrl-C, `kubectl delete job`, activeDeadlineSeconds):
+// stop all actions, let attendees send their leave, then exit. A 15 s grace
+// timer and the hard timeout still bound the exit.
+let stopReason = null;
+let exitCode = 0;
+for (const [sig, code] of [['SIGINT', 130], ['SIGTERM', 143]]) {
+  process.on(sig, () => {
+    if (stopReason) return;
+    stopReason = sig;
+    exitCode = code;
+    stopAll();
+    setTimeout(() => { finish(`${sig} (grace expired)`); process.exit(code); }, 15_000).unref();
+  });
 }
-setTimeout(() => { stopping = true; finish('hard-timeout'); process.exit(2); }, (cfg.durationS + 30) * 1000).unref();
+setTimeout(() => { stopAll(); finish('hard-timeout'); process.exit(2); }, (cfg.durationS + 30) * 1000).unref();
 
 console.log(JSON.stringify({ start: true, config: cfg }));
 await Promise.all(Array.from({ length: cfg.attendees }, (_, i) => attendee(i)));
-finish('duration');
-process.exit(0);
+finish(stopReason ?? 'duration');
+process.exit(exitCode);

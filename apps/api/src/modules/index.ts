@@ -4,5 +4,6 @@ import type { LanyardModule } from '../core/module';
 import live from './live';
 import ops from './ops';
 import search from './search';
+import translate from './translate';
 
-export const modules: LanyardModule[] = [live, ops, search];
+export const modules: LanyardModule[] = [live, ops, search, translate];

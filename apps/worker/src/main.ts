@@ -1,16 +1,9 @@
-import Fastify from 'fastify';
-import type { HealthResponse } from '@lanyard/contracts';
+import { buildWorker } from './server';
 
-// Worker bootstrap: same image as the API, selected with ROLE=worker.
-// Serves /healthz and /readyz on PORT; the job runner and scheduler land in a later slice.
+// Worker bootstrap: same image as the API, selected with ROLE=worker. Listens on PORT.
 async function main(): Promise<void> {
   const port = Number(process.env.PORT ?? 8080);
-  const version = process.env.APP_VERSION ?? 'dev';
-  const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
-
-  const body = (): HealthResponse => ({ status: 'ok', role: 'worker', version });
-  app.get('/healthz', { logLevel: 'warn' }, async () => body());
-  app.get('/readyz', { logLevel: 'warn' }, async () => body());
+  const app = buildWorker(process.env.APP_VERSION ?? 'dev');
 
   const shutdown = async (signal: string) => {
     app.log.info({ signal }, 'shutting down');

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import type { Session } from '@lanyard/contracts';
 import { cachedGeneration } from './generation';
 import { generatePlan } from './plan';
-import type { Generate } from './runtime';
+import type { Generate } from './generation';
 
 test('plan smoke rejects invented ids, removes overlaps and caches pending work', async () => {
   const session: Session = {

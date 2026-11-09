@@ -1,5 +1,8 @@
 import { createHash } from 'node:crypto';
 import { HttpError } from '../../core/errors';
+import type { llm } from '../../core/llm';
+
+export type Generate = typeof llm;
 
 const cache = new Map<string, { at: number; promise: Promise<unknown> }>();
 let active = 0;

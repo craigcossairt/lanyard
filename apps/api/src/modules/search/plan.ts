@@ -7,8 +7,8 @@ import {
 import type { z } from 'zod';
 import { HttpError } from '../../core/errors';
 import { getEvent } from '../../core/events';
-import { cachedGeneration } from './generation';
-import { llm, type Generate } from './runtime';
+import { cachedGeneration, type Generate } from './generation';
+import { llm } from '../../core/llm';
 import { searchSessions } from './search';
 
 export type PlanInput = z.infer<typeof PlanMyDayRequest>;

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { es, initEs } from '../../apps/api/src/core/es';
+import { completeSearch } from '../../apps/api/src/modules/search/response';
 
 interface Pair {
   id: string;
@@ -58,20 +59,22 @@ async function calibrate(): Promise<void> {
     await es('multi', 'calibration-refresh', (c, o) => c.indices.refresh({ index }, o), 60_000);
     for (const pair of pairs) {
       const result = await es('multi', 'calibration-search', (c, o) =>
-        c.search(
-          {
-            index,
-            size: 1,
-            _source: false,
-            query: {
-              bool: {
-                filter: { term: { pairId: pair.id } },
-                must: { semantic: { field: 'semantic', query: pair.query } },
+        c
+          .search(
+            {
+              index,
+              size: 1,
+              _source: false,
+              query: {
+                bool: {
+                  filter: { term: { pairId: pair.id } },
+                  must: { semantic: { field: 'semantic', query: pair.query } },
+                },
               },
             },
-          },
-          o,
-        ),
+            o,
+          )
+          .then(completeSearch),
       );
       if (result.timed_out || !result.hits.hits.length)
         throw new Error('Calibration search incomplete');
@@ -96,7 +99,8 @@ async function calibrate(): Promise<void> {
     const mapping = await es('multi', 'calibration-mapping', (c, o) =>
       c.indices.getMapping({ index }, o),
     );
-    const inferenceId = mapping[index]?.mappings?.properties?.semantic?.inference_id;
+    const semantic = mapping[index]?.mappings?.properties?.semantic;
+    const inferenceId = semantic && 'inference_id' in semantic ? semantic.inference_id : undefined;
     const evidence = {
       measuredAt: new Date().toISOString(),
       inferenceId,

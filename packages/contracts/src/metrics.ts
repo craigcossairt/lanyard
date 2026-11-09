@@ -10,6 +10,7 @@ export const METRICS = {
   rerouteSuggested: 'conf.reroute.suggested',
   rerouteAccepted: 'conf.reroute.accepted',
   captionLagMs: 'conf.caption.lag_ms',
+  captionTranslated: 'conf.caption.translated',
   realtimeFanoutMs: 'conf.realtime.fanout_ms',
   sseClients: 'conf.sse.clients',
 } as const;

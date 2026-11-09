@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
+import { useI18n } from '../../../i18n/useI18n';
+import { translateCaption } from '../../../i18n/locale';
 import type { CaptionLine } from '../lib/live';
+import { groupCaptionLines, speakerLabel, type CaptionChunk } from './captions';
 
 interface Props {
   lines: CaptionLine[];
   /** 'waiting' before the first caption, 'stale' while reconnecting. */
   status: 'live' | 'waiting' | 'stale';
+  /** People listed on the session. Shown until a chunk names its own speaker. */
+  speakers?: readonly string[];
 }
 
 const NEAR_BOTTOM_PX = 48;
@@ -13,7 +18,8 @@ const NEAR_BOTTOM_PX = 48;
  * Large auto-following captions. Scrolling up pauses following (so you can re-read)
  * and shows a "Jump to live" button. The live region is polite and never takes focus.
  */
-export function CaptionStream({ lines, status }: Props) {
+export function CaptionStream({ lines, status, speakers = [] }: Props) {
+  const { t, captionLanguage } = useI18n();
   const box = useRef<HTMLDivElement>(null);
   const [following, setFollowing] = useState(true);
   const [missed, setMissed] = useState(0);
@@ -44,53 +50,77 @@ export function CaptionStream({ lines, status }: Props) {
     if (el) el.scrollTop = el.scrollHeight;
   };
 
-  const latest = lines[lines.length - 1];
+  const fallback = speakerLabel(speakers);
+  const shown: CaptionChunk[] = lines.map((line) => ({
+    chunkId: line.chunkId,
+    speaker: line.speaker,
+    text: translateCaption(line.text, line.lang ?? captionLanguage, captionLanguage),
+  }));
+  const groups = groupCaptionLines(shown, fallback);
+  const latest = shown[shown.length - 1];
+  const previous = shown[shown.length - 2];
+  const latestSpeaker = latest ? latest.speaker?.trim() || fallback : '';
+  const previousSpeaker = previous ? previous.speaker?.trim() || fallback : '';
+  const announce =
+    latest && latestSpeaker && latestSpeaker !== previousSpeaker
+      ? `${latestSpeaker}. ${latest.text}`
+      : (latest?.text ?? '');
 
   return (
     <section className="at-captions" aria-labelledby="captions-h">
       <h2 id="captions-h" className="at-sr-only">
-        Live captions
+        {t('captions')}
       </h2>
       <div
         ref={box}
         className={`at-captions__box${status === 'stale' ? ' at-captions__box--stale' : ''}`}
         onScroll={onScroll}
         tabIndex={0}
-        aria-label="Caption history, scroll up to re-read"
+        aria-label={t('captionsHistory')}
       >
-        {lines.length === 0 ? (
-          <p className="at-captions__empty">
-            {status === 'waiting'
-              ? 'Captions start when the speaker does.'
-              : 'Reconnecting… captions paused.'}
-          </p>
-        ) : (
-          lines.map((l, i) => (
-            <p
-              key={l.chunkId}
-              className={
-                i === lines.length - 1
-                  ? 'at-captions__line at-captions__line--latest'
-                  : 'at-captions__line'
-              }
-            >
-              {l.text}
+        <div className="at-captions__measure">
+          {shown.length === 0 ? (
+            <p className="at-captions__empty">
+              {status === 'waiting' ? t('captionsWaiting') : t('captionsPaused')}
             </p>
-          ))
-        )}
+          ) : (
+            groups.map((group) => (
+              <div key={group.lines[0]?.chunkId} className="at-captions__group">
+                {group.speaker && (
+                  <p className="at-captions__speaker">
+                    <span className="at-sr-only">{t('speakerChange')}: </span>
+                    {group.speaker}
+                  </p>
+                )}
+                {group.lines.map((line) => (
+                  <p
+                    key={line.chunkId}
+                    className={
+                      line.chunkId === latest?.chunkId
+                        ? 'at-captions__line at-captions__line--latest'
+                        : 'at-captions__line'
+                    }
+                  >
+                    {line.text}
+                  </p>
+                ))}
+              </div>
+            ))
+          )}
+        </div>
       </div>
-      {/* Screen readers hear only the newest line, politely. */}
+      {/* Screen readers hear only the newest line, politely, plus a speaker change. */}
       <div className="at-sr-only" aria-live="polite" aria-atomic="true">
-        {latest?.text ?? ''}
+        {announce}
       </div>
       {!following && (
         <button type="button" className="at-btn at-btn--sm at-captions__jump" onClick={jump}>
-          ↓ Jump to live{missed > 0 ? ` (${missed} new)` : ''}
+          {missed > 0 ? t('jumpLiveNew', { count: missed }) : t('jumpLive')}
         </button>
       )}
       {status === 'stale' && lines.length > 0 && (
         <p className="at-captions__stale" role="status">
-          Reconnecting… captions may be behind.
+          {t('captionsBehind')}
         </p>
       )}
     </section>

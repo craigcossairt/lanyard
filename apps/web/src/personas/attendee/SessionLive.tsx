@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import type { CatchUpResponse, Recommendation, Session } from '@lanyard/contracts';
+import { readLocaleSnapshot, translate } from '../../i18n/locale';
+import { LanguageSelect, useI18n } from '../../i18n/useI18n';
 import { CaptionStream } from './components/CaptionStream';
 import { QuestionList } from './components/QuestionList';
 import { Sheet } from './components/Sheet';
@@ -22,6 +24,7 @@ export default function SessionLiveRoute() {
 }
 
 function SessionLive({ id }: { id: string }) {
+  const { t } = useI18n();
   const eventId = useEventId();
   const me = useSession();
   const { view } = useEventView(eventId);
@@ -42,83 +45,107 @@ function SessionLive({ id }: { id: string }) {
   const open = live.questions.filter((q) => q.status !== 'hidden').length;
   const connected = live.stream === 'open' || live.stream === 'connecting';
   const captionStatus = connected ? (live.captions.length ? 'live' : 'waiting') : 'stale';
+  const [questionAnnounce, setQuestionAnnounce] = useState('');
+  const seenOpen = useRef<number | null>(null);
+  useEffect(() => {
+    if (!live.ready) return;
+    if (seenOpen.current === null) {
+      seenOpen.current = open;
+      return;
+    }
+    const delta = open - seenOpen.current;
+    seenOpen.current = open;
+    if (delta > 0) {
+      setQuestionAnnounce(t(delta === 1 ? 'newQuestionsOne' : 'newQuestions', { count: delta }));
+    }
+  }, [open, live.ready, t]);
 
   return (
     <div className="at-page at-live">
       <header className="at-live__head">
         <a href="#main" className="at-skip">
-          Skip to content
+          {t('skip')}
         </a>
-        <Link to="/a" className="at-back" aria-label="Back to home">
-          <span aria-hidden="true">‹</span> Home
+        <Link to="/a" className="at-back" aria-label={t('backHome')}>
+          <span aria-hidden="true">‹</span> {t('home')}
         </Link>
         <div className="at-live__title">
-          <h1>{live.session?.title ?? 'Live session'}</h1>
+          <h1>{live.session?.title ?? t('liveSession')}</h1>
           <p className="at-live__sub">
             {live.ended ? (
-              <span className="at-pill">Ended</span>
+              <span className="at-pill">{t('ended')}</span>
             ) : (
               <span className="at-pill at-pill--live">
-                <span aria-hidden="true">●</span> Live
+                <span aria-hidden="true">●</span> {t('live')}
               </span>
             )}
             {live.attendance && (
               <span>
                 {' '}
-                · {live.attendance.count} here
-                <span className="at-sr-only"> of {live.attendance.capacity} seats</span>
+                · {t('here', { count: live.attendance.count })}
+                <span className="at-sr-only">
+                  {' '}
+                  {t('seats', { capacity: live.attendance.capacity })}
+                </span>
               </span>
             )}
-            {live.stream === 'reconnecting' && <span> · Reconnecting…</span>}
-            {me?.handle && <span className="at-live__handle"> · You are {me.handle}</span>}
+            {live.stream === 'reconnecting' && <span> · {t('reconnecting')}</span>}
+            {me?.handle && (
+              <span className="at-live__handle">
+                {' '}
+                · {t('youAre')} {me.handle}
+              </span>
+            )}
           </p>
         </div>
-        <Link
-          to="/a/settings"
-          className="at-btn at-btn--sm"
-          aria-label="Display settings: text size, contrast"
-        >
+        <LanguageSelect id="live-lang" compact />
+        <Link to="/a/settings" className="at-btn at-btn--sm" aria-label={t('displaySettings')}>
           Aa
         </Link>
       </header>
 
-      <main id="main" className="at-live__main">
-        <CaptionStream lines={live.captions} status={captionStatus} />
+      <main id="main" tabIndex={-1} className="at-live__main">
+        <CaptionStream
+          lines={live.captions}
+          status={captionStatus}
+          speakers={live.session?.speakerNames ?? []}
+        />
 
         <section aria-labelledby="signals-h" className="at-live__signals">
           <h2 id="signals-h" className="at-sr-only">
-            Tell the speaker
+            {t('tellSpeaker')}
           </h2>
           <SignalBar
             onSignal={live.signal}
-            onSent={(label) =>
-              toast(`Sent “${label}” anonymously. The speaker sees it for 60 seconds.`)
-            }
+            onSent={(label) => toast(t('signalToast', { label }))}
           />
         </section>
       </main>
 
-      <nav className="at-dock" aria-label="Session actions">
+      <nav className="at-dock" aria-label={t('sessionActions')}>
         <button
           type="button"
           className="at-dock__btn at-dock__btn--primary"
           onClick={() => setSheet('ask')}
         >
-          <span aria-hidden="true">✍️</span> Ask
+          <span aria-hidden="true">✍️</span> {t('ask')}
         </button>
         <button type="button" className="at-dock__btn" onClick={() => setSheet('questions')}>
-          <span aria-hidden="true">💬</span> Questions
+          <span aria-hidden="true">💬</span> {t('questions')}
           {open > 0 && (
             <span className="at-dock__badge">
               {open}
-              <span className="at-sr-only"> questions</span>
+              <span className="at-sr-only"> {t('questions')}</span>
             </span>
           )}
         </button>
         <button type="button" className="at-dock__btn" onClick={() => setSheet('catchup')}>
-          <span aria-hidden="true">⏪</span> Catch up
+          <span aria-hidden="true">⏪</span> {t('catchUp')}
         </button>
       </nav>
+      <div className="at-sr-only" aria-live="polite">
+        {questionAnnounce}
+      </div>
 
       <AskSheet
         open={sheet === 'ask'}
@@ -130,22 +157,22 @@ function SessionLive({ id }: { id: string }) {
       <Sheet
         open={sheet === 'questions'}
         onClose={() => setSheet(null)}
-        title="Questions"
-        description="Similar questions are merged. Upvote the ones you want answered."
+        title={t('questionsTitle')}
+        description={t('questionsDescription')}
       >
         <QuestionList
           questions={live.questions}
           clusters={live.clusters}
           voted={live.voted}
           mine={live.mine}
-          onVote={(qid) => void live.vote(qid).catch(() => toast('Could not vote right now.'))}
+          onVote={(qid) => void live.vote(qid).catch(() => toast(t('voteFail')))}
         />
         <button
           type="button"
           className="at-btn at-btn--primary at-block"
           onClick={() => setSheet('ask')}
         >
-          Ask a question
+          {t('askAQuestion')}
         </button>
       </Sheet>
 
@@ -180,6 +207,7 @@ function AskSheet({
   ask: (t: string) => Promise<{ merged: boolean; cluster: { size: number } }>;
   onAsked: () => void;
 }) {
+  const { t } = useI18n();
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -187,37 +215,34 @@ function AskSheet({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const t = text.trim();
-    if (!t || busy) return;
+    const question = text.trim();
+    if (!question || busy) return;
     setBusy(true);
     setError(null);
     try {
-      const res = await ask(t);
+      const res = await ask(question);
       setText('');
       const others = Math.max(0, res.cluster.size - 1);
       toast(
-        res.merged && others > 0
-          ? `Asked. Merged with ${others} ${others === 1 ? 'other asking' : 'others asking'} this, so the speaker sees one question.`
-          : 'Asked anonymously. The speaker sees it now.',
+        res.merged && others > 1
+          ? t('askedMerged', { count: others })
+          : res.merged && others === 1
+            ? t('askedMergedOne')
+            : t('asked'),
       );
       onAsked();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send your question. Try again.');
+      setError(err instanceof ApiError ? err.message : t('askFail'));
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <Sheet
-      open={open}
-      onClose={onClose}
-      title="Ask a question"
-      description="Anonymous. If someone already asked it, yours joins theirs."
-    >
+    <Sheet open={open} onClose={onClose} title={t('askTitle')} description={t('askDescription')}>
       <form onSubmit={(e) => void submit(e)}>
         <label htmlFor="ask-text" className="at-sr-only">
-          Your question
+          {t('yourQuestion')}
         </label>
         <textarea
           id="ask-text"
@@ -225,7 +250,7 @@ function AskSheet({
           value={text}
           onChange={(e) => setText(e.target.value)}
           maxLength={500}
-          placeholder="What would you like to ask?"
+          placeholder={t('askPlaceholder')}
           data-autofocus
           required
         />
@@ -236,7 +261,7 @@ function AskSheet({
         )}
         <div className="at-sheet__actions">
           <button type="submit" className="at-btn at-btn--primary" disabled={busy || !text.trim()}>
-            {busy ? 'Sending…' : 'Ask'}
+            {busy ? t('sending') : t('ask')}
           </button>
           <span className="at-muted">{text.length}/500</span>
         </div>
@@ -254,6 +279,7 @@ function CatchUpSheet({
   onClose: () => void;
   sessionId: string;
 }) {
+  const { t } = useI18n();
   const [state, setState] = useState<{
     status: 'idle' | 'loading' | 'done' | 'error';
     summary?: string;
@@ -274,7 +300,8 @@ function CatchUpSheet({
           alive &&
           setState({
             status: 'error',
-            error: e instanceof ApiError ? e.message : 'Could not summarise right now.',
+            error:
+              e instanceof ApiError ? e.message : translate(readLocaleSnapshot().ui, 'catchUpFail'),
           }),
       );
     return () => {
@@ -286,12 +313,12 @@ function CatchUpSheet({
     <Sheet
       open={open}
       onClose={onClose}
-      title={`Catch me up`}
-      description={`The last ${CATCH_UP_MINUTES} minutes, summarised from the captions.`}
+      title={t('catchUpTitle')}
+      description={t('catchUpDescription', { minutes: CATCH_UP_MINUTES })}
     >
       {state.status === 'loading' && (
         <p className="at-muted" role="status">
-          Summarising…
+          {t('summarising')}
         </p>
       )}
       {state.status === 'error' && (
@@ -299,9 +326,7 @@ function CatchUpSheet({
           {state.error}
         </p>
       )}
-      {state.status === 'done' && (
-        <p className="at-catchup">{state.summary || 'Nothing has been said yet.'}</p>
-      )}
+      {state.status === 'done' && <p className="at-catchup">{state.summary || t('nothingSaid')}</p>}
     </Sheet>
   );
 }
@@ -319,6 +344,7 @@ function RerouteSheet({
   onClose: () => void;
   onGo: (sessionId: string) => void;
 }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   if (!recommendation) return null;
@@ -337,7 +363,7 @@ function RerouteSheet({
       }
       onGo(target);
     } catch {
-      toast('Could not confirm the move, taking you there anyway.');
+      toast(t('rerouteFail'));
       onGo(recommendation.sessionId);
     } finally {
       setBusy(false);
@@ -345,12 +371,7 @@ function RerouteSheet({
   };
 
   return (
-    <Sheet
-      open={open}
-      onClose={onClose}
-      title="This room is full"
-      description={recommendation.reason}
-    >
+    <Sheet open={open} onClose={onClose} title={t('roomFull')} description={recommendation.reason}>
       <div className="at-sheet__actions">
         <button
           type="button"
@@ -358,10 +379,10 @@ function RerouteSheet({
           disabled={busy}
           onClick={() => void accept()}
         >
-          {busy ? 'Moving…' : 'Take me there'}
+          {busy ? t('moving') : t('takeMe')}
         </button>
         <button type="button" className="at-btn" onClick={onClose}>
-          Stay here
+          {t('stay')}
         </button>
       </div>
     </Sheet>

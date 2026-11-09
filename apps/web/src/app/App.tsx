@@ -1,4 +1,5 @@
 import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router';
+import { useI18n } from '../i18n/useI18n';
 import { homeFor } from './auth';
 import { JoinPage } from './JoinPage';
 import { PERSONAS, PersonaOutlet } from './personas';
@@ -7,12 +8,16 @@ import { useSession } from './session';
 
 function Home() {
   const session = useSession();
+  const { t } = useI18n();
   if (session) return <Navigate to={homeFor(session.claims.role)} replace />;
   return (
-    <main className="shell">
+    <main id="main" tabIndex={-1} className="shell">
+      <a href="#main" className="skip-link">
+        {t('skip')}
+      </a>
       <h1>Lanyard</h1>
       <p className="muted">Live captions, questions and room status for every session.</p>
-      <Link to="/join">Join an event</Link>
+      <Link to="/join">{t('joinTitle')}</Link>
     </main>
   );
 }

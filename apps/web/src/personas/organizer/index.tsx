@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { EVENT_IDS, formatTime } from '@lanyard/contracts';
+import { useI18n } from '../../i18n/useI18n';
 import { useSession } from '../../app/session';
 import { Alerts } from './Alerts';
 import { AskConference } from './AskConference';
@@ -38,7 +39,9 @@ function Board({ eventId }: { eventId: string }) {
               : 'Stream reconnecting · polling every 10 seconds'}{' '}
         <span>Updated {formatTime(at, view.event.timezone)}</span>
       </p>
-      {eventId === EVENT_IDS.cnhDemos && <SimulationControls eventId={eventId} timezone={view.event.timezone} />}
+      {eventId === EVENT_IDS.cnhDemos && (
+        <SimulationControls eventId={eventId} timezone={view.event.timezone} />
+      )}
       <dl className="ops-summary">
         <div>
           <dt>People in rooms</dt>
@@ -95,11 +98,15 @@ function Board({ eventId }: { eventId: string }) {
 }
 
 export default function Organizer() {
+  const { t } = useI18n();
   const session = useSession();
   const [selected, setSelected] = useState<string>();
   const eventId = selected ?? session?.claims.eventId ?? EVENT_IDS.cnhDemos;
   return (
-    <main className="ops-page">
+    <main id="main" tabIndex={-1} className="ops-page">
+      <a href="#main" className="skip-link">
+        {t('skip')}
+      </a>
       <header className="ops-header">
         <div>
           <span className="ops-eyebrow">Lanyard / organizer</span>

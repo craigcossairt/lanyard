@@ -86,6 +86,27 @@ test('search route and retrieval helpers smoke', async (t) => {
     60,
   ).token;
   const headers = { authorization: `Bearer ${token}` };
+  assert.equal(
+    (
+      await app.inject({
+        method: 'POST',
+        url: '/api/events/event/plan-my-day',
+        payload: { interests: 'kernel' },
+      })
+    ).statusCode,
+    401,
+  );
+  assert.equal(
+    (
+      await app.inject({
+        method: 'POST',
+        url: '/api/events/other/plan-my-day',
+        headers,
+        payload: { interests: 'kernel' },
+      })
+    ).statusCode,
+    403,
+  );
   assert.equal((await app.inject('/api/events/event/search?q=kernel')).statusCode, 401);
   assert.equal(
     (await app.inject({ url: '/api/events/other/search?q=kernel', headers })).statusCode,

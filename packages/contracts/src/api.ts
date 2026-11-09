@@ -203,6 +203,22 @@ export const RoomStatus = z.object({
 export const OpsSnapshot = z.object({ rooms: z.array(RoomStatus), alerts: z.array(Alert) });
 export type OpsSnapshot = z.infer<typeof OpsSnapshot>;
 
+// GET/POST /events/:eventId/ops/simulation (organizer, CNH Demos only)
+export const SimulationControlRequest = z.object({
+  running: z.boolean(),
+  attendees: z.number().int().min(1).max(200).default(40),
+});
+export type SimulationControlRequest = z.input<typeof SimulationControlRequest>;
+export const SimulationStatus = z.object({
+  simulated: z.literal(true),
+  running: z.boolean(),
+  stopping: z.boolean(),
+  attendees: z.number().int().min(0).max(200),
+  startedAt: IsoDateTime.optional(),
+  endsAt: IsoDateTime.optional(),
+});
+export type SimulationStatus = z.infer<typeof SimulationStatus>;
+
 // POST /events/:eventId/alerts/:id/reroute
 export const RerouteResponse = z.object({ suggested: z.number().int(), toSessionIds: z.array(Id) });
 

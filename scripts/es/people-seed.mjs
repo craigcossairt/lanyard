@@ -1,4 +1,5 @@
 import { pathToFileURL } from 'node:url';
+import { setTimeout as delay } from 'node:timers/promises';
 import { request, fail } from './client.mjs';
 import { setupPeopleMapping } from './people-mapping.mjs';
 
@@ -54,22 +55,36 @@ export async function seedPeople({ reset = false } = {}) {
       timeoutMs: 10_000,
     });
   }
-  const body = attendees
-    .map((row, index) => {
-      const document = documentFor(row, index);
-      return [
-        JSON.stringify({ index: { _index: 'cnh-people', _id: `cnh-demos:${document.anonId}` } }),
-        JSON.stringify(document),
-      ].join('\n');
-    })
-    .join('\n') + '\n';
-  const result = await request('/_bulk?refresh=true', {
-    method: 'POST',
-    body,
-    ndjson: true,
-    timeoutMs: 60_000,
-  });
-  if (result.errors) throw new Error('Elasticsearch bulk seed failed');
+  for (const [index, row] of attendees.entries()) {
+    const document = documentFor(row, index);
+    const body = [
+      JSON.stringify({ index: { _index: 'cnh-people', _id: `cnh-demos:${document.anonId}` } }),
+      JSON.stringify(document),
+    ].join('\n') + '\n';
+    for (let attempt = 0; ; attempt += 1) {
+      const result = await request('/_bulk?refresh=false', {
+        method: 'POST',
+        body,
+        ndjson: true,
+        timeoutMs: 30_000,
+      });
+      if (!result.errors) break;
+      const operation = Object.values(result.items?.[0] ?? {})[0];
+      if (
+        operation?.status === 429 &&
+        operation.error?.type === 'inference_exception' &&
+        attempt < 4
+      ) {
+        await delay(500 * 2 ** attempt);
+        continue;
+      }
+      const key = `${operation?.status ?? 'unknown'}:${operation?.error?.type ?? 'unknown'}`;
+      console.error(JSON.stringify({ eventId: 'cnh-demos', action: 'seed-error', failure: key }));
+      throw new Error('Elasticsearch bulk seed failed');
+    }
+    await delay(200);
+  }
+  await request('/cnh-people/_refresh', { method: 'POST', timeoutMs: 10_000 });
   console.log(JSON.stringify({ eventId: 'cnh-demos', action: 'seeded', count: attendees.length }));
 }
 

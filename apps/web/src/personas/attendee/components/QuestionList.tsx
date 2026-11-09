@@ -18,7 +18,10 @@ export interface ClusterView {
 }
 
 /** One row per cluster, ranked by votes then size. Hidden questions never render. */
-export function buildClusterViews(questions: Question[], clusters: QuestionCluster[]): ClusterView[] {
+export function buildClusterViews(
+  questions: Question[],
+  clusters: QuestionCluster[],
+): ClusterView[] {
   const byCluster = new Map<string, Question[]>();
   for (const q of questions) {
     if (q.status === 'hidden') continue;
@@ -33,7 +36,10 @@ export function buildClusterViews(questions: Question[], clusters: QuestionClust
     seen.add(c.id);
     const rep = qs.find((q) => q.id === c.representativeQuestionId) ?? qs[0];
     if (!rep && qs.length === 0 && !c.label) continue;
-    const votes = Math.max(c.votes, qs.reduce((n, q) => n + q.votes, 0));
+    const votes = Math.max(
+      c.votes,
+      qs.reduce((n, q) => n + q.votes, 0),
+    );
     views.push({
       cluster: c,
       representative: rep,
@@ -47,7 +53,14 @@ export function buildClusterViews(questions: Question[], clusters: QuestionClust
     if (seen.has(clusterId)) continue;
     const rep = qs[0]!;
     views.push({
-      cluster: { id: clusterId, sessionId: rep.sessionId, label: '', size: qs.length, votes: 0, representativeQuestionId: rep.id },
+      cluster: {
+        id: clusterId,
+        sessionId: rep.sessionId,
+        label: '',
+        size: qs.length,
+        votes: 0,
+        representativeQuestionId: rep.id,
+      },
       representative: rep,
       votes: qs.reduce((n, q) => n + q.votes, 0),
       size: qs.length,
@@ -71,13 +84,20 @@ export function QuestionList({ questions, clusters, voted, mine, onVote }: Props
         const others = Math.max(0, v.size - 1);
         const hasVoted = voted(qid);
         return (
-          <li key={v.cluster.id} className={`at-question${v.answered ? ' at-question--answered' : ''}`}>
+          <li
+            key={v.cluster.id}
+            className={`at-question${v.answered ? ' at-question--answered' : ''}`}
+          >
             <div className="at-question__body">
               <p className="at-question__text">{text}</p>
               <p className="at-question__meta">
                 {v.answered && <span className="at-pill at-pill--ok">✓ Answered</span>}
                 {isMine ? (
-                  <span>{others > 0 ? `You + ${others} ${others === 1 ? 'other' : 'others'} asked this` : 'You asked this'}</span>
+                  <span>
+                    {others > 0
+                      ? `You + ${others} ${others === 1 ? 'other' : 'others'} asked this`
+                      : 'You asked this'}
+                  </span>
                 ) : (
                   v.size > 1 && <span>{v.size} people asked this</span>
                 )}

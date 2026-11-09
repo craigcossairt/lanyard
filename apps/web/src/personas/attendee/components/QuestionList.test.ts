@@ -3,7 +3,12 @@ import assert from 'node:assert/strict';
 import type { Question, QuestionCluster } from '@lanyard/contracts';
 import { buildClusterViews } from './QuestionList';
 
-const q = (id: string, clusterId: string, votes: number, status: Question['status'] = 'open'): Question => ({
+const q = (
+  id: string,
+  clusterId: string,
+  votes: number,
+  status: Question['status'] = 'open',
+): Question => ({
   id,
   sessionId: 's1',
   anonId: 'a',
@@ -19,7 +24,10 @@ test('clusters rank by votes then size, hidden questions drop out', () => {
     { id: 'c1', sessionId: 's1', label: 'A', size: 2, votes: 1, representativeQuestionId: 'q1' },
     { id: 'c2', sessionId: 's1', label: 'B', size: 5, votes: 9, representativeQuestionId: 'q3' },
   ];
-  const views = buildClusterViews([q('q1', 'c1', 1), q('q2', 'c1', 0), q('q3', 'c2', 9), q('q4', 'c3', 0, 'hidden')], clusters);
+  const views = buildClusterViews(
+    [q('q1', 'c1', 1), q('q2', 'c1', 0), q('q3', 'c2', 9), q('q4', 'c3', 0, 'hidden')],
+    clusters,
+  );
   assert.deepEqual(
     views.map((v) => v.cluster.id),
     ['c2', 'c1'],

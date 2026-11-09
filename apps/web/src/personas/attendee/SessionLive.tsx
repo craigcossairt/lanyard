@@ -28,7 +28,12 @@ export default function SessionLive() {
   }, [live.reroute]);
 
   const open = live.questions.filter((q) => q.status !== 'hidden').length;
-  const captionStatus = live.stream === 'open' || live.stream === 'connecting' ? (live.captions.length ? 'live' : 'waiting') : 'stale';
+  const captionStatus =
+    live.stream === 'open' || live.stream === 'connecting'
+      ? live.captions.length
+        ? 'live'
+        : 'waiting'
+      : 'stale';
 
   return (
     <div className="at-page at-live">
@@ -60,7 +65,11 @@ export default function SessionLive() {
             {me?.handle && <span className="at-live__handle"> · You are {me.handle}</span>}
           </p>
         </div>
-        <Link to="/a/settings" className="at-btn at-btn--sm" aria-label="Display settings: text size, contrast">
+        <Link
+          to="/a/settings"
+          className="at-btn at-btn--sm"
+          aria-label="Display settings: text size, contrast"
+        >
           Aa
         </Link>
       </header>
@@ -81,12 +90,21 @@ export default function SessionLive() {
           <h2 id="signals-h" className="at-sr-only">
             Tell the speaker
           </h2>
-          <SignalBar onSignal={live.signal} onSent={(label) => toast(`Sent “${label}” anonymously. The speaker sees it for 60 seconds.`)} />
+          <SignalBar
+            onSignal={live.signal}
+            onSent={(label) =>
+              toast(`Sent “${label}” anonymously. The speaker sees it for 60 seconds.`)
+            }
+          />
         </section>
       </main>
 
       <nav className="at-dock" aria-label="Session actions">
-        <button type="button" className="at-dock__btn at-dock__btn--primary" onClick={() => setSheet('ask')}>
+        <button
+          type="button"
+          className="at-dock__btn at-dock__btn--primary"
+          onClick={() => setSheet('ask')}
+        >
           <span aria-hidden="true">✍️</span> Ask
         </button>
         <button type="button" className="at-dock__btn" onClick={() => setSheet('questions')}>
@@ -103,11 +121,31 @@ export default function SessionLive() {
         </button>
       </nav>
 
-      <AskSheet open={sheet === 'ask'} onClose={() => setSheet(null)} ask={live.ask} onAsked={() => setSheet('questions')} />
+      <AskSheet
+        open={sheet === 'ask'}
+        onClose={() => setSheet(null)}
+        ask={live.ask}
+        onAsked={() => setSheet('questions')}
+      />
 
-      <Sheet open={sheet === 'questions'} onClose={() => setSheet(null)} title="Questions" description="Similar questions are merged. Upvote the ones you want answered.">
-        <QuestionList questions={live.questions} clusters={live.clusters} voted={live.voted} mine={live.mine} onVote={(qid) => void live.vote(qid).catch(() => toast('Could not vote right now.'))} />
-        <button type="button" className="at-btn at-btn--primary at-block" onClick={() => setSheet('ask')}>
+      <Sheet
+        open={sheet === 'questions'}
+        onClose={() => setSheet(null)}
+        title="Questions"
+        description="Similar questions are merged. Upvote the ones you want answered."
+      >
+        <QuestionList
+          questions={live.questions}
+          clusters={live.clusters}
+          voted={live.voted}
+          mine={live.mine}
+          onVote={(qid) => void live.vote(qid).catch(() => toast('Could not vote right now.'))}
+        />
+        <button
+          type="button"
+          className="at-btn at-btn--primary at-block"
+          onClick={() => setSheet('ask')}
+        >
           Ask a question
         </button>
       </Sheet>
@@ -132,7 +170,17 @@ export default function SessionLive() {
   );
 }
 
-function AskSheet({ open, onClose, ask, onAsked }: { open: boolean; onClose: () => void; ask: (t: string) => Promise<{ merged: boolean; cluster: { size: number } }>; onAsked: () => void }) {
+function AskSheet({
+  open,
+  onClose,
+  ask,
+  onAsked,
+}: {
+  open: boolean;
+  onClose: () => void;
+  ask: (t: string) => Promise<{ merged: boolean; cluster: { size: number } }>;
+  onAsked: () => void;
+}) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -148,7 +196,11 @@ function AskSheet({ open, onClose, ask, onAsked }: { open: boolean; onClose: () 
       const res = await ask(t);
       setText('');
       const others = Math.max(0, res.cluster.size - 1);
-      toast(res.merged && others > 0 ? `Asked. Merged with ${others} ${others === 1 ? 'other asking' : 'others asking'} this, so the speaker sees one question.` : 'Asked anonymously. The speaker sees it now.');
+      toast(
+        res.merged && others > 0
+          ? `Asked. Merged with ${others} ${others === 1 ? 'other asking' : 'others asking'} this, so the speaker sees one question.`
+          : 'Asked anonymously. The speaker sees it now.',
+      );
       onAsked();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not send your question. Try again.');
@@ -158,12 +210,26 @@ function AskSheet({ open, onClose, ask, onAsked }: { open: boolean; onClose: () 
   };
 
   return (
-    <Sheet open={open} onClose={onClose} title="Ask a question" description="Anonymous. If someone already asked it, yours joins theirs.">
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="Ask a question"
+      description="Anonymous. If someone already asked it, yours joins theirs."
+    >
       <form onSubmit={(e) => void submit(e)}>
         <label htmlFor="ask-text" className="at-sr-only">
           Your question
         </label>
-        <textarea id="ask-text" className="at-textarea" value={text} onChange={(e) => setText(e.target.value)} maxLength={500} placeholder="What would you like to ask?" data-autofocus required />
+        <textarea
+          id="ask-text"
+          className="at-textarea"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          maxLength={500}
+          placeholder="What would you like to ask?"
+          data-autofocus
+          required
+        />
         {error && (
           <p role="alert" className="at-field-error">
             {error}
@@ -180,24 +246,50 @@ function AskSheet({ open, onClose, ask, onAsked }: { open: boolean; onClose: () 
   );
 }
 
-function CatchUpSheet({ open, onClose, sessionId }: { open: boolean; onClose: () => void; sessionId: string }) {
-  const [state, setState] = useState<{ status: 'idle' | 'loading' | 'done' | 'error'; summary?: string; error?: string }>({ status: 'idle' });
+function CatchUpSheet({
+  open,
+  onClose,
+  sessionId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  sessionId: string;
+}) {
+  const [state, setState] = useState<{
+    status: 'idle' | 'loading' | 'done' | 'error';
+    summary?: string;
+    error?: string;
+  }>({ status: 'idle' });
 
   useEffect(() => {
     if (!open) return;
     let alive = true;
     setState({ status: 'loading' });
     api
-      .post<CatchUpResponse>(`/sessions/${encodeURIComponent(sessionId)}/catch-up`, { minutes: CATCH_UP_MINUTES })
+      .post<CatchUpResponse>(`/sessions/${encodeURIComponent(sessionId)}/catch-up`, {
+        minutes: CATCH_UP_MINUTES,
+      })
       .then((r) => alive && setState({ status: 'done', summary: r.summary }))
-      .catch((e: unknown) => alive && setState({ status: 'error', error: e instanceof ApiError ? e.message : 'Could not summarise right now.' }));
+      .catch(
+        (e: unknown) =>
+          alive &&
+          setState({
+            status: 'error',
+            error: e instanceof ApiError ? e.message : 'Could not summarise right now.',
+          }),
+      );
     return () => {
       alive = false;
     };
   }, [open, sessionId]);
 
   return (
-    <Sheet open={open} onClose={onClose} title={`Catch me up`} description={`The last ${CATCH_UP_MINUTES} minutes, summarised from the captions.`}>
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title={`Catch me up`}
+      description={`The last ${CATCH_UP_MINUTES} minutes, summarised from the captions.`}
+    >
       {state.status === 'loading' && (
         <p className="at-muted" role="status">
           Summarising…
@@ -208,12 +300,26 @@ function CatchUpSheet({ open, onClose, sessionId }: { open: boolean; onClose: ()
           {state.error}
         </p>
       )}
-      {state.status === 'done' && <p className="at-catchup">{state.summary || 'Nothing has been said yet.'}</p>}
+      {state.status === 'done' && (
+        <p className="at-catchup">{state.summary || 'Nothing has been said yet.'}</p>
+      )}
     </Sheet>
   );
 }
 
-function RerouteSheet({ open, recommendation, eventId, onClose, onGo }: { open: boolean; recommendation: Recommendation | null; eventId: string; onClose: () => void; onGo: (sessionId: string) => void }) {
+function RerouteSheet({
+  open,
+  recommendation,
+  eventId,
+  onClose,
+  onGo,
+}: {
+  open: boolean;
+  recommendation: Recommendation | null;
+  eventId: string;
+  onClose: () => void;
+  onGo: (sessionId: string) => void;
+}) {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   if (!recommendation) return null;
@@ -224,7 +330,10 @@ function RerouteSheet({ open, recommendation, eventId, onClose, onGo }: { open: 
     try {
       let target = recommendation.sessionId;
       if (suggestionId) {
-        const res = await api.post<{ accepted: boolean; sessionId: string }>(`/events/${encodeURIComponent(eventId)}/reroute/accept`, { suggestionId });
+        const res = await api.post<{ accepted: boolean; sessionId: string }>(
+          `/events/${encodeURIComponent(eventId)}/reroute/accept`,
+          { suggestionId },
+        );
         target = res.sessionId || target;
       }
       onGo(target);
@@ -237,9 +346,19 @@ function RerouteSheet({ open, recommendation, eventId, onClose, onGo }: { open: 
   };
 
   return (
-    <Sheet open={open} onClose={onClose} title="This room is full" description={recommendation.reason}>
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="This room is full"
+      description={recommendation.reason}
+    >
       <div className="at-sheet__actions">
-        <button type="button" className="at-btn at-btn--primary" disabled={busy} onClick={() => void accept()}>
+        <button
+          type="button"
+          className="at-btn at-btn--primary"
+          disabled={busy}
+          onClick={() => void accept()}
+        >
           {busy ? 'Moving…' : 'Take me there'}
         </button>
         <button type="button" className="at-btn" onClick={onClose}>

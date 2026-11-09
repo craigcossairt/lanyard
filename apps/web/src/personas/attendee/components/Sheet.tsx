@@ -40,7 +40,12 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
           <h2 id={titleId} className="at-sheet__title">
             {title}
           </h2>
-          <button type="button" className="at-btn at-btn--sm" onClick={onClose} aria-label={`Close ${title}`}>
+          <button
+            type="button"
+            className="at-btn at-btn--sm"
+            onClick={onClose}
+            aria-label={`Close ${title}`}
+          >
             ✕
           </button>
         </div>

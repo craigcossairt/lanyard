@@ -9,7 +9,6 @@ import type {
   Session,
   SessionSnapshot,
   SignalType,
-
 } from '@lanyard/contracts';
 import { api, ApiError } from './api';
 import { useSse, type SseStatus } from './sse';
@@ -71,7 +70,10 @@ function upsertQuestion(list: Question[], q: Partial<Question> & { id: string })
   return next;
 }
 
-function upsertCluster(list: QuestionCluster[], c: Partial<QuestionCluster> & { id: string }): QuestionCluster[] {
+function upsertCluster(
+  list: QuestionCluster[],
+  c: Partial<QuestionCluster> & { id: string },
+): QuestionCluster[] {
   const i = list.findIndex((x) => x.id === c.id);
   if (i < 0) {
     if (!c.sessionId) return list;
@@ -128,7 +130,10 @@ function reducer(state: LiveState, action: Action): LiveState {
       switch (m.type) {
         case 'caption.appended': {
           if (state.captions.some((c) => c.chunkId === m.payload.chunkId)) return state;
-          const captions = [...state.captions, { chunkId: m.payload.chunkId, seq: m.payload.seq, text: m.payload.text }]
+          const captions = [
+            ...state.captions,
+            { chunkId: m.payload.chunkId, seq: m.payload.seq, text: m.payload.text },
+          ]
             .sort((a, b) => a.seq - b.seq)
             .slice(-MAX_CAPTIONS);
           return { ...state, captions };
@@ -226,7 +231,10 @@ export function useLiveSession(sessionId: string): LiveApi {
       const snap = await api.get<SessionSnapshot>(snapshotPath(sessionId));
       dispatch({ type: 'snapshot', snapshot: snap });
     } catch (e) {
-      dispatch({ type: 'error', message: e instanceof ApiError ? e.message : 'Could not load this session' });
+      dispatch({
+        type: 'error',
+        message: e instanceof ApiError ? e.message : 'Could not load this session',
+      });
     }
   }, [sessionId]);
 
@@ -250,7 +258,10 @@ export function useLiveSession(sessionId: string): LiveApi {
 
   const ask = useCallback(
     async (text: string) => {
-      const res = await api.post<AskQuestionResponse>(`/sessions/${encodeURIComponent(sessionId)}/questions`, { text });
+      const res = await api.post<AskQuestionResponse>(
+        `/sessions/${encodeURIComponent(sessionId)}/questions`,
+        { text },
+      );
       myClusters.current.add(res.cluster.id);
       writeSet(MINE_KEY, myClusters.current);
       dispatch({ type: 'localQuestion', res });
@@ -263,7 +274,9 @@ export function useLiveSession(sessionId: string): LiveApi {
     if (votes.current.has(questionId)) return;
     votes.current.add(questionId);
     writeSet(VOTES_KEY, votes.current);
-    const res = await api.post<{ questionId: string; votes: number }>(`/questions/${encodeURIComponent(questionId)}/vote`);
+    const res = await api.post<{ questionId: string; votes: number }>(
+      `/questions/${encodeURIComponent(questionId)}/vote`,
+    );
     dispatch({ type: 'localVote', questionId, votes: res.votes });
   }, []);
 

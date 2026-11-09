@@ -140,7 +140,11 @@ function mockStream(
     handler.current({
       type: 'reroute.suggested',
       at: new Date().toISOString(),
-      payload: { anonId: 'me', sessionId: 's-hallway', reason: 'Main Stage is full. Hallway Track: open Q&A has seats on the Side Stage.' },
+      payload: {
+        anonId: 'me',
+        sessionId: 's-hallway',
+        reason: 'Main Stage is full. Hallway Track: open Q&A has seats on the Side Stage.',
+      },
     });
   }, 25_000);
   return () => {

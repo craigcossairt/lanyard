@@ -66,7 +66,14 @@ export function CaptionStream({ lines, status }: Props) {
           </p>
         ) : (
           lines.map((l, i) => (
-            <p key={l.chunkId} className={i === lines.length - 1 ? 'at-captions__line at-captions__line--latest' : 'at-captions__line'}>
+            <p
+              key={l.chunkId}
+              className={
+                i === lines.length - 1
+                  ? 'at-captions__line at-captions__line--latest'
+                  : 'at-captions__line'
+              }
+            >
               {l.text}
             </p>
           ))

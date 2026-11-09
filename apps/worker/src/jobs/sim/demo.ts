@@ -35,25 +35,13 @@ export const TALK = [
 
 const QUESTIONS = [
   [
-    'How do you handle a thousand people in one room?',
-    'What happens when a room fills up?',
-    'How does overflow handling work?',
+    'What happens when a room fills up and reaches its capacity?',
+    'What do you do when a room reaches its capacity and fills up?',
+    'How is overflow handled when a room fills up and reaches its capacity?',
   ],
-  [
-    'Can I catch up if I arrive late to a talk?',
-    'How can a late arrival get a summary?',
-    'Can you summarize what I missed in this session?',
-  ],
-  [
-    'How are similar audience questions grouped together?',
-    'Can differently worded questions become one cluster?',
-    'How do you deduplicate audience questions?',
-  ],
-  [
-    'How do captions help attendees follow a session?',
-    'Can I read the talk on my phone?',
-    'Are live captions available for people who cannot hear the speaker?',
-  ],
+  ['Can I catch up if I arrive late to a talk?'],
+  ['How are similar audience questions grouped together?'],
+  ['How do captions help attendees follow a session?'],
 ];
 
 // Each group's paraphrases trail its seed by at least 22 s, allowing ES refresh.

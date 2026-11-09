@@ -60,7 +60,9 @@ Each index has a `semantic` field of type `semantic_text` where noted. It uses t
 Live counters (occupancy, votes) are **also** kept in Valkey for speed. ES remains the record and the analytics layer.
 
 ## 4. API surface (all under `/api`, JSON)
-Roles are carried by a signed token: attendee (issued on join), or speaker, organizer, vendor or venue (role links). The token travels in the `Authorization` header (`Bearer`).
+Roles are carried by a signed token: attendee (issued on join), or speaker, organizer, vendor or venue (role links). The token travels in the `Authorization` header (`Bearer`). SSE routes also accept it as `?token=` because `EventSource` cannot set headers.
+
+**First organizer token (bootstrap):** there is no public route that mints an organizer token. `npm run mint-link -- --role organizer --event <eventId>` (WS0, `apps/api/src/core/`) signs one locally with `TOKEN_SIGNING_KEY` from `.env` and prints the full join link. From then on the organizer uses `POST /events/:eventId/role-links` to mint speaker, vendor and venue links.
 
 | Method and path | Role | Purpose | Owner |
 |---|---|---|---|
@@ -90,7 +92,9 @@ Roles are carried by a signed token: attendee (issued on join), or speaker, orga
 Errors use a JSON body with `error.code` and `error.message`. Every route validates input with the shared schema library chosen by WS0 (zod recommended).
 
 ## 5. Realtime messages (SSE, fanned out via Valkey channels)
-Channels: `session:<id>`, `ops:<eventId>`, `user:<anonId>`. Each message has `type`, `at` and a payload:
+Channels: `session:<id>`, `ops:<eventId>`, `user:<anonId>`. Each message has `type`, `at` and a payload.
+
+**User channel delivery:** there is no separate user stream. Every authenticated SSE stream (`/sessions/:id/stream` and `/events/:eventId/ops/stream`) also subscribes to the caller's `user:<anonId>` channel, taken from the token, and multiplexes those messages into the same connection. Reroute suggestions therefore reach attendees through the session stream they already hold open.
 
 | Type | Channel | Payload (described) |
 |---|---|---|
@@ -144,5 +148,5 @@ The client reconnects with exponential backoff and refetches the snapshot after 
 ## 9. Seed data
 1. Try the real KubeCon NA 2026 schedule (the public schedule site; plain `curl` was blocked, so use a browser fetch), keeping only public talk data.
 2. Fallback: an LLM generates about 120 sessions across 10 rooms with realistic tracks (Platform Engineering, Security, AI/Inference, Observability, eBPF, GitOps). Speakers are fictional.
-3. The "CNH Demos" event has one room, "Main Stage", and a session per team, added live by the organizer.
+3. The "CNH Demos" event has two rooms: "Main Stage" (small capacity, about 30, so it overflows during the demo), with a session per team added live by the organizer, and "Side Stage" (capacity about 100), with a concurrent "Hallway Track: open Q&A" session that is the reroute destination.
 4. Room capacities are chosen so that one room plausibly overflows during the demo.

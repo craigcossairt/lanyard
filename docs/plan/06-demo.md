@@ -24,7 +24,7 @@ How many minutes per team? Is it on stage with a projector, or science-fair styl
 | 1:25 | Dash0 | Dash0 dashboard | "Those are OpenTelemetry metrics for this room, right now." Show your phones' RUM sessions, a trace from phone to API to ES to LLM with token cost, and the SLO. |
 | 1:45 | Radar / k8s | Radar | "Your traffic just scaled us": HPA pods. [5-min: the incident A story, Agent0 and the Radar investigation, the fix PR] |
 | 2:10 | Gitar | PR list | "One builder, about 8 AI agents, N pull requests, and Gitar reviewed every one." Show the convention rules it enforced and the CI fix it auto-applied. |
-| 2:30 | Inclusion | Phone mirror or ops | Captions in Spanish, large text, catch-me-up. "For anyone who can't hear, can't raise their hand, or had to step out." |
+| 2:30 | Inclusion | Phone mirror or ops | Captions in Spanish if P1 translation landed (otherwise the original-language captions), large text, catch-me-up. "For anyone who can't hear, can't raise their hand, or had to step out." |
 | 2:50 | Close | Title slide | "Lanyard. Conferences, observable." |
 
 **If the network dies:** switch to the backup video at the current beat, and keep narrating live.

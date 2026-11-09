@@ -72,6 +72,8 @@ Roles are carried by a signed token: attendee (issued on join), or speaker, orga
 | POST `/events/:eventId/join` | public | Join by code. Returns an anonId, handle and attendee token | WS0 |
 | GET `/events/:eventId` | any | Event, rooms, now and next | WS0 |
 | POST `/events/:eventId/role-links` | organizer | Mint speaker, vendor and venue links | WS0 |
+| GET `/config` | public | Runtime config for the SPA: version, event timezone, Dash0 RUM settings (public values only) | WS0 |
+| GET `/sessions/:id` | any | Session snapshot (session, questions, clusters, attendance), refetched after an SSE reconnect | WS2 |
 | GET `/events/:eventId/search?q=` | any | Hybrid session search | WS1 |
 | POST `/events/:eventId/plan-my-day` | attendee | RAG schedule suggestion with cited session ids | WS1 |
 | POST `/events/:eventId/ask` | organizer (attendee in P1) | Ask the conference (RAG over transcripts and questions) | WS1 |
@@ -92,10 +94,10 @@ Roles are carried by a signed token: attendee (issued on join), or speaker, orga
 | GET `/events/:eventId/rooms/:roomId/history` | organizer | Occupancy and signal series | WS4 |
 | `/vendor/*`, `/venue/*` | vendor / venue | P1 / P2 | WS7 / WS8 |
 
-Errors use a JSON body with `error.code` and `error.message`. Every route validates input with the shared schema library chosen by WS0 (zod recommended).
+Errors use a JSON body with `error.code` and `error.message`. Every route validates input with the shared schema library chosen by WS0: **zod 4**. `packages/contracts` exports a zod schema and a TypeScript type with the same name for every entity, request and response (`JoinRequest`, `JoinResponse`, `EventView`, `SessionSnapshot`, ...), so the exact field names live there.
 
 ## 5. Realtime messages (SSE, fanned out via Valkey channels)
-Channels: `session:<id>`, `ops:<eventId>`, `user:<anonId>`. Each message has `type`, `at` and a payload.
+Channels: `session:<id>`, `ops:<eventId>`, `user:<anonId>`. Each message has `type`, `at` and a `payload` (`RealtimeMessage` in `packages/contracts`; build one with `realtime(type, payload)`). Payload ids are named `chunkId`, `questionId`, `clusterId`, `sessionId`, `roomId`.
 
 **User channel delivery:** there is no separate user stream. Every authenticated SSE stream (`/sessions/:id/stream` and `/events/:eventId/ops/stream`) also subscribes to the caller's `user:<anonId>` channel, taken from the token, and multiplexes those messages into the same connection. Reroute suggestions therefore reach attendees through the session stream they already hold open.
 

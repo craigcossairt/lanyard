@@ -66,6 +66,9 @@ export default function Home() {
           <Link className="at-quick__item" to="/a/settings">
             <span aria-hidden="true">Aa</span> Display &amp; access
           </Link>
+          <Link className="at-quick__item" to="/a/network">
+            <span aria-hidden="true">🤝</span> Meet people
+          </Link>
         </nav>
 
         {error && (

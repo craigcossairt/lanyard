@@ -13,6 +13,7 @@ const Search = lazy(() => import('./Search'));
 const SessionLive = lazy(() => import('./SessionLive'));
 const PlanMyDay = lazy(() => import('./PlanMyDay'));
 const Settings = lazy(() => import('./Settings'));
+const MeetPeople = lazy(() => import('./network/MeetPeople'));
 
 function Loading() {
   return (
@@ -32,6 +33,7 @@ export default function AttendeeRoutes() {
           <Route path="s/:id" element={<SessionLive />} />
           <Route path="plan" element={<PlanMyDay />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="network" element={<MeetPeople />} />
           <Route path="*" element={<Home />} />
         </Routes>
       </Suspense>

@@ -4,6 +4,8 @@
 import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from 'react';
 import { Link } from 'react-router';
 import type { Role } from '@lanyard/contracts';
+import { SkeletonList } from '../ui';
+import { AppBar } from './AppBar';
 
 export interface PersonaDef {
   persona: string;
@@ -38,18 +40,34 @@ export function PersonaOutlet({ def }: { def: PersonaDef }) {
   const Component = personaComponent(def.persona);
   if (!Component) {
     return (
-      <main className="shell">
-        <h1>{def.label}</h1>
-        <p className="muted">
-          This view is on its way. (Add <code>src/personas/{def.persona}/index.tsx</code>.)
-        </p>
-        <Link to="/">Back</Link>
-      </main>
+      <>
+        <AppBar def={def} />
+        <main className="shell" id="main">
+          <h1>{def.label}</h1>
+          <p className="muted">
+            This view is on its way. (Add <code>src/personas/{def.persona}/index.tsx</code>.)
+          </p>
+          <Link to="/">Back</Link>
+        </main>
+      </>
     );
   }
   return (
-    <Suspense fallback={<p className="shell muted">Loading…</p>}>
-      <Component />
-    </Suspense>
+    <>
+      <AppBar def={def} />
+      <Suspense
+        fallback={
+          <div
+            className="shell"
+            role="status"
+            aria-label={`Loading ${def.label.toLowerCase()} view`}
+          >
+            <SkeletonList />
+          </div>
+        }
+      >
+        <Component />
+      </Suspense>
+    </>
   );
 }

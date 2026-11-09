@@ -70,7 +70,7 @@ export function SimulationControls({ eventId, timezone }: { eventId: string; tim
     <div className="ops-sim-actions">
       {!status?.running && <button onClick={() => void toggle('demo')}
         disabled={pending || !status || status.stopping || Boolean(pollError)}>
-        {status?.stopping ? 'Cleaning up demo…' : 'Demo scenario'}
+        {status?.stopping && status.mode === 'demo' ? 'Cleaning up demo…' : 'Demo scenario'}
       </button>}
       <label>Virtual attendees <input type="number" min="1" max="200" value={attendees}
         disabled={pending || status?.running || status?.stopping}

@@ -92,10 +92,11 @@ function Console({ id }: { id: string }) {
   // Only the tail is rendered (full history stays in state); keep it scrolled to the latest.
   const visible = lines.slice(-PREVIEW_LINES);
   const previewRef = useRef<HTMLDivElement>(null);
+  const latestId = visible[visible.length - 1]?.id;
   useEffect(() => {
     const el = previewRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [visible.length, visible[visible.length - 1]?.id, captions.interim]);
+  }, [latestId, captions.interim]);
   // "Live" means a caption arrived in the last 15 s from any source, not just that history exists.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {

@@ -22,6 +22,7 @@ import { es } from '../../core/es';
 import { decide, moderate } from '../../core/jev';
 import { logger } from '../../core/logger';
 import { newId } from '../../core/tokens';
+import { maybeRelabel, provisionalLabel } from './labels';
 import { findQuestionCluster } from './similarity';
 import {
   assertSameEvent,
@@ -38,8 +39,6 @@ const questionsCounter = meter.createCounter(METRICS.questions);
 const dedupCounter = meter.createCounter(METRICS.questionDedup);
 
 const INTENTS = ['clarification', 'deep_dive', 'off_topic'] as const;
-/** Provisional label until the worker's LLM label lands: the first question, trimmed. */
-const provisionalLabel = (text: string) => (text.length > 80 ? `${text.slice(0, 77)}…` : text);
 
 function publishQuestion(type: 'question.created' | 'question.updated', q: Question) {
   return getBus().publish(
@@ -77,20 +76,29 @@ function recordQuestion(qid: string): void {
       const h = (res?.[1]?.[1] ?? {}) as Record<string, string>;
       const q = toQuestion(h);
       if (!q || !version) return;
-      return es(ES_INDICES.questions, 'index', (c, o) =>
-        c.index(
-          {
-            index: ES_INDICES.questions,
-            id: qid,
-            version,
-            version_type: 'external',
-            document: { ...q, intent: h.intent },
-          },
-          o,
-        ),
-      );
+      const write = () =>
+        es(ES_INDICES.questions, 'index', (c, o) =>
+          c.index(
+            {
+              index: ES_INDICES.questions,
+              id: qid,
+              version,
+              version_type: 'external',
+              document: { ...q, intent: h.intent },
+            },
+            o,
+          ),
+        );
+      // Indexing embeds the text and can pass the 2 s cap: retry once. Same version, so a
+      // duplicate is a harmless conflict.
+      return write().catch(() => new Promise((r) => setTimeout(r, 500)).then(write));
     })
-    .catch(() => logger.warn('question record failed (or superseded)'));
+    .catch((err: unknown) =>
+      logger.warn(
+        { questionId: qid, code: (err as { code?: string }).code },
+        'question record failed (or superseded)',
+      ),
+    );
 }
 
 async function loadQuestion(qid: string): Promise<Question> {
@@ -133,8 +141,12 @@ return {old, 0}`;
  */
 async function relabelWithout(c: QuestionCluster, hiddenId: string): Promise<QuestionCluster> {
   const r = kv();
-  const labelFrom = await r.hget(keys.cluster(c.id), 'labelFrom');
-  if (c.representativeQuestionId !== hiddenId && labelFrom !== hiddenId) return c;
+  const [labelFrom, labelIds] = await r.hmget(keys.cluster(c.id), 'labelFrom', 'labelIds');
+  // An LLM label built from the hidden question is replaced too (then relabeled).
+  const fromHidden =
+    labelFrom === hiddenId ||
+    (labelFrom === 'llm' && (labelIds ?? '').split(',').includes(hiddenId));
+  if (c.representativeQuestionId !== hiddenId && !fromHidden) return c;
   const best = (await readQuestions(r, c.sessionId))
     .filter((q) => q.clusterId === c.id && q.id !== hiddenId)
     .sort((a, b) => b.votes - a.votes)[0];
@@ -142,11 +154,13 @@ async function relabelWithout(c: QuestionCluster, hiddenId: string): Promise<Que
   const patch: Record<string, string> = {};
   if (c.representativeQuestionId === hiddenId)
     patch.representativeQuestionId = next.representativeQuestionId = best?.id ?? '';
-  if (labelFrom === hiddenId) {
+  if (fromHidden) {
     patch.label = next.label = best ? provisionalLabel(best.text) : '';
     patch.labelFrom = best?.id ?? '';
+    patch.labelIds = '';
   }
   await r.hset(keys.cluster(c.id), patch);
+  if (fromHidden && labelFrom === 'llm' && c.size >= 2) maybeRelabel(c.id, c.size, true);
   return next;
 }
 
@@ -229,6 +243,7 @@ export function registerQuestions(app: FastifyInstance): void {
       if (status === 'open') {
         dedupCounter.add(1, { event: s.eventId, merged: String(merged) });
         await Promise.all([publishQuestion('question.created', q), publishCluster(cluster)]);
+        maybeRelabel(cluster.id, cluster.size); // background, outside this request
       }
       reply.code(201);
       return { question: q, cluster, merged };

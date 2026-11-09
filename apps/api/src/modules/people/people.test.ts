@@ -118,9 +118,14 @@ test('people routes require consent, isolate events, and remove searchable profi
 
   const suggestions = await app.inject({ url: '/api/events/event-one/networking/suggestions', headers });
   assert.equal(suggestions.statusCode, 200);
-  assert.deepEqual(suggestions.json().matches.map((match: { handle: string }) => match.handle), [
-    'Moss Finch',
-  ]);
+  assert.deepEqual(
+    suggestions.json().matches.map((match: { handle: string }) => match.handle),
+    ['Moss Finch'],
+  );
+  assert.equal(
+    suggestions.json().matches[0]?.reason,
+    'Your goals and interests look aligned.',
+  );
   const filters = searches[0]?.retriever?.rrf?.retrievers?.flatMap((item) =>
     item && 'standard' in item ? [item.standard?.query?.bool] : [],
   );

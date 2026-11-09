@@ -79,8 +79,8 @@ const CONNS_TTL_S = 3600;
 
 /**
  * Attendee stream bookkeeping: `live:conns:{anonId}` counts open streams across pods.
- * After the last one closes, wait 30 s; if none reopened and the attendee is still in this
- * session, that's a leave. A stream reopened after such a leave rejoins the session.
+ * After the last one closes, wait 30 s; if none reopened, the attendee leaves their current
+ * session. A stream reopened for that session after such a leave rejoins it.
  */
 async function onAttendeeOpen(s: LiveSession, anonId: string): Promise<void> {
   const res = await kv()
@@ -98,23 +98,28 @@ const DECR_CLAMP = `local n = redis.call('DECR', KEYS[1])
 if n <= 0 then redis.call('DEL', KEYS[1]) return 0 end
 redis.call('EXPIRE', KEYS[1], ARGV[1]) return n`;
 
-function onAttendeeClose(s: LiveSession, anonId: string): void {
+function onAttendeeClose(anonId: string): void {
   void (kv().eval(DECR_CLAMP, 1, keys.conns(anonId), CONNS_TTL_S) as Promise<number>)
     .then((n) => {
       if (n > 0) return;
-      setTimeout(() => void graceExpired(s, anonId), GRACE_MS).unref();
+      setTimeout(() => void graceExpired(anonId), GRACE_MS).unref();
     })
     .catch(() => logger.warn('stream close bookkeeping failed'));
 }
 
-async function graceExpired(s: LiveSession, anonId: string): Promise<void> {
+/**
+ * The counter is attendee-wide, so the leave targets the attendee's *current* session
+ * (attendee:{anonId}:at), not the session of whichever stream closed last.
+ */
+async function graceExpired(anonId: string): Promise<void> {
   try {
     const r = kv();
     const [conns, at] = await Promise.all([
       r.get(keys.conns(anonId)),
       r.hget(keys.attendeeAt(anonId), 'sessionId'),
     ]);
-    if (Number(conns ?? 0) > 0 || at !== s.id) return;
+    if (Number(conns ?? 0) > 0 || !at) return;
+    const s = await getLiveSession(at);
     await applyPresence(s, anonId, 'leave');
     await r.set(keys.graceLeft(anonId), s.id, 'EX', CONNS_TTL_S);
   } catch {
@@ -130,6 +135,8 @@ export function registerStream(app: FastifyInstance): void {
       const claims = authOf(req);
       const s = await getLiveSession(req.params.id);
       assertSameEvent(claims, s);
+      let gone = false;
+      req.raw.on('close', () => (gone = true));
       // Subscribe first and buffer live messages until the snapshot is out, so nothing
       // published while the snapshot is read gets lost.
       let buffer: RealtimeMessage[] | undefined = [];
@@ -166,7 +173,9 @@ export function registerStream(app: FastifyInstance): void {
         conn.send(m.type, m);
       }
 
-      if (claims.role === 'attendee' && getContext().kv) {
+      // A client that left while the snapshot was read gets no bookkeeping: its close
+      // event has already fired.
+      if (!gone && claims.role === 'attendee' && getContext().kv) {
         const anonId = claims.sub;
         const r = kv();
         const opened = onAttendeeOpen(s, anonId).then(
@@ -181,7 +190,7 @@ export function registerStream(app: FastifyInstance): void {
         req.raw.on('close', () => {
           clearInterval(refresh);
           // Decrement only if the increment landed.
-          void opened.then((ok) => ok && onAttendeeClose(s, anonId));
+          void opened.then((ok) => ok && onAttendeeClose(anonId));
         });
       }
     },

@@ -100,15 +100,20 @@ export type CaptionPayload = RealtimePayload<'caption.appended'> & { endedAt?: s
 
 export async function readCaptions(r: Redis, sid: string): Promise<CaptionPayload[]> {
   const raw = await r.lrange(keys.captions(sid), 0, CAPTION_TAIL - 1);
+  // Newest first in the list; a retried chunk appears twice, so keep its newest copy.
+  const seen = new Set<string>();
   return raw
     .flatMap((s) => {
       try {
-        return [JSON.parse(s) as CaptionPayload];
+        const c = JSON.parse(s) as CaptionPayload;
+        if (seen.has(c.chunkId)) return [];
+        seen.add(c.chunkId);
+        return [c];
       } catch {
         return [];
       }
     })
-    .reverse();
+    .sort((a, b) => a.seq - b.seq);
 }
 
 export function toQuestion(h: Record<string, string>): Question | undefined {

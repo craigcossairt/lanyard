@@ -49,6 +49,33 @@ function recordPresence(s: LiveSession, anonId: string, kind: z.infer<typeof Pre
   ).catch(() => logger.warn({ kind }, 'presence record failed'));
 }
 
+/**
+ * One atomic presence change, so overlapping joins can't leave the attendee in two places.
+ * KEYS: attendee:{anonId}:at, session:{sid}:members, room:{roomId}:members (targets).
+ * ARGV: anonId, kind, sessionId, roomId, eventId, at, ttl. The previous location's keys
+ * are rebuilt here with the same `session:{id}:members` / `room:{id}:members` shape as
+ * store.ts. A leave for an older session touches only that session's set; room and
+ * attendee:at follow the current session. Returns {sessionCount, previousSessionId}.
+ */
+const PRESENCE = `local a = ARGV[1]
+local prevS = redis.call('HGET', KEYS[1], 'sessionId') or ''
+local prevR = redis.call('HGET', KEYS[1], 'roomId') or ''
+if ARGV[2] == 'leave' then
+  redis.call('SREM', KEYS[2], a)
+  if prevS == '' or prevS == ARGV[3] then
+    redis.call('SREM', KEYS[3], a)
+    redis.call('DEL', KEYS[1])
+  end
+else
+  if prevS ~= '' and prevS ~= ARGV[3] then redis.call('SREM', 'session:' .. prevS .. ':members', a) end
+  if prevR ~= '' and prevR ~= ARGV[4] then redis.call('SREM', 'room:' .. prevR .. ':members', a) end
+  redis.call('SADD', KEYS[2], a)
+  redis.call('SADD', KEYS[3], a)
+  redis.call('HSET', KEYS[1], 'eventId', ARGV[5], 'roomId', ARGV[4], 'sessionId', ARGV[3], 'at', ARGV[6])
+  redis.call('EXPIRE', KEYS[1], ARGV[7])
+end
+return {redis.call('SCARD', KEYS[2]), prevS}`;
+
 /** Apply one presence change and publish attendance; returns the session count. */
 export async function applyPresence(
   s: LiveSession,
@@ -56,41 +83,27 @@ export async function applyPresence(
   kind: z.infer<typeof PresenceKind>,
 ): Promise<{ count: number; capacity: number }> {
   const r = kv();
-  const prev = await r.hgetall(keys.attendeeAt(anonId));
-  const m = r.multi();
-  if (kind === 'leave') {
-    m.srem(keys.sessionMembers(s.id), anonId);
-    // Room and attendee:at follow the current session only: a late leave for an earlier
-    // session in the same room must not drop the attendee from that room.
-    const current = !prev.sessionId || prev.sessionId === s.id;
-    if (current) {
-      m.srem(keys.roomMembers(s.roomId), anonId);
-      m.del(keys.attendeeAt(anonId));
-    }
-  } else {
-    if (prev.sessionId && prev.sessionId !== s.id)
-      m.srem(keys.sessionMembers(prev.sessionId), anonId);
-    if (prev.roomId && prev.roomId !== s.roomId) m.srem(keys.roomMembers(prev.roomId), anonId);
-    m.sadd(keys.sessionMembers(s.id), anonId);
-    m.sadd(keys.roomMembers(s.roomId), anonId);
-    m.hset(keys.attendeeAt(anonId), {
-      eventId: s.eventId,
-      roomId: s.roomId,
-      sessionId: s.id,
-      at: new Date().toISOString(),
-    });
-    m.expire(keys.attendeeAt(anonId), ATTENDEE_TTL_S);
-  }
-  m.scard(keys.sessionMembers(s.id));
-  const res = (await m.exec()) ?? [];
-  const count = Number(res[res.length - 1]?.[1] ?? 0);
+  const [count, prevSession] = (await r.eval(
+    PRESENCE,
+    3,
+    keys.attendeeAt(anonId),
+    keys.sessionMembers(s.id),
+    keys.roomMembers(s.roomId),
+    anonId,
+    kind,
+    s.id,
+    s.roomId,
+    s.eventId,
+    new Date().toISOString(),
+    ATTENDEE_TTL_S,
+  )) as [number, string];
 
   recordPresence(s, anonId, kind);
   await publishAttendance(s, count);
 
   // Moved from another session: its attendance dropped by one.
-  if (kind !== 'leave' && prev.sessionId && prev.sessionId !== s.id) {
-    const old = await getLiveSession(prev.sessionId).catch(() => undefined);
+  if (kind !== 'leave' && prevSession && prevSession !== s.id) {
+    const old = await getLiveSession(prevSession).catch(() => undefined);
     if (old) await publishAttendance(old, await r.scard(keys.sessionMembers(old.id)));
   }
   return { count, capacity: s.capacity };

@@ -14,6 +14,10 @@ const captionLag = metrics
   .getMeter('lanyard')
   .createHistogram(METRICS.captionLagMs, { unit: 'ms' });
 
+const SEQ_MAX = `local c = tonumber(redis.call('GET', KEYS[1]) or '0')
+if tonumber(ARGV[1]) > c then redis.call('SET', KEYS[1], ARGV[1]) end
+return 1`;
+
 /** Lag above this is a client clock problem, not a pipeline one: don't record it. */
 const MAX_PLAUSIBLE_LAG_MS = 60_000;
 
@@ -27,12 +31,11 @@ export function registerTranscript(app: FastifyInstance): void {
       assertSameEvent(authOf(req), s);
       const r = kv();
 
-      const seq = body.seq ?? (await r.incr(keys.seq(s.id)));
-      if (body.seq !== undefined) {
-        // Keep the server counter ahead of client-chosen seqs.
-        const cur = Number((await r.get(keys.seq(s.id))) ?? 0);
-        if (body.seq > cur) await r.set(keys.seq(s.id), body.seq);
-      }
+      // Client-chosen seqs push the server counter forward atomically (it never decreases).
+      const seq =
+        body.seq === undefined
+          ? await r.incr(keys.seq(s.id))
+          : (await r.eval(SEQ_MAX, 1, keys.seq(s.id), body.seq), body.seq);
       const now = new Date().toISOString();
       const endedAt = body.endedAt ?? now;
       const chunk = {

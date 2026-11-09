@@ -25,6 +25,9 @@ export function parse<S extends z.ZodType>(schema: S, input: unknown): z.output<
 export function registerErrorHandler(app: FastifyInstance): void {
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof HttpError) {
+      // Dependency failures (es_unavailable, auth_unconfigured, ...) must show up in logs;
+      // the cause is already recorded on the span.
+      if (err.status >= 500) req.log.warn({ code: err.code, status: err.status }, 'request failed');
       return reply.code(err.status).send({ error: { code: err.code, message: err.message } });
     }
     if (err instanceof ZodError) {

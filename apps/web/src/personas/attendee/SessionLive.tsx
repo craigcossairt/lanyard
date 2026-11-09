@@ -1,23 +1,35 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import type { CatchUpResponse, Recommendation } from '@lanyard/contracts';
+import type { CatchUpResponse, Recommendation, Session } from '@lanyard/contracts';
 import { CaptionStream } from './components/CaptionStream';
 import { QuestionList } from './components/QuestionList';
 import { Sheet } from './components/Sheet';
 import { SignalBar } from './components/SignalBar';
 import { useToast } from './components/Toast';
 import { api, ApiError } from './lib/api';
+import { useEventView } from './lib/event';
 import { useLiveSession } from './lib/live';
+import { cachedSessions } from './lib/schedule';
 import { useEventId, useSession } from './lib/session';
 
 type SheetName = 'ask' | 'questions' | 'catchup' | 'reroute' | null;
 const CATCH_UP_MINUTES = 10;
 
-export default function SessionLive() {
+/** Keyed by session id so a reroute to another room remounts with fresh state. */
+export default function SessionLiveRoute() {
   const { id = '' } = useParams();
+  return <SessionLive key={id} id={id} />;
+}
+
+function SessionLive({ id }: { id: string }) {
   const eventId = useEventId();
   const me = useSession();
-  const live = useLiveSession(id);
+  const { view } = useEventView(eventId);
+  const known = useMemo<Session | null>(() => {
+    const fromView = [...(view?.now ?? []), ...(view?.next ?? [])].find((s) => s.id === id);
+    return fromView ?? cachedSessions(eventId)[id] ?? null;
+  }, [view, eventId, id]);
+  const live = useLiveSession(id, known);
   const toast = useToast();
   const navigate = useNavigate();
   const [sheet, setSheet] = useState<SheetName>(null);
@@ -28,12 +40,8 @@ export default function SessionLive() {
   }, [live.reroute]);
 
   const open = live.questions.filter((q) => q.status !== 'hidden').length;
-  const captionStatus =
-    live.stream === 'open' || live.stream === 'connecting'
-      ? live.captions.length
-        ? 'live'
-        : 'waiting'
-      : 'stale';
+  const connected = live.stream === 'open' || live.stream === 'connecting';
+  const captionStatus = connected ? (live.captions.length ? 'live' : 'waiting') : 'stale';
 
   return (
     <div className="at-page at-live">
@@ -75,15 +83,6 @@ export default function SessionLive() {
       </header>
 
       <main id="main" className="at-live__main">
-        {live.error && (
-          <div role="alert" className="at-error">
-            <p>{live.error}</p>
-            <button type="button" className="at-btn" onClick={live.reload}>
-              Try again
-            </button>
-          </div>
-        )}
-
         <CaptionStream lines={live.captions} status={captionStatus} />
 
         <section aria-labelledby="signals-h" className="at-live__signals">

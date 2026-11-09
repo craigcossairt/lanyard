@@ -11,7 +11,6 @@ import type {
   Room,
   SearchResponse,
   Session,
-  SessionSnapshot,
 } from '@lanyard/contracts';
 
 export function isMock(): boolean {
@@ -227,17 +226,6 @@ export async function mockRequest<T>(method: string, path: string, body?: unknow
     };
     return res as T;
   }
-  if (method === 'GET' && /^\/sessions\/[^/]+$/.test(p)) {
-    const id = p.split('/')[2] ?? '';
-    const session = sessions.find((s) => s.id === id) ?? sessions[0]!;
-    const snap: SessionSnapshot = {
-      session,
-      questions: session.id === 's-lanyard' ? questions : [],
-      clusters: session.id === 's-lanyard' ? clusters : [],
-      attendance: { count: 27, capacity: 30 },
-    };
-    return snap as T;
-  }
   if (method === 'POST' && /^\/sessions\/[^/]+\/questions$/.test(p)) {
     const text = String(b.text ?? '');
     const merged = /threshold|duplicate|merge/i.test(text);
@@ -281,6 +269,25 @@ export async function mockRequest<T>(method: string, path: string, body?: unknow
   }
   if (method === 'PUT' && p.startsWith('/me/')) return {} as T;
   throw new Error(`mock: no handler for ${method} ${path}`);
+}
+
+/** The stream's first event: WS2's `snapshot` shape (see lib/live.ts LiveSnapshot). */
+export function mockSnapshot(sessionId: string) {
+  const live = sessionId === 's-lanyard';
+  return {
+    type: 'snapshot' as const,
+    at: new Date().toISOString(),
+    payload: {
+      sessionId,
+      roomId: live ? 'main-stage' : 'side-stage',
+      status: 'live',
+      captions: [] as Array<{ chunkId: string; seq: number; text: string; lang: string }>,
+      questions: live ? questions : [],
+      clusters: live ? clusters : [],
+      signals: { counts: {} as Record<string, number> },
+      attendance: { count: live ? 27 : 12, capacity: live ? 30 : 100 },
+    },
+  };
 }
 
 /** Fake caption lines for the mock stream. */

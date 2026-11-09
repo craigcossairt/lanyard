@@ -4,9 +4,12 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RealtimeMessage } from '@lanyard/contracts';
 import { authHeaders } from './api';
-import { isMock, MOCK_CAPTIONS } from './mock';
+import { isMock, MOCK_CAPTIONS, mockSnapshot } from './mock';
 
 export type SseStatus = 'connecting' | 'open' | 'reconnecting' | 'closed';
+
+/** Everything the stream delivers: contract messages plus the module's `snapshot` event. */
+export type StreamEvent = RealtimeMessage | { type: 'snapshot'; at: string; payload: unknown };
 
 interface Options {
   onReconnect?: () => void;
@@ -40,7 +43,7 @@ function parseEvents(buffer: string, emit: (type: string, data: string) => void)
 
 export function useSse(
   path: string | null,
-  onMessage: (msg: RealtimeMessage) => void,
+  onMessage: (msg: StreamEvent) => void,
   opts: Options = {},
 ): SseStatus {
   const [status, setStatus] = useState<SseStatus>('connecting');
@@ -84,9 +87,9 @@ export function useSse(
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
           buffer = parseEvents(buffer, (type, data) => {
-            if (type === 'ready') return;
+            if (type === 'ready' || type === 'error') return;
             try {
-              const msg = JSON.parse(data) as RealtimeMessage;
+              const msg = JSON.parse(data) as StreamEvent;
               if (msg && typeof msg === 'object' && 'type' in msg) handler.current(msg);
             } catch {
               // Ignore a malformed frame; the next one is independent.
@@ -115,10 +118,11 @@ export function useSse(
 }
 
 function mockStream(
-  handler: React.RefObject<(msg: RealtimeMessage) => void>,
+  handler: React.RefObject<(msg: StreamEvent) => void>,
   setStatus: (s: SseStatus) => void,
 ): () => void {
   setStatus('open');
+  const first = setTimeout(() => handler.current(mockSnapshot('s-lanyard')), 200);
   let i = 0;
   const captions = setInterval(() => {
     const text = MOCK_CAPTIONS[i % MOCK_CAPTIONS.length] ?? '';
@@ -148,6 +152,7 @@ function mockStream(
     });
   }, 25_000);
   return () => {
+    clearTimeout(first);
     clearInterval(captions);
     clearInterval(signals);
     clearTimeout(reroute);

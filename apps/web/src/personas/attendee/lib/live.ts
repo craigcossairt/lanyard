@@ -1,5 +1,7 @@
-// Live session state: snapshot + realtime messages merged into one view model.
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+// Live session state: the stream's `snapshot` event plus realtime messages, merged into
+// one view model. WS2's `GET /sessions/:id/stream` sends `snapshot` first (and again on
+// every reconnect), then live messages; there is no separate snapshot route.
+import { useCallback, useEffect, useReducer, useRef } from 'react';
 import type {
   AskQuestionResponse,
   Question,
@@ -7,15 +9,10 @@ import type {
   RealtimeMessage,
   Recommendation,
   Session,
-  SessionSnapshot,
   SignalType,
 } from '@lanyard/contracts';
-import { api, ApiError } from './api';
-import { useSse, type SseStatus } from './sse';
-
-// Snapshot route: 02-contracts names `SessionSnapshot` ("used after SSE reconnect") but
-// section 4 has no path yet. WS2 owns it; this is the one place to change.
-export const snapshotPath = (id: string) => `/sessions/${encodeURIComponent(id)}`;
+import { api } from './api';
+import { useSse, type SseStatus, type StreamEvent } from './sse';
 
 export interface CaptionLine {
   chunkId: string;
@@ -25,8 +22,23 @@ export interface CaptionLine {
 
 export type SignalCounts = Partial<Record<SignalType, number>>;
 
+/** Body of WS2's `snapshot` SSE event (apps/api/src/modules/live/stream.ts). */
+export interface LiveSnapshot {
+  type: 'snapshot';
+  at: string;
+  payload: {
+    sessionId: string;
+    roomId: string;
+    status: string;
+    captions: Array<{ chunkId: string; seq: number; text: string; lang: string }>;
+    questions: Question[];
+    clusters: QuestionCluster[];
+    signals?: { counts: Record<string, number> };
+    attendance?: { count: number; capacity: number };
+  };
+}
+
 export interface LiveState {
-  session: Session | null;
   questions: Question[];
   clusters: QuestionCluster[];
   attendance: { count: number; capacity: number } | null;
@@ -34,12 +46,12 @@ export interface LiveState {
   signals: SignalCounts;
   ended: boolean;
   reroute: Recommendation | null;
-  error: string | null;
+  /** True once the first snapshot arrived. */
+  ready: boolean;
 }
 
 type Action =
-  | { type: 'snapshot'; snapshot: SessionSnapshot }
-  | { type: 'error'; message: string }
+  | { type: 'snapshot'; snapshot: LiveSnapshot }
   | { type: 'message'; msg: RealtimeMessage }
   | { type: 'dismissReroute' }
   | { type: 'localQuestion'; res: AskQuestionResponse }
@@ -97,19 +109,21 @@ function upsertCluster(
 function reducer(state: LiveState, action: Action): LiveState {
   switch (action.type) {
     case 'snapshot': {
-      const s = action.snapshot;
+      const p = action.snapshot.payload;
       return {
         ...state,
-        session: s.session,
-        questions: s.questions,
-        clusters: s.clusters,
-        attendance: s.attendance ?? state.attendance,
-        ended: s.session.status === 'ended',
-        error: null,
+        ready: true,
+        questions: p.questions,
+        clusters: p.clusters,
+        captions: p.captions
+          .map((c) => ({ chunkId: c.chunkId, seq: c.seq, text: c.text }))
+          .sort((a, b) => a.seq - b.seq)
+          .slice(-MAX_CAPTIONS),
+        signals: (p.signals?.counts ?? {}) as SignalCounts,
+        attendance: p.attendance ?? state.attendance,
+        ended: p.status === 'ended',
       };
     }
-    case 'error':
-      return { ...state, error: action.message };
     case 'dismissReroute':
       return { ...state, reroute: null };
     case 'localQuestion': {
@@ -140,7 +154,7 @@ function reducer(state: LiveState, action: Action): LiveState {
         }
         case 'question.created':
         case 'question.updated': {
-          const sessionId = state.session?.id ?? '';
+          const sessionId = state.questions[0]?.sessionId ?? state.clusters[0]?.sessionId ?? '';
           return {
             ...state,
             questions: upsertQuestion(state.questions, {
@@ -159,7 +173,7 @@ function reducer(state: LiveState, action: Action): LiveState {
             ...state,
             clusters: upsertCluster(state.clusters, {
               id: m.payload.clusterId,
-              sessionId: state.session?.id ?? '',
+              sessionId: state.clusters[0]?.sessionId ?? state.questions[0]?.sessionId ?? '',
               label: m.payload.label,
               size: m.payload.size,
               votes: m.payload.votes,
@@ -168,7 +182,10 @@ function reducer(state: LiveState, action: Action): LiveState {
         case 'signals.window':
           return { ...state, signals: m.payload.counts };
         case 'attendance.updated':
-          return { ...state, attendance: { count: m.payload.count, capacity: m.payload.capacity } };
+          return {
+            ...state,
+            attendance: { count: m.payload.count, capacity: m.payload.capacity },
+          };
         case 'session.status':
           return { ...state, ended: m.payload.status === 'ended' };
         case 'reroute.suggested':
@@ -181,7 +198,6 @@ function reducer(state: LiveState, action: Action): LiveState {
 }
 
 const initial: LiveState = {
-  session: null,
   questions: [],
   clusters: [],
   attendance: null,
@@ -189,7 +205,7 @@ const initial: LiveState = {
   signals: {},
   ended: false,
   reroute: null,
-  error: null,
+  ready: false,
 };
 
 const VOTES_KEY = 'lanyard.votes';
@@ -210,8 +226,9 @@ function writeSet(key: string, set: Set<string>) {
 }
 
 export interface LiveApi extends LiveState {
+  /** Session details, when the device has seen this session (home, search, schedule). */
+  session: Session | null;
   stream: SseStatus;
-  reload: () => void;
   ask: (text: string) => Promise<AskQuestionResponse>;
   vote: (questionId: string) => Promise<void>;
   voted: (questionId: string) => boolean;
@@ -220,29 +237,16 @@ export interface LiveApi extends LiveState {
   dismissReroute: () => void;
 }
 
-export function useLiveSession(sessionId: string): LiveApi {
+/**
+ * Mount one instance per session id (the route keys the component by id), so state
+ * never carries over from a previous room after a reroute.
+ */
+export function useLiveSession(sessionId: string, known: Session | null): LiveApi {
   const [state, dispatch] = useReducer(reducer, initial);
-  const [tick, setTick] = useState(0);
   const votes = useRef(readSet(VOTES_KEY));
   const myClusters = useRef(readSet(MINE_KEY));
 
-  const load = useCallback(async () => {
-    try {
-      const snap = await api.get<SessionSnapshot>(snapshotPath(sessionId));
-      dispatch({ type: 'snapshot', snapshot: snap });
-    } catch (e) {
-      dispatch({
-        type: 'error',
-        message: e instanceof ApiError ? e.message : 'Could not load this session',
-      });
-    }
-  }, [sessionId]);
-
-  useEffect(() => {
-    void load();
-  }, [load, tick]);
-
-  // Presence: drives occupancy (and therefore the organizer's overflow alert).
+  // Explicit presence join/leave; the stream also tracks attendee connections server-side.
   useEffect(() => {
     const path = `/sessions/${encodeURIComponent(sessionId)}/presence`;
     void api.post(path, { kind: 'join' }).catch(() => undefined);
@@ -251,10 +255,11 @@ export function useLiveSession(sessionId: string): LiveApi {
     };
   }, [sessionId]);
 
-  const onMessage = useCallback((msg: RealtimeMessage) => dispatch({ type: 'message', msg }), []);
-  const stream = useSse(`/sessions/${encodeURIComponent(sessionId)}/stream`, onMessage, {
-    onReconnect: () => void load(),
-  });
+  const onEvent = useCallback((e: StreamEvent) => {
+    if (e.type === 'snapshot') dispatch({ type: 'snapshot', snapshot: e as LiveSnapshot });
+    else dispatch({ type: 'message', msg: e });
+  }, []);
+  const stream = useSse(`/sessions/${encodeURIComponent(sessionId)}/stream`, onEvent);
 
   const ask = useCallback(
     async (text: string) => {
@@ -272,12 +277,17 @@ export function useLiveSession(sessionId: string): LiveApi {
 
   const vote = useCallback(async (questionId: string) => {
     if (votes.current.has(questionId)) return;
-    votes.current.add(questionId);
-    writeSet(VOTES_KEY, votes.current);
-    const res = await api.post<{ questionId: string; votes: number }>(
-      `/questions/${encodeURIComponent(questionId)}/vote`,
-    );
-    dispatch({ type: 'localVote', questionId, votes: res.votes });
+    votes.current.add(questionId); // guards double taps while in flight
+    try {
+      const res = await api.post<{ questionId: string; votes: number }>(
+        `/questions/${encodeURIComponent(questionId)}/vote`,
+      );
+      writeSet(VOTES_KEY, votes.current);
+      dispatch({ type: 'localVote', questionId, votes: res.votes });
+    } catch (err) {
+      votes.current.delete(questionId); // roll back so the button works again
+      throw err;
+    }
   }, []);
 
   const signal = useCallback(
@@ -289,8 +299,8 @@ export function useLiveSession(sessionId: string): LiveApi {
 
   return {
     ...state,
+    session: known,
     stream,
-    reload: () => setTick((t) => t + 1),
     ask,
     vote,
     voted: (id) => votes.current.has(id),

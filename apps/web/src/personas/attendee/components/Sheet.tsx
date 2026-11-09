@@ -11,6 +11,10 @@ interface Props {
 /** Bottom sheet built on <dialog>: focus trap, Escape and backdrop close come for free. */
 export function Sheet({ open, onClose, title, description, children }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
+  // The native `close` event is queued after dialog.close(), so it can arrive after the
+  // next sheet opened. Only treat it as a user close while the parent still wants us open.
+  const openRef = useRef(open);
+  openRef.current = open;
   const titleId = `sheet-${title.replace(/\s+/g, '-').toLowerCase()}`;
 
   useEffect(() => {
@@ -30,7 +34,9 @@ export function Sheet({ open, onClose, title, description, children }: Props) {
       ref={ref}
       className="at-sheet"
       aria-labelledby={titleId}
-      onClose={onClose}
+      onClose={() => {
+        if (openRef.current) onClose();
+      }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

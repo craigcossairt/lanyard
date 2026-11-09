@@ -200,7 +200,7 @@ async function attendee(i) {
   await sleep((cfg.rampS * 1000 * i) / cfg.attendees);
   if (stopping || Date.now() >= until) return;
   const joined = await call('join', 'POST', `/api/events/${enc(cfg.eventId)}/join`, {
-    body: { code: cfg.joinCode, joinCode: cfg.joinCode },
+    body: { joinCode: cfg.joinCode }, // packages/contracts JoinRequest
   });
   if (!joined?.token) { stats.joinFailed++; return; }
   stats.joined++;

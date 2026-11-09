@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import './app/neutral-theme.css';
-// import '../ui/styles.css'; // design system (apps/web/src/ui) replaces the neutral theme
+import './ui/styles.css'; // design system: tokens, themes, components (apps/web/src/ui)
+import './app/shell.css'; // the shell's own pages: landing, join, QR, role switcher
 import { api } from './app/api';
 import { App } from './app/App';
 import { captureFragmentToken } from './app/auth';

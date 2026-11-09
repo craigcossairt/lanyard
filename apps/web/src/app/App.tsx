@@ -1,21 +1,10 @@
-import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router';
-import { homeFor } from './auth';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import { JoinPage } from './JoinPage';
+import { Landing } from './Landing';
 import { PERSONAS, PersonaOutlet } from './personas';
+import { QrPage } from './QrPage';
 import { RoleSwitcher, devToolsEnabled } from './RoleSwitcher';
 import { useSession } from './session';
-
-function Home() {
-  const session = useSession();
-  if (session) return <Navigate to={homeFor(session.claims.role)} replace />;
-  return (
-    <main className="shell">
-      <h1>Lanyard</h1>
-      <p className="muted">Live captions, questions and room status for every session.</p>
-      <Link to="/join">Join an event</Link>
-    </main>
-  );
-}
 
 /** Persona routes need a token; without one, send people to /join. */
 function Guard({ children }: { children: React.ReactNode }) {
@@ -29,7 +18,8 @@ export function App() {
     <BrowserRouter>
       {dev && <RoleSwitcher />}
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Landing />} />
+        <Route path="/qr/:eventId" element={<QrPage />} />
         <Route path="/join" element={<JoinPage />} />
         {PERSONAS.map((p) => (
           <Route

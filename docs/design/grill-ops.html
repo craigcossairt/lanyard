@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lanyard · grill-design · Round 2: organizer floor plan, now / next / projected</title>
+<title>Lanyard · grill-design · Round 3: organizer floor plan, rich tiles + time scrubber</title>
 <style>
 /* ===== apps/web/src/ui/tokens.css (verbatim, fonts inlined) ===== */
 /*
@@ -1342,15 +1342,47 @@ aside .x-links .ly-btn{padding:0 6px}
 .dg[data-stale] .dg-cell[data-now]{border-style:dotted}
 @container (min-width:1600px){.dg{grid-template-columns:1fr 440px}.dg-t{font-size:var(--text-sm)}.dg-cell b{font-size:var(--text-sm)}}
 @container (max-width:699px){.dg-t{width:760px}.dg{display:block;overflow:auto}.dg-side{border-left:0;border-top:var(--border-w) solid var(--color-border)}.dg-wrap{overflow-x:auto}}
+
+/* ============ M: Rich tiles + time scrubber (dm-) ============ */
+.dm{height:100%;display:grid;grid-template-columns:1fr 340px;grid-template-rows:auto auto auto 1fr}
+.dm-ban,.dm>.x-hd,.dm-slots{grid-column:1/-1}
+.dm-slots{display:flex;gap:var(--space-3);align-items:center;padding:var(--space-2) var(--space-4);border:0;border-bottom:var(--border-w) solid var(--color-border);margin:0;flex-wrap:wrap}
+.dm-slots legend{float:left;font-weight:700;margin-right:var(--space-2);padding:0}
+.dm-seg{display:flex;border:var(--border-w) solid var(--color-border-strong);border-radius:var(--radius-md);overflow:hidden}
+.dm-seg label{display:grid;padding:4px var(--space-4);min-height:var(--target-min);cursor:pointer;border-left:var(--border-w) solid var(--color-border);min-width:110px}
+.dm-seg label:first-child{border-left:0}
+.dm-seg input{position:absolute;opacity:0;pointer-events:none}
+.dm-seg label:has(input:checked){background:var(--color-accent);color:var(--color-on-accent)}
+.dm-seg label:has(input:focus-visible){outline:3px solid var(--color-focus);outline-offset:-3px}
+.dm-seg b{font-family:var(--font-mono)}
+.dm-seg small{display:inline-flex;gap:4px;align-items:center;font-size:var(--text-xs);font-weight:700}
+.dm-seg small .ly-icon{width:13px;height:13px}
+.dm-cap{font-size:var(--text-sm);color:var(--color-text-muted)}
+.dm-map{overflow:auto;padding:var(--space-3) var(--space-4);display:grid;gap:var(--space-3);align-content:start;--plan-row:24px}
+.dm-room{position:relative;z-index:1;display:flex;flex-direction:column;gap:2px;padding:var(--space-2);text-align:left;border-radius:var(--radius-sm);border:var(--border-w) solid var(--color-border-strong);background:var(--color-surface);color:var(--color-text);cursor:pointer;min-width:0;font-size:var(--text-xs);line-height:1.3}
+.dm-room--warn{border:3px dashed var(--color-warn)}
+.dm-room--crit{border:3px solid var(--color-crit);background:var(--color-crit-bg)}
+.dm-hd{display:flex;justify-content:space-between;gap:var(--space-2);align-items:baseline;min-width:0}
+.dm-hd b{font-size:var(--text-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dm-sec{display:grid;gap:2px;padding-top:3px;border-top:var(--border-w) solid var(--color-border);min-width:0}
+.dm-sec--fc{border-top-style:dashed}
+.dm-k{display:flex;justify-content:space-between;gap:4px;color:var(--color-text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:11px}
+.dm-t{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dm-n{font-family:var(--font-mono);display:flex;justify-content:space-between;gap:4px;flex-wrap:wrap}
+.dm-in{font-family:var(--font-mono);font-weight:700;color:var(--color-accent)}
+.dm-side{overflow:auto;border-left:var(--border-w) solid var(--color-border);padding:var(--space-3);background:var(--color-bg);display:grid;gap:var(--space-3);align-content:start}
+.dm[data-stale] .dm-sec:not(.dm-sec--fc){color:var(--color-text-muted)}
+.dm[data-stale] .dm-room{border-style:dotted}
+@container (min-width:1600px){.dm{grid-template-columns:1fr 440px}.dm-room{font-size:var(--text-sm)}.dm-hd b{font-size:var(--text-md)}.dm-k{font-size:var(--text-xs)}.dm-map{--plan-row:30px}}
+@container (max-width:699px){.dm{display:block;overflow:auto}.dm-seg{width:100%}.dm-seg label{min-width:0;flex:1;padding:4px var(--space-2)}.dm-side{border-left:0;border-top:var(--border-w) solid var(--color-border)}.dm-map{overflow:visible}}
 </style>
 </head>
 <body>
 <form class="h-bar" id="ctl" aria-label="Prototype controls">
   <fieldset><legend>Variant</legend>
-    <label><input type="radio" name="v" value="d1" checked>D1 Rich tiles</label>
-    <label><input type="radio" name="v" value="d2">D2 Time scrubber</label>
-    <label><input type="radio" name="v" value="d3">D3 Map + inspector</label>
-    <label><input type="radio" name="v" value="d4">D4 Room × time grid</label>
+    <label><input type="radio" name="v" value="m" checked>Merged: D1 + scrubber</label>
+    <label><input type="radio" name="v" value="d1">D1 Rich tiles (round 2)</label>
+    <label><input type="radio" name="v" value="d2">D2 Time scrubber (round 2)</label>
   </fieldset>
   <fieldset><legend>Event</legend>
     <label><input type="radio" name="ev" value="kubecon" checked>KubeCon (12 rooms)</label>
@@ -1383,8 +1415,9 @@ aside .x-links .ly-btn{padding:0 6px}
 <div class="h-stage" id="stage"><div class="h-sizer" id="sizer"><div class="frame" id="frame"></div></div></div>
 
 <script>
-/* Round 2. Round 1 picked D (floor plan). Live question: where do now / next / projected attendance live? */
+/* Round 3. Round 1 picked D (floor plan); round 2 picked D1 (rich tiles) with D2's time scrubber. This round shows the merge. */
 const BELIEFS={
+ m:"<b>Merged · Rich tiles + time scrubber.</b> Each tile keeps a live row that never changes (what is on now, who is here, SLO state) and a second row the scrubber drives (11:15 by default: title and projected attendance). The rail follows: live alerts, then forecasts for the chosen slot. Live trouble never scrolls out of time; the future is one click per slot.",
  d1:"<b>D1 · Rich tiles.</b> Every room tile carries Now (title, until when, checked in) and Next (title, start, projected vs seats). Bet: organizers want it all without clicking, so the map becomes the schedule.",
  d2:"<b>D2 · Time scrubber.</b> Tiles stay compact; a slot control (Now · 11:15 · 13:00 · 14:00) re-plots the whole floor for that slot with its sessions and projected attendance. Bet: the question is \"where does it overflow next\", answered by stepping through time.",
  d3:"<b>D3 · Map + room inspector.</b> The map stays as calm as round 1, plus a small \"Next: overflow risk\" marker. Selecting a room docks its whole day (now, next, later, each projected) beside the map. Bet: the map is for spotting; the inspector is for deciding.",
@@ -1429,10 +1462,10 @@ const SLOTS={kubecon:['10:30','11:15','13:00','14:00'],cnh:['16:30','17:00','17:
 const NOW={kubecon:'10:43',cnh:'16:52'};
 // id, name, cap, level, [col,row,w,h], live occ, incident occ, sessions[[title, speaker, planned]×4]; slot 0 also has an end time
 const EV={kubecon:[
- ['hallf','Hall F',2000,1,[1,1,5,3],1420,1430,[['Keynote: The Next Decade of Cloud Native','Dana Whitfield',1900,'11:00'],['Keynote panel: Maintainers AMA','Panel',1480],['Open Source Sustainability','Mei Tanaka',900],['Closing keynote','Organizers',1300]]],
- ['hallg','Hall G',900,1,[6,1,3,3],410,402,[['Kubernetes SIG Node Deep Dive','Arjun Patel',520,'11:00'],['Scheduling GPUs Fairly','Lena Fischer',610],['Kubelet Internals','Tom Becker',380],['SIG Node Office Hours','SIG Node',200]]],
+ ['hallf','Hall F',2000,1,[1,1,3,3],1420,1430,[['Keynote: The Next Decade of Cloud Native','Dana Whitfield',1900,'11:00'],['Keynote panel: Maintainers AMA','Panel',1480],['Open Source Sustainability','Mei Tanaka',900],['Closing keynote','Organizers',1300]]],
+ ['hallg','Hall G',900,1,[7,1,2,3],410,402,[['Kubernetes SIG Node Deep Dive','Arjun Patel',520,'11:00'],['Scheduling GPUs Fairly','Lena Fischer',610],['Kubelet Internals','Tom Becker',380],['SIG Node Office Hours','SIG Node',200]]],
  ['expo','Hall A Expo Theater',400,1,[9,1,2,3],120,118,[['Sponsor demo: Debugging with Dash0 Agent0','Dash0',150,'11:00'],['Sponsor demo: Fleet ops with Radar','Radar',210],['Sponsor demo: Semantic search','Elastic',260],['Sponsor demo: AI code review','Gitar',180]]],
- ['balle','Ballroom E',1200,1,[1,4,10,2],640,646,[['Cilium and Gateway API in Production','Sofia Moreno',700,'11:00'],['Service Mesh Office Hours','Mesh maintainers',90],['AI Inference on Kubernetes: Lessons from Production','Kwame Mensah',1700],['Multi-cluster Networking','Hiro Sato',640]]],
+ ['balle','Ballroom E',1200,1,[4,1,3,3],640,646,[['Cilium and Gateway API in Production','Sofia Moreno',700,'11:00'],['Service Mesh Office Hours','Mesh maintainers',90],['AI Inference on Kubernetes: Lessons from Production','Kwame Mensah',1700],['Multi-cluster Networking','Hiro Sato',640]]],
  ['r251a','Room 251 A',300,2,[1,1,3,3],211,228,[['GitOps with Argo CD: Lessons from 400 Clusters','Maya Chen',260,'11:00'],['Argo Rollouts: Progressive Delivery in Practice','Ben Okafor',330],['Policy as Code with Kyverno','Ana Lima',190],['Flux vs Argo: An Honest Comparison','Jo Park',360]]],
  ['r255b','Room 255 B',180,2,[4,1,3,3],141,174,[['eBPF for Security Folks: Tracing Without Tears','Priya Raman',190,'11:00'],['Supply Chain Security with Sigstore','Ravi Iyer',140],['Runtime Security Panel','Panel',160],['Zero Trust for Kubernetes','Elena Petrova',210]]],
  ['r256','Room 256',120,2,[7,1,2,3],62,85,[['OpenTelemetry Collector at Scale','Sam Ortiz',90,'11:00'],['eBPF Deep Dive, Part 2: Writing Tetragon Policies','Priya Raman',218],['OTel Semantic Conventions for GenAI','Ines Duarte',130],['Continuous Profiling with OTel','Kai Müller',100]]],
@@ -1484,7 +1517,7 @@ function alerts(){if(S.s==='loading')return[];const a=[];const inc=S.s==='incide
  return a}
 
 /* ---------------- Shared chrome ---------------- */
-const S={v:'d1',ev:'kubecon',s:'live',w:'laptop',t:'dark',sim:false,rm:false,bare:false,dlg:null,toast:null,rr:{},sel:null,slot:0};
+const S={v:'m',ev:'kubecon',s:'live',w:'laptop',t:'dark',sim:false,rm:false,bare:false,dlg:null,toast:null,rr:{},sel:null,slot:0};
 const evSel=id=>`<label class="ly-sr-only" for="${id}">Event</label><select id="${id}" class="ly-input x-sel" data-ev><option value="kubecon" ${ev()==='kubecon'?'selected':''}>KubeCon NA 2026 · Day 2</option><option value="cnh" ${ev()==='cnh'?'selected':''}>CNH Demos</option></select>`;
 const askForm=id=>`<form class="x-ask" data-form="ask" role="search"><label class="ly-sr-only" for="${id}">Ask the conference</label><input id="${id}" class="ly-input" placeholder="Ask the conference, e.g. who covered eBPF overhead?" autocomplete="off"><button class="ly-btn" type="submit">${ic('search')}<span>Ask</span></button></form>`;
 const links=(which=['Dashboard','SLOs','Agent0'])=>`<nav class="x-links" aria-label="Open in Dash0"><span class="x-links__k" aria-hidden="true">Dash0</span>${which.map(w=>`<a class="ly-btn ly-btn--ghost" href="#dash0-${w.toLowerCase()}" data-act="dash0" data-what="${w}"><span class="ly-sr-only">Dash0 </span>${w}${ic('ext','x-ext')}<span class="ly-sr-only"> (opens in a new tab)</span></a>`).join('')}</nav>`;
@@ -1518,7 +1551,7 @@ function incomingMap(){const m={};for(const r of rooms()){const rr=reroute(r.id)
 function drawArrows(){frame.querySelectorAll('.x-plan').forEach(plan=>{const svg=plan.querySelector('.x-arrows');if(!svg||plan.classList.contains('x-plan--auto')||plan.closest('[data-fc]'))return;const L=plan.dataset.level;let k=0,out=`<defs><marker id="ah${L}${uid}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z"/></marker></defs>`;
  plan.querySelectorAll('[data-pin]').forEach(el=>{const rr=reroute(el.dataset.pin);if(!rr)return;rr.dest.forEach(([d,n])=>{const t=plan.querySelector(`[data-pin="${d}"]`);if(!t)return;k++;
   const a={x:el.offsetLeft+el.offsetWidth/2,y:el.offsetTop+el.offsetHeight+4},b={x:t.offsetLeft+t.offsetWidth/2,y:t.offsetTop+t.offsetHeight+6};const small=plan.offsetHeight<200;const depth=(small?10:24)+k*(small?8:20),my=Math.max(a.y,b.y)+depth,mx=(a.x+b.x)/2;
-  out+=`<path d="M${a.x} ${a.y} Q${mx} ${my+depth*.6} ${b.x} ${b.y}" marker-end="url(#ah${L}${uid})"/><text x="${mx}" y="${my+4}" text-anchor="middle">+${n}${small?'':' → '+esc(byId(d).name)}</text>`})});svg.innerHTML=out})}
+  out+=`<path d="M${a.x} ${a.y} Q${mx} ${my+depth*.6} ${b.x} ${b.y}" marker-end="url(#ah${L}${uid})"/><text x="${mx}" y="${my+4}" text-anchor="middle">+${n}${small?'':' → '+esc(byId(d).name)}</text>`})});svg.innerHTML=out;plan.style.marginBottom='';if(k){const bb=svg.getBBox();const over=bb.y+bb.height+8-plan.offsetHeight;if(over>0)plan.style.marginBottom=over+'px'}})}
 
 /* ---------------- D1: Rich tiles ---------------- */
 function vD1(){const inc=incomingMap();const live=S.s!=='empty';
@@ -1562,6 +1595,20 @@ function vD4(){const live=S.s!=='empty';const L=LEVELS[ev()];const rs=rooms();
  const mini=S.s==='loading'?sk(160):planHTML((r,g)=>`<button type="button" class="dg-mr dg-mr--${live?r.state:'ok'}" data-room="${r.id}" data-pin="${r.id}" ${g} aria-label="${esc(r.name)}, ${live?SLO_LABEL[r.state]:'not started'}"><span style="display:flex;gap:2px;align-items:center">${ic(TONE_ICON[live?r.state:'ok'])}<b>${esc(r.name.replace(/^Room /,''))}</b></span></button>`);
  return `<div class="dg" ${S.s==='error'?'data-stale':''}><div class="dg-ban">${banners()}</div>${header('Lanyard ops · schedule','d4')}<main class="dg-wrap" aria-label="Rooms by time slot"><div style="padding:var(--space-2) var(--space-3)">${key()}</div><table class="dg-t"><caption class="ly-sr-only">Rooms by time slot: live now, projected later</caption><colgroup><col class="dg-c0"><col><col><col><col></colgroup><thead>${head}</thead><tbody>${body}</tbody></table></main><aside class="dg-side"><h2>Floor</h2><div class="dg-mini">${mini}</div>${links()}${alertList(S.s==='lots'?5:6)}</aside></div>`}
 
+/* ---------------- M: Rich tiles + time scrubber ---------------- */
+function vM(){const live=S.s!=='empty';const inc=incomingMap();let slot=+S.slot;if(!(slot>=1&&slot<=3))slot=1;const SL=SLOTS[ev()];
+ const counts=[1,2,3].map(k=>forecasts(k).length);
+ const slots=`<fieldset class="dm-slots"><legend>Second row shows</legend><div class="dm-seg">${[1,2,3].map((k,i)=>`<label><input type="radio" name="slot" value="${k}" ${k===slot?'checked':''} data-slot="${k}"><b>${k===1?'Next '+SL[k]:SL[k]}</b><small>${S.s==='loading'?'loading…':counts[i]?`${ic('warn')}${counts[i]} at risk`:`${ic('check')}all fit`}</small></label>`).join('')}</div><span class="dm-cap">Top row is ${live?'live, always':`the first session (${SL[0]}), projected`}. Second row: projected = planned × ${Math.round(SHOW*100)}% show-up.</span></fieldset>`;
+ const cell=(r,g)=>{if(S.s==='loading')return `<div class="dm-room" ${g}>${sk(12,'60%')}${sk(10)}${sk(8)}${sk(10)}${sk(8)}</div>`;
+  const now=r.sess[0],sx=r.sess[slot];const rr=reroute(r.id);const edge=live?r.state:'ok';
+  return `<button type="button" class="dm-room dm-room--${edge}" data-room="${r.id}" data-pin="${r.id}" ${g} aria-label="${esc(r.name)}. ${live?`Now: ${esc(now.title)}, ${r.occ} of ${r.cap} here, ${SLO_LABEL[r.state]}`:`First: ${esc(now.title)}, about ${now.exp} expected`}. At ${sx.time}: ${esc(sx.title)}, about ${sx.exp} expected of ${r.cap} seats, ${FC_LABEL[sx.fc]}.">
+  <span class="dm-hd"><b>${esc(r.name)}</b>${live?st(r.state,SLO_LABEL[r.state]):`<span class="ly-muted" style="font-family:var(--font-mono)">${fmt(r.cap)} seats</span>`}</span>
+  <span class="dm-sec" aria-hidden="true"><span class="dm-k"><span>${live?`Now · until ${now.ends}`:`First · ${now.time}`}</span>${live?'':st(now.fc,FC_LABEL[now.fc])}</span><span class="dm-t" title="${esc(now.title)}">${esc(now.title)}</span>${live?lbar(r.ratio):pbar(now.ratio)}<span class="dm-n"><span>${live?`${fmt(r.occ)}/${fmt(r.cap)} here`:`~${fmt(now.exp)}/${fmt(r.cap)}`}</span>${inc[r.id]?`<span class="dm-in">+${inc[r.id]} rerouted in</span>`:''}${rr?`<span class="dm-in">${ic('route','x-ext')}${rr.acc}/${rr.sent} accepted</span>`:''}</span></span>
+  <span class="dm-sec dm-sec--fc" aria-hidden="true"><span class="dm-k"><span>${sx.time}</span>${st(sx.fc,FC_LABEL[sx.fc])}</span><span class="dm-t" title="${esc(sx.title)}">${esc(sx.title)}</span>${pbar(sx.ratio)}<span class="dm-n"><span>~${fmt(sx.exp)}/${fmt(r.cap)}</span><span class="ly-muted">${fmt(sx.planned)} planned</span></span></span></button>`};
+ const al=alerts();const pu={v:false};const liveA=al.filter(a=>a.kind==='live');const fcA=al.filter(a=>a.kind==='fc'&&a.slot===slot);
+ const side=S.s==='loading'?alertList():`<section class="x-alerts" aria-label="Live alerts"><h2>Live <span class="ly-muted" style="font-size:var(--text-sm);font-weight:400">${liveA.length} now</span></h2>${liveA.length?liveA.map(a=>alertCard(a,pu)).join(''):`<p class="ly-muted" style="margin:0">${live?'Every room is within its SLO.':'Live alerts start when check-in opens.'}</p>`}</section><section class="x-alerts" aria-label="Forecast at ${SL[slot]}"><h2>At ${SL[slot]} <span class="ly-muted" style="font-size:var(--text-sm);font-weight:400">${fcA.length} at risk</span></h2>${fcA.length?fcA.map(a=>alertCard(a,pu)).join(''):'<p class="ly-muted" style="margin:0">Every session in this slot fits its room.</p>'}</section>`;
+ return `<div class="dm" ${S.s==='error'?'data-stale':''}><div class="dm-ban">${banners()}</div>${header('Lanyard ops · floor','m')}${slots}<main class="dm-map" aria-label="Venue map: live now, and ${SL[slot]}">${key()}${planHTML(cell)}</main><aside class="dm-side">${links()}${side}</aside></div>`}
+
 /* ---------------- Dialogs ---------------- */
 function dialog(){if(!S.dlg)return'';const [kind,id]=S.dlg.split(':');let t='',body='';
  if(kind==='reroute'){const r=byId(id);const sug=(SUGG[id]||SUGG.r255b).map(([d,why])=>({r:byId(d),why})).filter(x=>x.r);const notify=Math.round(r.occ*.79);t=`Reroute ${esc(r.name)}`;
@@ -1572,16 +1619,16 @@ function dialog(){if(!S.dlg)return'';const [kind,id]=S.dlg.split(':');let t='',b
 const toast=()=>S.toast?`<div class="x-toastreg" aria-live="polite"><div class="ly-toast" role="status">${ic('check')}${S.toast}</div></div>`:'<div class="x-toastreg" aria-live="polite"></div>';
 
 /* ---------------- Render + harness ---------------- */
-const V={d1:vD1,d2:vD2,d3:vD3,d4:vD4};
+const V={m:vM,d1:vD1,d2:vD2,d3:vD3,d4:vD4};
 const frame=document.getElementById('frame'),sizer=document.getElementById('sizer'),stage=document.getElementById('stage');
 function fit(){const W={laptop:[1280,800],proj:[1920,1080],phone:[390,844]}[S.w];let sc=1;if(!S.bare&&S.w==='proj')sc=Math.min(1,(stage.clientWidth-24)/W[0]);frame.style.transform=sc<1?`scale(${sc})`:'';sizer.style.width=W[0]*sc+'px';sizer.style.height=W[1]*sc+'px'}
 let lastOpener=null;
 function render(){const r=document.documentElement;r.dataset.theme=S.t;r.dataset.motion=S.rm||S.bare?'reduce':'full';document.body.className=(S.bare?'bare ':'')+'w-'+S.w;
- if(!V[S.v])S.v='d1';frame.className='frame w-'+S.w;document.getElementById('belief').innerHTML=BELIEFS[S.v];_rk='';
+ if(!V[S.v])S.v='m';frame.className='frame w-'+S.w;document.getElementById('belief').innerHTML=BELIEFS[S.v];_rk='';
  const hadDlg=!!frame.querySelector('.x-dlg');frame.innerHTML=V[S.v]()+dialog()+toast();fit();requestAnimationFrame(drawArrows);
  const dlg=frame.querySelector('.x-dlg');if(dlg&&!hadDlg&&!S.bare){const f=dlg.querySelector('input,button.ly-btn--primary,button');f&&f.focus()}}
 function syncCtl(){const c=document.getElementById('ctl');for(const k of ['v','s','w','t','ev']){const i=c.querySelector(`input[name=${k}][value="${S[k]}"]`);if(i)i.checked=true}c.sim.checked=S.sim;c.rm.checked=S.rm}
-document.getElementById('ctl').addEventListener('change',e=>{const f=e.target;S[f.name]=f.type==='checkbox'?f.checked:f.value;S.dlg=null;S.sel=null;S.slot=0;render()});
+document.getElementById('ctl').addEventListener('change',e=>{const f=e.target;S[f.name]=f.type==='checkbox'?f.checked:f.value;S.dlg=null;S.sel=null;S.slot=S.v==='m'?1:0;render()});
 function say(t,ms=3200){S.toast=t;render();clearTimeout(say.t);say.t=setTimeout(()=>{S.toast=null;render()},ms)}
 frame.addEventListener('change',e=>{if(e.target.dataset.slot!==undefined){S.slot=+e.target.value;render();frame.querySelector(`input[data-slot="${S.slot}"]`)?.focus()}if(e.target.dataset.ev!==undefined){S.ev=e.target.value;S.sel=null;syncCtl();render()}});
 frame.addEventListener('click',e=>{const b=e.target.closest('[data-act],[data-dlg],[data-room],[data-sel]');if(!b)return;const d=b.dataset;
@@ -1602,6 +1649,7 @@ window.addEventListener('resize',()=>{fit();drawArrows()});
 // Deep links: grill-ops.html#v=d2&ev=cnh&s=incident&slot=1&w=phone&t=light&sim=true&sel=r256&dlg=room:r256&bare=true
 for(const [k,v] of new URLSearchParams(location.hash.slice(1))){S[k]=v==='true'?true:v==='false'?false:v}
 if(S.bare){document.querySelector('.h-bar').style.display='none';document.getElementById('belief').style.display='none'}
+if(S.v==='m'&&!location.hash.includes('slot='))S.slot=1;
 syncCtl();
 if(!S.bare)setInterval(()=>{let ch=false;for(const rr of Object.values(S.rr)){if(rr.acc+rr.dec<rr.sent*.45){rr.acc+=2;rr.dec+=(rr.acc%6===0?1:0);rr.dest[rr.acc%rr.dest.length][1]+=2;ch=true}}if(ch&&!S.dlg)render()},1800);
 render();

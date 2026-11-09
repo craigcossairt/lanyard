@@ -204,3 +204,18 @@ export const Match = z.object({
   consented: z.boolean(),
 });
 export type Match = z.infer<typeof Match>;
+
+/** Opted-in attendee profile stored in cnh-people. Never log these text fields. */
+export const NetworkingProfile = z.object({
+  anonId: Id,
+  eventId: Id,
+  handle: z.string(),
+  linkedinUrl: z.string().url().regex(/^https:\/\/(?:www\.)?linkedin\.com\/in\/[A-Za-z0-9-]+$/, {
+    message: 'Use a LinkedIn profile URL in the form https://www.linkedin.com/in/your-slug',
+  }),
+  needs: z.string().trim().min(1).max(240),
+  offers: z.string().trim().min(1).max(240),
+  interests: z.string().trim().min(1).max(500),
+  consented: z.literal(true),
+});
+export type NetworkingProfile = z.infer<typeof NetworkingProfile>;

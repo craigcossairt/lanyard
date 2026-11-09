@@ -130,6 +130,34 @@ export const PrefsRequest = z.object({
 });
 export type PrefsRequest = z.infer<typeof PrefsRequest>;
 
+// PUT /me/networking (attendee, explicit opt-in; absence means not discoverable)
+export const NetworkingProfileRequest = z.object({
+  linkedinUrl: z.string().url().regex(/^https:\/\/(?:www\.)?linkedin\.com\/in\/[A-Za-z0-9-]+$/, {
+    message: 'Use a LinkedIn profile URL in the form https://www.linkedin.com/in/your-slug',
+  }),
+  needs: z.string().trim().min(1).max(240),
+  offers: z.string().trim().min(1).max(240),
+  interests: z.string().trim().min(1).max(500),
+});
+export type NetworkingProfileRequest = z.infer<typeof NetworkingProfileRequest>;
+export const NetworkingProfileResponse = z.object({ saved: z.literal(true) });
+export type NetworkingProfileResponse = z.infer<typeof NetworkingProfileResponse>;
+export const MyNetworkingResponse = z.discriminatedUnion('optedIn', [
+  z.object({ optedIn: z.literal(false) }),
+  z.object({ optedIn: z.literal(true), profile: NetworkingProfileRequest }),
+]);
+export type MyNetworkingResponse = z.infer<typeof MyNetworkingResponse>;
+export const RemoveNetworkingResponse = z.object({ removed: z.literal(true) });
+export type RemoveNetworkingResponse = z.infer<typeof RemoveNetworkingResponse>;
+export const NetworkingSuggestionsResponse = z.object({
+  matches: z.array(z.object({
+    handle: z.string(),
+    linkedinUrl: z.string().url(),
+    reason: z.string().max(240),
+  })),
+});
+export type NetworkingSuggestionsResponse = z.infer<typeof NetworkingSuggestionsResponse>;
+
 // POST /sessions/:id/presence
 export const PresenceRequest = z.object({ kind: PresenceKind });
 export const PresenceResponse = z.object({ count: z.number().int(), capacity: z.number().int() });

@@ -29,7 +29,7 @@ export function AttendeeHeader({ eventName, handle, title, back }: Props) {
           </span>
         )}
       </div>
-      <h1 className="at-title">{title ?? (eventName ? `Today at ${eventName}` : ' ')}</h1>
+      <h1 className="at-title">{title ?? (eventName ? 'Today’s sessions' : ' ')}</h1>
     </div>
   );
 }

@@ -1,0 +1,16 @@
+{
+  "name": "@lanyard/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared types and zod schemas: entities, API payloads, realtime messages, metric names",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "zod": "^4.0.0"
+  }
+}

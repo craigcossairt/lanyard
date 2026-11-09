@@ -46,9 +46,15 @@ test('ops opens/resolves at rule boundaries, fences a lost lease, and records on
   const published: RealtimeMessage[] = [];
   const updates: string[] = [];
   let saved: Alert[] = [];
+  let current = room;
   const ctx = {
     kv: {
       async eval(_script: string, numkeys: number, ...args: unknown[]) {
+        if (_script.includes("'HGET'")) {
+          const id = String(args[1]);
+          if (JSON.stringify(outbox.get(id)) === args[2]) outbox.delete(id);
+          return 1;
+        }
         if (numkeys === 1) return String(args[0]).includes('cnh-demos') ? 'OK' : null;
         if (!allowCommit) return 0;
         saved = JSON.parse(String(args[numkeys + 1]));
@@ -58,9 +64,6 @@ test('ops opens/resolves at rule boundaries, fences a lost lease, and records on
       },
       async hscan() {
         return ['0', [...outbox].flatMap(([id, message]) => [id, JSON.stringify(message)])];
-      },
-      async hdel(_key: string, id: string) {
-        outbox.delete(id);
       },
     },
     bus: {
@@ -74,7 +77,7 @@ test('ops opens/resolves at rule boundaries, fences a lost lease, and records on
   const loop = createOpsLoop(
     ctx,
     async () => ({
-      snapshot: { rooms: [room], alerts: saved },
+      snapshot: { rooms: [current], alerts: saved },
       attendees: new Map([['talk', 26]]),
     }),
     {
@@ -93,10 +96,14 @@ test('ops opens/resolves at rule boundaries, fences a lost lease, and records on
   assert.equal(published.length, 0);
   assert.equal(outbox.size, 2);
   assert.equal(updates.length, 1);
+  current = { ...room, occupancy: 0, ratio: 0, signals: {} };
+  await loop.tick();
+  assert.equal(outbox.size, 2);
   allowPublish = true;
   await loop.tick();
   assert.equal(published.length, 2);
+  assert.ok(published.every((message) => message.type === 'alert.resolved'));
   assert.equal(outbox.size, 0);
-  assert.deepEqual(updates, ['cnh-demos', 'cnh-demos']);
+  assert.deepEqual(updates, ['cnh-demos', 'cnh-demos', 'cnh-demos']);
   await loop.close();
 });

@@ -28,17 +28,20 @@ export function initJobs(url: string | undefined): void {
 export async function runJob<R = unknown>(
   name: string,
   payload: unknown = {},
+  /** timeoutMs: job budget on the worker (default 25 s); the HTTP call waits 2 s longer. */
   opts: { wait?: boolean; timeoutMs?: number } = {},
 ): Promise<R | undefined> {
   if (!workerUrl) throw new HttpError(503, 'worker_unavailable', 'WORKER_URL is not set');
   const wait = opts.wait ?? true;
+  const jobTimeoutMs = opts.timeoutMs ?? 25_000;
   let res: Response;
   try {
     res = await fetch(`${workerUrl}/jobs/${encodeURIComponent(name)}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ payload, wait }),
-      signal: AbortSignal.timeout(opts.timeoutMs ?? (wait ? 25_000 : 2_000)),
+      body: JSON.stringify({ payload, wait, timeoutMs: jobTimeoutMs }),
+      // Outlast the worker's own job timeout so its 504 job_timeout reaches the caller.
+      signal: AbortSignal.timeout(wait ? jobTimeoutMs + 2_000 : 2_000),
     });
   } catch {
     throw new HttpError(503, 'worker_unavailable', `Worker unreachable for job ${name}`);

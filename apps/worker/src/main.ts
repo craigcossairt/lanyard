@@ -4,7 +4,7 @@ import { shutdownTelemetry } from '../../api/src/core/telemetry';
 import { loadConfig } from '../../api/src/core/config';
 import { closeContext, initContext } from '../../api/src/core/context';
 import { jobs } from './jobs';
-import { buildWorker, startScheduler } from './server';
+import { buildWorker, drainJobs, startScheduler } from './server';
 
 // Worker bootstrap: same image as the API, selected with ROLE=worker. Listens on PORT.
 async function main(): Promise<void> {
@@ -20,6 +20,7 @@ async function main(): Promise<void> {
     app.log.info({ signal }, 'shutting down');
     stopScheduler();
     await app.close();
+    await drainJobs(); // let accepted/scheduled jobs finish before closing ES/Valkey
     await closeContext();
     await shutdownTelemetry();
     process.exit(0);

@@ -11,7 +11,6 @@ import { es } from '../../core/es';
 import {
   getLiveSession,
   keys,
-  readQuestions,
   readSignalWindow,
   SIGNAL_TYPES,
   SIGNAL_WINDOW_SEC,
@@ -43,6 +42,8 @@ export interface CleanupResult {
 }
 
 const MAX_IDS = 5_000;
+/** After the longest background ES write path (index + 500 ms + retry). */
+const LATE_PASS_MS = 8_000;
 const label = (t: string) => (t.length > 80 ? `${t.slice(0, 77)}…` : t);
 
 /** ES delete scoped to these sessions in CNH Demos: (ids OR, for questions, anonIds). */
@@ -122,52 +123,92 @@ async function discoverQuestions(
   return found;
 }
 
+/**
+ * Remove one question in a single atomic step: cluster size/votes (only if the cluster
+ * exists and the question is visible), hash, voters, session list entry and the session's
+ * question count (never below 0). KEYS: question, voters, session questions list,
+ * questions:{sid}:count. ARGV: questionId, cluster key prefix. Returns
+ * {removed, clusterId, votes}; the cluster key is `prefix .. clusterId` (store.ts shape).
+ */
+const REMOVE_Q = `if redis.call('EXISTS', KEYS[1]) == 0 then return {0, '', 0} end
+local cid = redis.call('HGET', KEYS[1], 'clusterId') or ''
+local st = redis.call('HGET', KEYS[1], 'status') or ''
+local v = tonumber(redis.call('HGET', KEYS[1], 'votes') or '0')
+local ck = ARGV[2] .. cid
+if st ~= 'hidden' and cid ~= '' and redis.call('EXISTS', ck) == 1 then
+  redis.call('HINCRBY', ck, 'size', -1)
+  redis.call('HINCRBY', ck, 'votes', -v)
+end
+redis.call('DEL', KEYS[1], KEYS[2])
+redis.call('LREM', KEYS[3], 0, ARGV[1])
+if redis.call('DECR', KEYS[4]) < 0 then redis.call('SET', KEYS[4], 0) end
+return {1, cid, v}`;
+
+/** Publishing is best effort: a failed refresh must not stop the accounting. */
+const publish = (bus: Bus, ...args: Parameters<Bus['publish']>) =>
+  bus.publish(...args).catch(() => undefined);
+
+/** Every surviving member of a cluster (the whole session list, not the 200 tail). */
+async function clusterMembers(r: Redis, sid: string, cid: string) {
+  const ids = await r.lrange(keys.questions(sid), 0, -1);
+  if (ids.length === 0) return [];
+  const p = r.pipeline();
+  ids.forEach((id) => p.hgetall(keys.question(id)));
+  return ((await p.exec()) ?? []).flatMap(([, h]) => {
+    const q = toQuestion((h ?? {}) as Record<string, string>);
+    return q && q.clusterId === cid && q.status !== 'hidden' ? [q] : [];
+  });
+}
+
 async function removeQuestions(
   r: Redis,
   bus: Bus,
   sessions: Map<string, LiveSession>,
   questionIds: string[],
 ): Promise<number> {
-  const removedBySession = new Map<string, number>();
-  const touched = new Map<string, Set<string>>(); // clusterId -> removed question ids
+  let removed = 0;
+  const touched = new Map<string, { sid: string; gone: Set<string> }>();
+  const clusterPrefix = keys.cluster('');
   for (const qid of questionIds) {
-    const q = toQuestion(await r.hgetall(keys.question(qid)));
-    if (!q || !sessions.has(q.sessionId)) continue; // not ours: leave it alone
-    const m = r.multi();
-    if (q.status !== 'hidden') {
-      m.hincrby(keys.cluster(q.clusterId), 'size', -1);
-      m.hincrby(keys.cluster(q.clusterId), 'votes', -q.votes);
+    const sid = await r.hget(keys.question(qid), 'sessionId');
+    if (!sid || !sessions.has(sid)) continue; // not ours: leave it alone
+    const [ok, cid, votes] = (await r.eval(
+      REMOVE_Q,
+      4,
+      keys.question(qid),
+      keys.voters(qid),
+      keys.questions(sid),
+      keys.questionCount(sid),
+      qid,
+      clusterPrefix,
+    )) as [number, string, number];
+    if (!ok) continue;
+    removed++;
+    if (cid) {
+      if (!touched.has(cid)) touched.set(cid, { sid, gone: new Set() });
+      touched.get(cid)!.gone.add(qid);
     }
-    m.del(keys.question(qid), keys.voters(qid));
-    m.lrem(keys.questions(q.sessionId), 0, qid);
-    await m.exec();
-    removedBySession.set(q.sessionId, (removedBySession.get(q.sessionId) ?? 0) + 1);
-    if (!touched.has(q.clusterId)) touched.set(q.clusterId, new Set());
-    touched.get(q.clusterId)!.add(qid);
-    await bus.publish(
-      channels.session(q.sessionId),
+    await publish(
+      bus,
+      channels.session(sid),
       realtime('question.updated', {
-        questionId: q.id,
-        clusterId: q.clusterId,
-        votes: q.votes,
+        questionId: qid,
+        clusterId: cid || qid,
+        votes: Number(votes),
         status: 'hidden',
       }),
     );
   }
 
-  for (const [sid, n] of removedBySession) {
-    const left = await r.decrby(keys.questionCount(sid), n);
-    if (left < 0) await r.set(keys.questionCount(sid), 0);
-  }
-
-  for (const [cid, gone] of touched) {
+  for (const [cid, { sid, gone }] of touched) {
     const h = await r.hgetall(keys.cluster(cid));
     const c = toCluster(h);
     if (!c) continue;
     if (c.size <= 0) {
-      await r.multi().del(keys.cluster(cid)).srem(keys.clusters(c.sessionId), cid).exec();
-      await bus.publish(
-        channels.session(c.sessionId),
+      await r.multi().del(keys.cluster(cid)).srem(keys.clusters(sid), cid).exec();
+      await publish(
+        bus,
+        channels.session(sid),
         realtime('cluster.updated', { clusterId: cid, label: '', size: 0, votes: 0 }),
       );
       continue;
@@ -178,9 +219,7 @@ async function removeQuestions(
     const fromGone =
       gone.has(h.labelFrom ?? '') || (h.labelFrom === 'llm' && labelIds.some((id) => gone.has(id)));
     if (gone.has(c.representativeQuestionId) || fromGone) {
-      const best = (await readQuestions(r, c.sessionId))
-        .filter((q) => q.clusterId === cid)
-        .sort((a, b) => b.votes - a.votes)[0];
+      const best = (await clusterMembers(r, sid, cid)).sort((a, b) => b.votes - a.votes)[0];
       const patch: Record<string, string> = {};
       if (gone.has(c.representativeQuestionId))
         patch.representativeQuestionId = c.representativeQuestionId = best?.id ?? '';
@@ -191,12 +230,13 @@ async function removeQuestions(
       }
       await r.hset(keys.cluster(cid), patch);
     }
-    await bus.publish(
-      channels.session(c.sessionId),
+    await publish(
+      bus,
+      channels.session(sid),
       realtime('cluster.updated', { clusterId: cid, label: c.label, size: c.size, votes: c.votes }),
     );
   }
-  return [...removedBySession.values()].reduce((a, b) => a + b, 0);
+  return removed;
 }
 
 async function removeCaptions(r: Redis, sessionIds: string[], chunkIds: string[]) {
@@ -254,17 +294,22 @@ async function removeAttendees(
       counts: await readSignalWindow(r, s.id),
     });
     await Promise.all([
-      bus.publish(channels.session(s.id), msg),
-      bus.publish(channels.ops(s.eventId), msg),
-      bus.publish(channels.session(s.id), win),
-      bus.publish(channels.ops(s.eventId), win),
+      publish(bus, channels.session(s.id), msg),
+      publish(bus, channels.ops(s.eventId), msg),
+      publish(bus, channels.session(s.id), win),
+      publish(bus, channels.ops(s.eventId), win),
     ]);
   }
   // Per-attendee keys, only where they point at one of these sessions.
   for (const a of anonIds) {
-    const at = await r.hget(keys.attendeeAt(a), 'sessionId');
-    const m = r.multi().del(keys.conns(a), keys.graceLeft(a));
-    if (at && sessions.has(at)) m.del(keys.attendeeAt(a));
+    const [at, left] = await Promise.all([
+      r.hget(keys.attendeeAt(a), 'sessionId'),
+      r.get(keys.graceLeft(a)),
+    ]);
+    const m = r.multi();
+    // Attendee-wide stream bookkeeping is only touched when it belongs to these sessions.
+    if (at && sessions.has(at)) m.del(keys.attendeeAt(a), keys.conns(a));
+    if (left && sessions.has(left)) m.del(keys.graceLeft(a));
     for (const s of sessions.values()) for (const t of SIGNAL_TYPES) m.del(keys.rate(s.id, a, t));
     await m.exec();
   }
@@ -306,7 +351,8 @@ async function removeVotes(
       )) as [number, number, number];
       if (n === 0) continue;
       removed += n;
-      await bus.publish(
+      await publish(
+        bus,
         channels.session(sid),
         realtime('question.updated', {
           questionId: q.id,
@@ -319,7 +365,8 @@ async function removeVotes(
       if (cv >= 0) {
         const c = toCluster(await r.hgetall(keys.cluster(q.clusterId)));
         if (c)
-          await bus.publish(
+          await publish(
+            bus,
             channels.session(sid),
             realtime('cluster.updated', {
               clusterId: c.id,
@@ -380,20 +427,38 @@ export async function cleanupSynthetic(
     const fromEs = await esDelete(ES_INDICES.questions, sids, questionIds, anonIds);
     removed.questions = Math.max(fromValkey, fromEs);
   }
-  // Chunks a simulated speaker published (ledger written before publish).
-  const ledger = anonIds.filter((a) => a.startsWith('sim_')).map((a) => keys.syntheticChunks(a));
-  if (ledger.length) chunkIds = [...new Set([...chunkIds, ...(await r.sunion(...ledger))])];
+  // Chunks a simulated speaker published (ledger written before publish). Chunk ids are
+  // `<sessionId>:<seq>`, so only ledger entries for the listed sessions are taken.
+  const inScope = (id: string) => sessions.has(id.slice(0, id.lastIndexOf(':')));
+  const ledgers = anonIds.filter((a) => a.startsWith('sim_'));
+  const fromLedger = new Map<string, string[]>();
+  for (const a of ledgers) {
+    const mine = (await r.smembers(keys.syntheticChunks(a))).filter(inScope);
+    if (mine.length) fromLedger.set(a, mine);
+  }
+  chunkIds = [...new Set([...chunkIds, ...[...fromLedger.values()].flat()])];
   if (chunkIds.length) {
     const fromTail = await removeCaptions(r, sids, chunkIds);
     const fromEs = await esDelete(ES_INDICES.transcripts, sids, chunkIds);
     removed.chunks = Math.max(fromTail, fromEs);
   }
+  for (const [a, ids] of fromLedger) await r.srem(keys.syntheticChunks(a), ...ids);
   if (anonIds.length) {
     Object.assign(removed, await removeAttendees(r, ctx.bus, sessions, anonIds));
     // Sim votes on real questions (dedup can merge a sim question into a real cluster).
     removed.votes = await removeVotes(r, ctx.bus, sids, anonIds);
-    if (ledger.length) await r.del(...ledger);
   }
+
+  // Background ES records (question index with retry, caption record with retry) can land
+  // after the delete above: one more scoped pass once they have had time to finish.
+  const late = { questions: allQuestions.length > 0, chunks: chunkIds.length > 0 };
+  if (late.questions || late.chunks)
+    setTimeout(() => {
+      void Promise.all([
+        late.questions && esDelete(ES_INDICES.questions, sids, questionIds, anonIds),
+        late.chunks && esDelete(ES_INDICES.transcripts, sids, chunkIds),
+      ]).catch(() => ctx.logger.warn('synthetic cleanup second ES pass failed'));
+    }, LATE_PASS_MS).unref();
 
   ctx.logger.info({ eventId: input.eventId, removed }, 'synthetic cleanup');
   return { removed };

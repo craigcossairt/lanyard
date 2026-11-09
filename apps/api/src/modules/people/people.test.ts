@@ -121,8 +121,8 @@ test('people routes require consent, isolate events, and remove searchable profi
   assert.deepEqual(suggestions.json().matches.map((match: { handle: string }) => match.handle), [
     'Moss Finch',
   ]);
-  const filters = searches[0]?.retriever?.rrf?.retrievers?.map((item) =>
-    'standard' in item ? item.standard?.query?.bool : undefined,
+  const filters = searches[0]?.retriever?.rrf?.retrievers?.flatMap((item) =>
+    item && 'standard' in item ? [item.standard?.query?.bool] : [],
   );
   assert.ok(filters?.length === 2);
   for (const filter of filters ?? []) {

@@ -1,25 +1,18 @@
 // Attendee persona: mounted by the WS0 shell under /a (default export renders the routes).
 import { lazy, Suspense } from 'react';
-import { Link, Route, Routes } from 'react-router';
+import { Route, Routes } from 'react-router';
 import { ToastProvider } from './components/Toast';
+import { applyPrefs } from './lib/prefs';
 import './attendee.css';
+
+// Saved display prefs take effect before the first screen paints.
+applyPrefs();
 
 const Home = lazy(() => import('./Home'));
 const Search = lazy(() => import('./Search'));
 const SessionLive = lazy(() => import('./SessionLive'));
-
-/** Placeholder until the real screen lands (plan my day and settings follow in later PRs). */
-function ComingSoon({ what }: { what: string }) {
-  return (
-    <main id="main" className="at-page at-main">
-      <h1>{what}</h1>
-      <p className="at-muted">This screen is on its way. Head back home for now.</p>
-      <Link className="at-btn" to="/a">
-        Home
-      </Link>
-    </main>
-  );
-}
+const PlanMyDay = lazy(() => import('./PlanMyDay'));
+const Settings = lazy(() => import('./Settings'));
 
 function Loading() {
   return (
@@ -37,8 +30,8 @@ export default function AttendeeRoutes() {
           <Route index element={<Home />} />
           <Route path="search" element={<Search />} />
           <Route path="s/:id" element={<SessionLive />} />
-          <Route path="plan" element={<ComingSoon what="Plan my day" />} />
-          <Route path="settings" element={<ComingSoon what="Display & access" />} />
+          <Route path="plan" element={<PlanMyDay />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="*" element={<Home />} />
         </Routes>
       </Suspense>

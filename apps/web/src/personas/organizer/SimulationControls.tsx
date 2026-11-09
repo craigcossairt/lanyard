@@ -2,20 +2,21 @@ import { useEffect, useRef, useState } from 'react';
 import { formatTime, SimulationControlRequest, SimulationStatus } from '@lanyard/contracts';
 import { api, ApiError } from '../../app/api';
 
-export function SimulationNotice({ status, timezone }: { status: SimulationStatus; timezone: string }) {
-  return <p className="ops-sim-notice" role="status">
+export function SimulationNotice({ status, timezone }: { status?: SimulationStatus; timezone: string }) {
+  return <p className="ops-sim-notice" role="status" aria-live="polite">
     <strong>SIMULATED</strong>{' '}
-    {status.stopping ? `Stopping · removing ${status.attendees} virtual attendees`
+    {!status ? 'Checking crowd status…' : status.stopping ? `Stopping · removing ${status.attendees} virtual attendees`
       : status.running ? `${status.attendees} virtual attendees · auto-stop ${status.endsAt ? formatTime(status.endsAt, timezone) : 'within 10 minutes'}`
       : 'Crowd simulator is stopped'}
-    {(status.running || status.stopping) && <span>Virtual activity is included in the room readings below.</span>}
+    {(status?.running || status?.stopping) && <span>Virtual activity is included in the room readings below.</span>}
   </p>;
 }
 
 export function SimulationControls({ eventId, timezone }: { eventId: string; timezone: string }) {
   const [status, setStatus] = useState<SimulationStatus>();
   const [attendees, setAttendees] = useState(40);
-  const [error, setError] = useState('');
+  const [pollError, setPollError] = useState('');
+  const [actionError, setActionError] = useState('');
   const [pending, setPending] = useState(false);
   const generation = useRef(0);
   const mutation = useRef(false);
@@ -30,9 +31,9 @@ export function SimulationControls({ eventId, timezone }: { eventId: string; tim
       const version = generation.current;
       try {
         const next = SimulationStatus.parse(await api.get(path));
-        if (!gone && version === generation.current) { setStatus(next); setError(''); }
+        if (!gone && version === generation.current) { setStatus(next); setPollError(''); }
       } catch {
-        if (!gone && version === generation.current) setError('Simulator status unavailable. Last known state is shown.');
+        if (!gone && version === generation.current) setPollError('Simulator status unavailable. Last known state is shown.');
       } finally { loading = false; }
     };
     void refresh();
@@ -42,15 +43,15 @@ export function SimulationControls({ eventId, timezone }: { eventId: string; tim
 
   async function toggle() {
     const body = SimulationControlRequest.safeParse({ running: !status?.running, attendees });
-    if (!body.success) { setError('Choose between 1 and 200 virtual attendees.'); return; }
+    if (!body.success) { setActionError('Choose between 1 and 200 virtual attendees.'); return; }
     const version = ++generation.current;
     mutation.current = true;
-    setPending(true); setError('');
+    setPending(true); setActionError('');
     try {
       const next = SimulationStatus.parse(await api.post(path, body.data));
-      if (version === generation.current) setStatus(next);
+      if (version === generation.current) { setStatus(next); setPollError(''); }
     } catch (cause) {
-      if (version === generation.current) setError(cause instanceof ApiError && cause.code === 'simulation_sessions'
+      if (version === generation.current) setActionError(cause instanceof ApiError && cause.code === 'simulation_sessions'
         ? 'Start concurrent Main Stage and Side Stage sessions before simulating a crowd.'
         : 'Simulator change failed. Check its status and retry.');
     } finally {
@@ -60,15 +61,16 @@ export function SimulationControls({ eventId, timezone }: { eventId: string; tim
   }
   return <section className={`ops-sim ${status?.running || status?.stopping ? 'ops-sim-active' : ''}`} aria-label="SIMULATED crowd controls">
     <div>
-      {status ? <SimulationNotice status={status} timezone={timezone} /> : <p role="status"><strong>SIMULATED</strong> · checking crowd status…</p>}
+      <SimulationNotice status={status} timezone={timezone} />
       <p className="ops-sim-help">CNH Demos only · 200 people maximum · stops after 10 minutes</p>
-      {error && <p role="status">{error}</p>}
+      <p role="status" aria-live="polite">{pollError}</p>
+      <p role="status" aria-live="polite">{actionError}</p>
     </div>
     <div className="ops-sim-actions">
       <label>Virtual attendees <input type="number" min="1" max="200" value={attendees}
         disabled={pending || status?.running || status?.stopping}
-        onChange={event => setAttendees(Number(event.target.value))} /></label>
-      <button onClick={() => void toggle()} disabled={pending || !status || status.stopping || Boolean(error && !status.running)}>
+        onChange={event => { setAttendees(Number(event.target.value)); setActionError(''); }} /></label>
+      <button onClick={() => void toggle()} disabled={pending || !status || status.stopping || Boolean(pollError && !status.running)}>
         {pending ? 'Updating…' : status?.stopping ? 'Removing crowd…' : status?.running ? 'Stop simulated crowd' : 'Start simulated crowd'}
       </button>
     </div>

@@ -79,6 +79,15 @@ spec:
             limits:
               cpu: 500m
               memory: 768Mi
+          # Radar investigation chat_RjOgOymzUJCDCUUF: hold readiness and
+          # liveness until /healthz answers (up to 60 s), so they don't fail
+          # with "connection refused" before the worker binds :8080.
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 2
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /readyz
@@ -88,16 +97,24 @@ spec:
             httpGet:
               path: /healthz
               port: http
-            initialDelaySeconds: 10
             periodSeconds: 10
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
             allowPrivilegeEscalation: false
+            # Radar Checks: read-only root; only /tmp is writable.
+            readOnlyRootFilesystem: true
             seccompProfile:
               type: RuntimeDefault
             capabilities:
               drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
 ---
 apiVersion: v1
 kind: Service

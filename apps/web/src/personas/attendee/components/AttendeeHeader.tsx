@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router';
+import { LanguageSelect, useI18n } from '../../../i18n/useI18n';
 
 interface Props {
   eventName?: string;
@@ -10,26 +11,30 @@ interface Props {
 
 export function AttendeeHeader({ eventName, handle, title, back }: Props) {
   const { pathname } = useLocation();
+  const { t } = useI18n();
   const isHome = pathname === '/a' || pathname === '/a/';
   return (
     <header className="at-header">
       <a href="#main" className="at-skip">
-        Skip to content
+        {t('skip')}
       </a>
       <div className="at-header__row">
         {back && !isHome ? (
-          <Link to="/a" className="at-back" aria-label="Back to home">
-            <span aria-hidden="true">‹</span> Home
+          <Link to="/a" className="at-back" aria-label={t('backHome')}>
+            <span aria-hidden="true">‹</span> {t('home')}
           </Link>
         ) : (
-          <span className="at-brand">Lanyard</span>
+          <span className="at-brand">{t('brand')}</span>
         )}
-        {handle && (
-          <span className="at-handle" title="Your anonymous handle for this event">
-            <span className="at-sr-only">You are </span>
-            {handle}
-          </span>
-        )}
+        <span className="at-header__tools">
+          <LanguageSelect id="attendee-lang" compact />
+          {handle && (
+            <span className="at-handle">
+              <span className="at-sr-only">{t('youAre')} </span>
+              {handle}
+            </span>
+          )}
+        </span>
       </div>
       <h1 className="at-title">{title ?? eventName ?? ' '}</h1>
     </header>

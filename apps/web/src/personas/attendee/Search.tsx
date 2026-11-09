@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import type { SearchResponse } from '@lanyard/contracts';
+import { readLocaleSnapshot, translate } from '../../i18n/locale';
+import { useI18n } from '../../i18n/useI18n';
 import { AttendeeHeader } from './components/AttendeeHeader';
 import { SessionCard } from './components/SessionCard';
 import { api, ApiError } from './lib/api';
@@ -16,6 +18,7 @@ const EXAMPLES = [
 ];
 
 export default function Search() {
+  const { t } = useI18n();
   const eventId = useEventId();
   const me = useSession();
   const { view } = useEventView(eventId);
@@ -64,7 +67,9 @@ export default function Search() {
       .catch((e: unknown) => {
         if (!alive) return;
         setStatus('error');
-        setError(e instanceof ApiError ? e.message : 'Search is not available right now');
+        setError(
+          e instanceof ApiError ? e.message : translate(readLocaleSnapshot().ui, 'searchFail'),
+        );
       });
     return () => {
       alive = false;
@@ -78,15 +83,15 @@ export default function Search() {
   const hits = result?.hits ?? [];
   const summary =
     status === 'loading'
-      ? 'Searching…'
+      ? t('searching')
       : q && result
-        ? `${hits.length} ${hits.length === 1 ? 'talk' : 'talks'} for “${q}”`
+        ? t(hits.length === 1 ? 'talkCountOne' : 'talkCount', { count: hits.length, query: q })
         : '';
 
   return (
     <div className="at-page">
-      <AttendeeHeader title="Find a talk" handle={me?.handle} back />
-      <main id="main" className="at-main">
+      <AttendeeHeader title={t('findTalk')} handle={me?.handle} back />
+      <main id="main" tabIndex={-1} className="at-main">
         <form
           className="at-search"
           role="search"
@@ -96,7 +101,7 @@ export default function Search() {
           }}
         >
           <label htmlFor="search-q" className="at-sr-only">
-            Search talks by topic, speaker or vibe
+            {t('searchLabel')}
           </label>
           <input
             ref={inputRef}
@@ -105,12 +110,12 @@ export default function Search() {
             className="at-input"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Topic, speaker, or “eBPF but for security folks”"
+            placeholder={t('searchPlaceholderLong')}
             autoComplete="off"
             enterKeyHint="search"
           />
           <button type="submit" className="at-btn at-btn--primary">
-            Search
+            {t('search')}
           </button>
         </form>
 
@@ -120,7 +125,7 @@ export default function Search() {
 
         {!q && (
           <section aria-labelledby="try-h" className="at-section">
-            <h2 id="try-h">Try asking for</h2>
+            <h2 id="try-h">{t('tryAsking')}</h2>
             <ul className="at-examples">
               {EXAMPLES.map((ex) => (
                 <li key={ex}>
@@ -134,10 +139,7 @@ export default function Search() {
                 </li>
               ))}
             </ul>
-            <p className="at-muted">
-              Hybrid search: keywords plus meaning, so “security folks” still finds the eBPF runtime
-              talk.
-            </p>
+            <p className="at-muted">{t('searchHint')}</p>
           </section>
         )}
 
@@ -148,7 +150,7 @@ export default function Search() {
         )}
 
         {q && result && hits.length === 0 && status !== 'loading' && (
-          <p className="at-muted">No talks matched. Try fewer words, or a topic like “GitOps”.</p>
+          <p className="at-muted">{t('noHits')}</p>
         )}
 
         <div className="at-list" aria-busy={status === 'loading'}>

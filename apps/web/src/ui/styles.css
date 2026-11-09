@@ -34,6 +34,20 @@ a {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
 }
+/* Shell skip link. The live theme is still neutral-theme.css; this copy stays when that import becomes styles.css. */
+.skip-link {
+  position: absolute;
+  left: var(--space-2);
+  top: -100px;
+  z-index: var(--z-toast);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  border-radius: var(--radius-sm);
+}
+.skip-link:focus {
+  top: var(--space-2);
+}
 button,
 input,
 textarea,

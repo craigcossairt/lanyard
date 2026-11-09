@@ -18,6 +18,10 @@ export interface CaptionLine {
   chunkId: string;
   seq: number;
   text: string;
+  /** BCP-47 language of this chunk, when the stream sent one. */
+  lang?: string;
+  /** Present only when a chunk names the person speaking. The payload does not, yet. */
+  speaker?: string;
 }
 
 export type SignalCounts = Partial<Record<SignalType, number>>;
@@ -116,7 +120,7 @@ function reducer(state: LiveState, action: Action): LiveState {
         questions: p.questions,
         clusters: p.clusters,
         captions: p.captions
-          .map((c) => ({ chunkId: c.chunkId, seq: c.seq, text: c.text }))
+          .map((c) => ({ chunkId: c.chunkId, seq: c.seq, text: c.text, lang: c.lang }))
           .sort((a, b) => a.seq - b.seq)
           .slice(-MAX_CAPTIONS),
         signals: (p.signals?.counts ?? {}) as SignalCounts,
@@ -146,7 +150,12 @@ function reducer(state: LiveState, action: Action): LiveState {
           if (state.captions.some((c) => c.chunkId === m.payload.chunkId)) return state;
           const captions = [
             ...state.captions,
-            { chunkId: m.payload.chunkId, seq: m.payload.seq, text: m.payload.text },
+            {
+              chunkId: m.payload.chunkId,
+              seq: m.payload.seq,
+              text: m.payload.text,
+              lang: m.payload.lang,
+            },
           ]
             .sort((a, b) => a.seq - b.seq)
             .slice(-MAX_CAPTIONS);

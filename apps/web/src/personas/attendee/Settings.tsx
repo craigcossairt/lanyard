@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useI18n } from '../../i18n/useI18n';
 import { AttendeeHeader } from './components/AttendeeHeader';
 import { usePrefs, type DisplayPrefs } from './lib/prefs';
 import { useSession } from './lib/session';
@@ -10,11 +11,12 @@ const SIZES: Array<[DisplayPrefs['captionSize'], string]> = [
   ['xl', 'XL'],
   ['xxl', 'XXL'],
 ];
-const THEMES: Array<[DisplayPrefs['theme'], string]> = [
-  ['dark', 'Dark'],
-  ['light', 'Light'],
-  ['contrast', 'High contrast'],
-];
+const THEMES: Array<DisplayPrefs['theme']> = ['dark', 'light', 'contrast'];
+const THEME_KEY = {
+  dark: 'themeDark',
+  light: 'themeLight',
+  contrast: 'themeContrast',
+} as const;
 const LANGUAGES: Array<[string, string]> = [
   ['en', 'English'],
   ['es', 'Español'],
@@ -27,6 +29,7 @@ const LANGUAGES: Array<[string, string]> = [
 ];
 
 export default function Settings() {
+  const { t } = useI18n();
   const me = useSession();
   const { prefs, setPrefs } = usePrefs();
   const [interests, setInterests] = useState(prefs.interests);
@@ -43,12 +46,12 @@ export default function Settings() {
 
   return (
     <div className="at-page">
-      <AttendeeHeader title="Display & access" handle={me?.handle} back />
-      <main id="main" className="at-main">
-        <p className="at-muted">Changes apply instantly and follow you on this device.</p>
+      <AttendeeHeader title={t('displayAccess')} handle={me?.handle} back />
+      <main id="main" tabIndex={-1} className="at-main">
+        <p className="at-muted">{t('settingsLead')}</p>
 
         <fieldset className="at-fieldset">
-          <legend>Caption and text size</legend>
+          <legend>{t('captionSizeLegend')}</legend>
           <div className="at-choices">
             {SIZES.map(([v, label]) => (
               <button
@@ -56,7 +59,7 @@ export default function Settings() {
                 type="button"
                 className="at-btn"
                 aria-pressed={prefs.captionSize === v}
-                aria-label={`Caption size ${label}`}
+                aria-label={t('captionSizeName', { size: label })}
                 onClick={() => setPrefs({ captionSize: v })}
               >
                 {label}
@@ -64,14 +67,14 @@ export default function Settings() {
             ))}
           </div>
           <p className="at-preview" aria-hidden="true">
-            Captions look like this.
+            {t('captionPreview')}
           </p>
         </fieldset>
 
         <fieldset className="at-fieldset">
-          <legend>Colours</legend>
+          <legend>{t('colours')}</legend>
           <div className="at-choices">
-            {THEMES.map(([v, label]) => (
+            {THEMES.map((v) => (
               <button
                 key={v}
                 type="button"
@@ -79,14 +82,14 @@ export default function Settings() {
                 aria-pressed={prefs.theme === v}
                 onClick={() => setPrefs({ theme: v })}
               >
-                {label}
+                {t(THEME_KEY[v])}
               </button>
             ))}
           </div>
         </fieldset>
 
         <fieldset className="at-fieldset">
-          <legend>Reading and motion</legend>
+          <legend>{t('readingMotion')}</legend>
           <div className="at-choices at-choices--stack">
             <button
               type="button"
@@ -94,7 +97,8 @@ export default function Settings() {
               aria-pressed={prefs.readable}
               onClick={() => setPrefs({ readable: !prefs.readable })}
             >
-              {prefs.readable ? '✓ ' : ''}Easier-to-read spacing and font
+              {prefs.readable ? '✓ ' : ''}
+              {t('readableFont')}
             </button>
             <button
               type="button"
@@ -102,14 +106,15 @@ export default function Settings() {
               aria-pressed={prefs.reduceMotion}
               onClick={() => setPrefs({ reduceMotion: !prefs.reduceMotion })}
             >
-              {prefs.reduceMotion ? '✓ ' : ''}Reduce motion
+              {prefs.reduceMotion ? '✓ ' : ''}
+              {t('reduceMotion')}
             </button>
           </div>
         </fieldset>
 
         <div className="at-fieldset">
           <label htmlFor="lang" className="at-label">
-            Language
+            {t('langLabel')}
           </label>
           <select
             id="lang"
@@ -123,12 +128,12 @@ export default function Settings() {
               </option>
             ))}
           </select>
-          <p className="at-muted at-hint">Used for caption translation when a session offers it.</p>
+          <p className="at-muted at-hint">{t('langHint')}</p>
         </div>
 
         <form className="at-fieldset" onSubmit={saveInterests}>
           <label htmlFor="interests" className="at-label">
-            Interests (optional, opt-in)
+            {t('interestsLabel')}
           </label>
           <textarea
             id="interests"
@@ -136,21 +141,19 @@ export default function Settings() {
             value={interests}
             onChange={(e) => setInterests(e.target.value)}
             maxLength={500}
-            placeholder="e.g. eBPF, platform engineering, running Postgres on Kubernetes"
+            placeholder={t('interestsPlaceholder')}
           />
           <label className="at-check">
             <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} />
-            Share my interests with the event to plan my day and suggest booths
+            {t('interestsShare')}
           </label>
-          <p className="at-muted at-hint">
-            Unticked, interests stay on this device. Never shown with your handle either way.
-          </p>
+          <p className="at-muted at-hint">{t('interestsHint')}</p>
           <div className="at-sheet__actions">
             <button type="submit" className="at-btn at-btn--primary">
-              Save interests
+              {t('saveInterests')}
             </button>
             <span role="status" className="at-muted">
-              {saved ? 'Saved' : ''}
+              {saved ? t('saved') : ''}
             </span>
           </div>
         </form>

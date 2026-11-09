@@ -62,3 +62,29 @@ Every team's cluster shows these. None is the team's to fix. Don't spend an AI i
 ## Application workflows
 
 Read [`examples/agent-workflows/README.md`](examples/agent-workflows/README.md) before adding credentials, one-off Jobs or dependencies. Discover the live MCP catalog before assuming an optional or newly added tool is available.
+
+---
+
+# Lanyard: build conventions (read after the cluster notes above)
+
+**Lanyard** ("Conferences, observable.") is a multi-persona conference platform built by parallel agents. The plan is in `docs/plan/`: `01-PRD.md` (scope), `02-contracts.md` (source of truth for layout, data, API, realtime, OTel), `03-workstreams.md` (briefs), `04-timeline.md`, `05-rubric.md`, `06-demo.md`. Hard deadline: submit by 17:15 MT.
+
+## How work lands
+- **PRs only.** Never push to `main` yourself. The orchestrator thread is the only merger (squash). The deploy bot's `deploy: <sha> [skip ci]` commits are the only direct pushes. This overrides the "ship" guidance above for workstream agents: your "ship" is opening a PR.
+- Branches are `ws<N>/<slug>`. PRs are small (about 400 changed lines or fewer), one vertical slice each, with the PR template filled in, including the **AI usage** line.
+- CI (`.github/workflows/ci.yml`) must be green, and every Gitar comment must be resolved (fixed, or answered with a reason), before the orchestrator merges.
+- Edit only the folders your workstream owns (`02-contracts.md` section 1). Contract changes go in a tiny separate PR that updates `packages/contracts` **and** `docs/plan/02-contracts.md` together.
+- `deploy/` belongs to WS5. `.gitar/` and `docs/plan/` change only with orchestrator approval.
+
+## Code conventions (also enforced by Gitar, `.gitar/review/`)
+- Every outbound call (Elasticsearch, LLM, Jev, Valkey) goes through the shared wrappers in `apps/api/src/core`, which create a span and set an explicit timeout: ES 2 s, LLM 20 s (catch-up 8 s), Valkey 500 ms. Record errors on the span.
+- No question text, caption text, attendee interests, PII or secrets in logs, span attributes, events or metric labels. Metric names and attributes follow `02-contracts.md` section 6.
+- Store and send times as UTC ISO-8601. Display only through the event-timezone helper (`America/Denver`).
+- LLM calls happen in the `worker` or behind a cache. API routes never block more than 8 s.
+- Every container sets requests and limits within the team budget (see Limits).
+- Accessibility is a product feature (Merge Forward track): accessible names, never colour alone, `prefers-reduced-motion`, polite live regions.
+- Tests: a fast smoke test per route or module only. Typecheck and lint must pass.
+
+## Secrets
+- Values come only from env. Locally: `.env` (gitignored; template in `.env.example`). In the cluster: the Kubernetes Secret `app-credentials` in `team-lanyard`, created outside git. Never write a real key into any file, commit, PR or chat. A hook blocks agent edits to `.env*`, key and lock files.
+- Run `gitleaks detect --no-git --source .` before any PR that touches config.

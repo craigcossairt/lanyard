@@ -1,0 +1,46 @@
+# PR checks. Gitar reads these results and can auto-fix failures (.gitar/config/apply.md).
+# Deploys stay in deploy.yaml on pushes to main.
+name: ci
+
+on:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install
+        run: |
+          if [ -f package-lock.json ]; then npm ci --no-audit --no-fund
+          elif [ -f package.json ]; then npm install --no-audit --no-fund
+          else echo "No root package.json yet"; fi
+      - name: Typecheck
+        run: if [ -f package.json ]; then npm run --if-present typecheck; fi
+      - name: Lint
+        run: if [ -f package.json ]; then npm run --if-present lint; fi
+      - name: Build
+        run: if [ -f package.json ]; then npm run --if-present build; fi
+      - name: Smoke tests
+        run: if [ -f package.json ]; then npm run --if-present test; fi
+      - name: Docker build
+        run: docker build -t lanyard-ci .
+
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -64,10 +64,6 @@ export function useSse(
             cache: 'no-store',
           });
           if (!res.ok || !res.body) throw new Error(`stream ${res.status}`);
-          setStatus('open');
-          if (everOpen) reconnect.current?.();
-          everOpen = true;
-          attempt = 0;
           const reader = res.body.getReader();
           const dec = new TextDecoder();
           let buf = '';
@@ -76,8 +72,13 @@ export function useSse(
             if (done) break;
             buf = parseSse(buf + dec.decode(value, { stream: true }), (event, data) => {
               if (event === 'ready') {
+                // Server subscriptions are live: now a snapshot refetch can't miss anything.
                 const hint = (JSON.parse(data) as { retryMs?: number }).retryMs;
                 if (hint) retryMs = hint;
+                setStatus('open');
+                if (everOpen) reconnect.current?.();
+                everOpen = true;
+                attempt = 0;
                 return;
               }
               const msg = RealtimeMessage.safeParse(JSON.parse(data));

@@ -212,6 +212,22 @@ export const CatchUpResponse = z.object({
 });
 export type CatchUpResponse = z.infer<typeof CatchUpResponse>;
 
+// GET /sessions/:id/captions/translated?lang=es&since=
+export const TranslatedCaptionsQuery = z.object({
+  lang: z.literal('es'),
+  since: z.coerce.number().int().nonnegative().default(0),
+});
+export type TranslatedCaptionsQuery = z.infer<typeof TranslatedCaptionsQuery>;
+export const TranslatedCaptionLine = z.object({
+  chunkId: Id,
+  seq: z.number().int(),
+  lang: z.string(),
+  text: z.string(),
+});
+export type TranslatedCaptionLine = z.infer<typeof TranslatedCaptionLine>;
+export const TranslatedCaptionsResponse = z.array(TranslatedCaptionLine);
+export type TranslatedCaptionsResponse = z.infer<typeof TranslatedCaptionsResponse>;
+
 // GET /sessions/:id/digest (P1)
 export const DigestResponse = z.object({
   summary: z.string(),

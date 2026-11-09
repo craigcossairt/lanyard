@@ -92,6 +92,7 @@ Roles are carried by a signed token: attendee (issued on join), or speaker, orga
 | PATCH `/questions/:id` | speaker | Mark answered or hidden | WS2 |
 | POST `/sessions/:id/signals` | attendee | Send a signal (rate-limited, 1 per type per 30s per anonId) | WS2 |
 | POST `/sessions/:id/catch-up` | attendee | Summary of the last N minutes | WS2 (calls a WS1 retrieval helper) |
+| GET `/sessions/:id/captions/translated?lang=es&since=` | attendee | Recent caption chunks translated on demand (`[{ chunkId, seq, lang, text }]`, `lang` is `es` only) | WS11 |
 | GET `/sessions/:id/digest` | speaker | P1 post-talk digest | WS2 |
 | GET `/events/:eventId/ops` | organizer | Room grid snapshot | WS4 |
 | GET `/events/:eventId/ops/stream` | organizer | SSE ops stream | WS4 |
@@ -148,6 +149,7 @@ WS2 writes live state; WS4 reads it through the core `ctx.kv` client (500 ms tim
 - WS2 treats an SSE disconnect as leave after a 30 s grace.
 - WS4 stores suggestions as `reroute:{suggestionId}` HASH `{anonId, alertId, fromRoomId, toSessionId}`, TTL 15 min.
 - WS4 owns `ops:cnh-demos:simulation` (bounded run metadata retained until cleanup), its `:lease` (20-second elected runner lease), and `:stop:{runId}` (24-hour stop request). These keys contain no tokens. Persisted actor IDs use a `sim_` prefix and are never metric labels or logged.
+- WS11 caches translated caption text per chunk and language as `tr:{chunkId}:{lang}`, TTL 2 h (values are never logged).
 - Demo runs also own `ops:cnh-demos:simulation:{runId}:dispatched` (SET of fixed script action IDs), `:questions` and `:chunks` (SETs of returned synthetic record IDs), and `:offers` (HASH actor index to reroute suggestion). These bounded ledgers survive restarts and are removed only after scoped WS2 cleanup succeeds. They contain no tokens or transcript/question text.
 
 The ops rules open an overflow alert at occupancy ≥90%, and a signal-spike alert at ≥5 `lost` or `louder` signals within the rolling 60-second window. Acceptance increments `conf.reroute.accepted` once per suggestion; normal presence handles the subsequent session move.
@@ -173,6 +175,7 @@ The ops rules open an overflow alert at occupancy ≥90%, and a signal-spike ale
 | `conf.reroute.suggested` / `conf.reroute.accepted` | counter | event, room | Outcome of the ops action |
 | `conf.matches.suggested` | counter | event | Opted-in attendee suggestions returned |
 | `conf.caption.lag_ms` | histogram | event, session | Accessibility SLO: p95 < 1500 ms |
+| `conf.caption.translated` | counter | event | Caption chunks translated (Merge Forward) |
 | `conf.realtime.fanout_ms` | histogram | channel kind | Product SLO: question visible to the speaker, p95 < 1000 ms |
 | `conf.sse.clients` | gauge | channel kind | Load evidence during the demo |
 

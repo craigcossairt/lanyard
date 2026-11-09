@@ -55,7 +55,26 @@ export function readStoredLanguage(): string | null {
   return typeof value === 'string' && value.trim() ? value.trim().slice(0, 16) : null;
 }
 
+/**
+ * Choice for this visit when localStorage refuses the write. Without it,
+ * readLocaleSnapshot() would recompute from unchanged storage and undo the switch.
+ */
+let visitLocale: Locale | null = null;
+let writing = false;
+
+function rememberStoredLocale(event?: Event): void {
+  if (writing) return;
+  if (event instanceof StorageEvent && event.key !== PERSONAL_KEY && event.key !== null) return;
+  if (readStoredLanguage()) visitLocale = null;
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', rememberStoredLocale);
+  window.addEventListener(LOCALE_EVENT, rememberStoredLocale);
+}
+
 export function readLocale(): Locale {
+  if (visitLocale) return visitLocale;
   const stored = readStoredLanguage();
   if (stored) return toUiLocale(stored);
   if (typeof navigator !== 'undefined') return toUiLocale(navigator.language);
@@ -64,6 +83,7 @@ export function readLocale(): Locale {
 
 /** Language a future caption translator should target. May be a code we do not have UI strings for. */
 export function readCaptionLanguage(): string {
+  if (visitLocale) return visitLocale;
   return readStoredLanguage() ?? readLocale();
 }
 
@@ -89,14 +109,26 @@ export function applyDocumentLocale(locale: Locale = readLocale()): void {
 
 export function writeLocale(locale: Locale): void {
   const store = storage();
+  let persisted = false;
   try {
-    store?.setItem(PERSONAL_KEY, JSON.stringify({ ...readPersonal(), language: locale }));
+    if (store) {
+      store.setItem(PERSONAL_KEY, JSON.stringify({ ...readPersonal(), language: locale }));
+      persisted = true;
+    }
   } catch {
-    // Private mode: this visit only.
+    persisted = false;
   }
+  visitLocale = persisted ? null : locale;
   snapshot = { ui: locale, caption: locale };
   applyDocumentLocale(locale);
-  if (typeof window !== 'undefined') window.dispatchEvent(new Event(LOCALE_EVENT));
+  if (typeof window !== 'undefined') {
+    writing = true;
+    try {
+      window.dispatchEvent(new Event(LOCALE_EVENT));
+    } finally {
+      writing = false;
+    }
+  }
 }
 
 export function subscribeLocale(onChange: () => void): () => void {

@@ -40,34 +40,36 @@ export function JoinPage() {
   };
 
   return (
-    <main id="main" tabIndex={-1} className="shell">
+    <>
       <a href="#main" className="skip-link">
         {t('skip')}
       </a>
-      <h1>{t('joinTitle')}</h1>
-      <LanguageSelect id="join-lang" />
-      <form onSubmit={submit} className="stack">
-        <label>
-          {t('joinEvent')}{' '}
-          <select value={eventId} onChange={(e) => setEventId(e.target.value)}>
-            <option value={EVENT_IDS.cnhDemos}>CNH Demos</option>
-            <option value={EVENT_IDS.kubecon}>KubeCon + CloudNativeCon NA 2026</option>
-          </select>
-        </label>
-        <label>
-          {t('joinCode')}{' '}
-          <input value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" />
-        </label>
-        <button type="submit" disabled={busy}>
-          {busy ? t('joinBusy') : t('joinSubmit')}
-        </button>
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
-      </form>
-      <p className="muted">{t('joinNote')}</p>
-    </main>
+      <main id="main" tabIndex={-1} className="shell">
+        <h1>{t('joinTitle')}</h1>
+        <LanguageSelect id="join-lang" />
+        <form onSubmit={submit} className="stack">
+          <label>
+            {t('joinEvent')}{' '}
+            <select value={eventId} onChange={(e) => setEventId(e.target.value)}>
+              <option value={EVENT_IDS.cnhDemos}>CNH Demos</option>
+              <option value={EVENT_IDS.kubecon}>KubeCon + CloudNativeCon NA 2026</option>
+            </select>
+          </label>
+          <label>
+            {t('joinCode')}{' '}
+            <input value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" />
+          </label>
+          <button type="submit" disabled={busy}>
+            {busy ? t('joinBusy') : t('joinSubmit')}
+          </button>
+          {error && (
+            <p role="alert" className="error">
+              {error}
+            </p>
+          )}
+        </form>
+        <p className="muted">{t('joinNote')}</p>
+      </main>
+    </>
   );
 }

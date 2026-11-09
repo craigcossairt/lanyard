@@ -3,10 +3,13 @@ import { test } from 'node:test';
 import { es, en } from './messages';
 import {
   formatMessage,
+  readLocale,
+  readLocaleSnapshot,
   setCaptionTranslator,
   toUiLocale,
   translate,
   translateCaption,
+  writeLocale,
 } from './locale';
 
 test('spanish covers every english string', () => {
@@ -27,6 +30,44 @@ test('toUiLocale keeps spanish and falls back to english', () => {
   assert.equal(toUiLocale('es-MX'), 'es');
   assert.equal(toUiLocale('pt'), 'en');
   assert.equal(toUiLocale(undefined), 'en');
+});
+
+test('writeLocale keeps the choice for this visit when storage throws', () => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  const denied: Storage = {
+    getItem: () => null,
+    setItem: () => {
+      throw new Error('denied');
+    },
+    removeItem: () => undefined,
+    clear: () => undefined,
+    key: () => null,
+    length: 0,
+  };
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: denied });
+  try {
+    writeLocale('es');
+    assert.equal(readLocale(), 'es');
+    assert.deepEqual(readLocaleSnapshot(), { ui: 'es', caption: 'es' });
+    assert.equal(readLocaleSnapshot(), readLocaleSnapshot());
+  } finally {
+    const memory = new Map<string, string>();
+    const writable: Storage = {
+      getItem: (key) => memory.get(key) ?? null,
+      setItem: (key, value) => {
+        memory.set(key, value);
+      },
+      removeItem: (key) => {
+        memory.delete(key);
+      },
+      clear: () => memory.clear(),
+      key: () => null,
+      length: 0,
+    };
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: writable });
+    writeLocale('en');
+    if (previous) Object.defineProperty(globalThis, 'localStorage', previous);
+  }
 });
 
 test('translateCaption waits for a registered translator and keeps the original language', () => {

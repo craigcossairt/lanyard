@@ -1,3 +1,5 @@
+import { translateCaption } from '../../../i18n/locale';
+
 export interface CaptionChunk {
   chunkId: string;
   text: string;
@@ -28,6 +30,22 @@ export function groupCaptionLines(
     else last.lines.push(line);
   }
   return groups;
+}
+
+/**
+ * Words shown for one chunk, and the language those words are actually in.
+ * Untranslated text keeps the chunk language so a Spanish UI does not make
+ * English captions get a Spanish pronunciation. A translator result uses the
+ * caption language. setCaptionTranslator’s signature stays as it is.
+ */
+export function presentCaption(
+  text: string,
+  sourceLang: string | undefined,
+  captionLanguage: string,
+): { text: string; lang?: string } {
+  const source = sourceLang?.trim() || undefined;
+  const next = translateCaption(text, source ?? captionLanguage, captionLanguage);
+  return { text: next, lang: next !== text ? captionLanguage : source };
 }
 
 export function speakerLabel(names: readonly string[]): string {

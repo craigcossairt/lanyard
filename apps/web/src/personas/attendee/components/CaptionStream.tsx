@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../../i18n/useI18n';
-import { translateCaption } from '../../../i18n/locale';
 import type { CaptionLine } from '../lib/live';
-import { groupCaptionLines, speakerLabel, type CaptionChunk } from './captions';
+import { groupCaptionLines, presentCaption, speakerLabel, type CaptionChunk } from './captions';
 
 interface Props {
   lines: CaptionLine[];
@@ -51,11 +50,10 @@ export function CaptionStream({ lines, status, speakers = [] }: Props) {
   };
 
   const fallback = speakerLabel(speakers);
-  const shown: CaptionChunk[] = lines.map((line) => ({
-    chunkId: line.chunkId,
-    speaker: line.speaker,
-    text: translateCaption(line.text, line.lang ?? captionLanguage, captionLanguage),
-  }));
+  const shown: CaptionChunk[] = lines.map((line) => {
+    const presented = presentCaption(line.text, line.lang, captionLanguage);
+    return { chunkId: line.chunkId, speaker: line.speaker, ...presented };
+  });
   const groups = groupCaptionLines(shown, fallback);
   const latest = shown[shown.length - 1];
   const previous = shown[shown.length - 2];
@@ -95,6 +93,7 @@ export function CaptionStream({ lines, status, speakers = [] }: Props) {
                 {group.lines.map((line) => (
                   <p
                     key={line.chunkId}
+                    lang={line.lang}
                     className={
                       line.chunkId === latest?.chunkId
                         ? 'at-captions__line at-captions__line--latest'
@@ -110,7 +109,7 @@ export function CaptionStream({ lines, status, speakers = [] }: Props) {
         </div>
       </div>
       {/* Screen readers hear only the newest line, politely, plus a speaker change. */}
-      <div className="at-sr-only" aria-live="polite" aria-atomic="true">
+      <div className="at-sr-only" aria-live="polite" aria-atomic="true" lang={latest?.lang}>
         {announce}
       </div>
       {!following && (

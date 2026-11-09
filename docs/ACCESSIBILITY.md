@@ -68,7 +68,8 @@ Status is after the WS6 attendee language and caption pass, on top of `main` onc
 ### Attendee live session (`/a/s/:id`)
 
 - [x] Skip link, `h1`, labelled sections, dock `nav`
-- [x] Captions expose history to the keyboard and announce only the newest line (`aria-live="polite"`, `aria-atomic="true"`), without moving focus
+- [x] Captions expose history to the keyboard and announce only the newest line (`aria-live="polite"`, `aria-atomic="true"`), without moving focus. Each line and that announcement set `lang` to the language of the words on screen (the chunk’s language until a translator changes them)
+- [x] Skip links on the shell, join page, and organizer board sit before `main`, so “skip to content” moves past the event picker
 - [x] Caption size follows `data-caption-size`. Reduced motion turns off smooth scroll
 - [x] Ask sheet is a modal `dialog` (focus trap, Escape, named close button, labelled textarea, `role="alert"` on failure)
 - [x] Signals have visible words and `aria-pressed="true"` while on cooldown, and the row wraps instead of staying five fixed columns

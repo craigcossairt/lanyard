@@ -55,9 +55,12 @@ function SessionLive({ id }: { id: string }) {
     }
     const delta = open - seenOpen.current;
     seenOpen.current = open;
-    if (delta > 0) {
-      setQuestionAnnounce(t(delta === 1 ? 'newQuestionsOne' : 'newQuestions', { count: delta }));
-    }
+    if (delta <= 0) return;
+    const msg = t(delta === 1 ? 'newQuestionsOne' : 'newQuestions', { count: delta, open });
+    // Clear first so a repeat of the same sentence still notifies the live region.
+    setQuestionAnnounce('');
+    const frame = requestAnimationFrame(() => setQuestionAnnounce(msg));
+    return () => cancelAnimationFrame(frame);
   }, [open, live.ready, t]);
 
   return (

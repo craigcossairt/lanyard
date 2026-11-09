@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { groupCaptionLines, speakerLabel } from '../personas/attendee/components/captions';
+import { setCaptionTranslator } from './locale';
+import { groupCaptionLines, presentCaption, speakerLabel } from '../personas/attendee/components/captions';
+
+test('presentCaption keeps the source language until a translator changes the words', () => {
+  assert.deepEqual(presentCaption('Hello', 'en', 'es'), { text: 'Hello', lang: 'en' });
+  assert.deepEqual(presentCaption('Hello', undefined, 'es'), { text: 'Hello', lang: undefined });
+  setCaptionTranslator(({ text, to }) => `${text} [${to}]`);
+  assert.deepEqual(presentCaption('Hello', 'en', 'es'), { text: 'Hello [es]', lang: 'es' });
+  setCaptionTranslator(null);
+});
 
 test('speakerLabel joins the people listed on the session', () => {
   assert.equal(speakerLabel([' Ada ', '']), 'Ada');

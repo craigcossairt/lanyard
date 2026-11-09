@@ -23,7 +23,15 @@ import { decide, moderate } from '../../core/jev';
 import { logger } from '../../core/logger';
 import { newId } from '../../core/tokens';
 import { findQuestionCluster } from './similarity';
-import { assertSameEvent, getLiveSession, keys, kv, toCluster, toQuestion } from './store';
+import {
+  assertSameEvent,
+  getLiveSession,
+  keys,
+  kv,
+  readQuestions,
+  toCluster,
+  toQuestion,
+} from './store';
 
 const meter = metrics.getMeter('lanyard');
 const questionsCounter = meter.createCounter(METRICS.questions);
@@ -68,6 +76,49 @@ async function loadQuestion(qid: string): Promise<Question> {
 
 async function loadCluster(cid: string): Promise<QuestionCluster | undefined> {
   return toCluster(await kv().hgetall(keys.cluster(cid)));
+}
+
+/** KEYS: voters, question, cluster. ARGV: anonId. Returns {added, votes}. */
+const VOTE = `if redis.call('SADD', KEYS[1], ARGV[1]) == 0 then
+  return {0, tonumber(redis.call('HGET', KEYS[2], 'votes') or '0')} end
+local v = redis.call('HINCRBY', KEYS[2], 'votes', 1)
+if redis.call('EXISTS', KEYS[3]) == 1 then redis.call('HINCRBY', KEYS[3], 'votes', 1) end
+return {1, v}`;
+
+/** KEYS: question, cluster. ARGV: status. Returns {oldStatus, clusterDeltaApplied}. */
+const SET_STATUS = `local old = redis.call('HGET', KEYS[1], 'status') or ''
+redis.call('HSET', KEYS[1], 'status', ARGV[1])
+local was, now = old == 'hidden', ARGV[1] == 'hidden'
+if was ~= now and redis.call('EXISTS', KEYS[2]) == 1 then
+  local sign = now and -1 or 1
+  local votes = tonumber(redis.call('HGET', KEYS[1], 'votes') or '0')
+  redis.call('HINCRBY', KEYS[2], 'size', sign)
+  redis.call('HINCRBY', KEYS[2], 'votes', sign * votes)
+  return {old, 1}
+end
+return {old, 0}`;
+
+/**
+ * A hidden question must not keep representing its cluster or naming it: hand both to the
+ * most-voted open member, or blank the label if none is left.
+ */
+async function relabelWithout(c: QuestionCluster, hiddenId: string): Promise<QuestionCluster> {
+  const r = kv();
+  const labelFrom = await r.hget(keys.cluster(c.id), 'labelFrom');
+  if (c.representativeQuestionId !== hiddenId && labelFrom !== hiddenId) return c;
+  const best = (await readQuestions(r, c.sessionId))
+    .filter((q) => q.clusterId === c.id && q.id !== hiddenId)
+    .sort((a, b) => b.votes - a.votes)[0];
+  const next = { ...c };
+  const patch: Record<string, string> = {};
+  if (c.representativeQuestionId === hiddenId)
+    patch.representativeQuestionId = next.representativeQuestionId = best?.id ?? '';
+  if (labelFrom === hiddenId) {
+    patch.label = next.label = best ? provisionalLabel(best.text) : '';
+    patch.labelFrom = best?.id ?? '';
+  }
+  await r.hset(keys.cluster(c.id), patch);
+  return next;
 }
 
 export function registerQuestions(app: FastifyInstance): void {
@@ -127,26 +178,25 @@ export function registerQuestions(app: FastifyInstance): void {
         if (status === 'open') {
           await r
             .multi()
-            .hset(keys.cluster(cluster.id), cluster)
+            .hset(keys.cluster(cluster.id), { ...cluster, labelFrom: qid })
             .sadd(keys.clusters(s.id), cluster.id)
             .exec();
         }
       }
 
-      await Promise.all([
-        r
-          .multi()
-          .hset(keys.question(qid), { ...q, eventId: s.eventId, intent: intent.label })
-          .lpush(keys.questions(s.id), qid)
-          .incr(keys.questionCount(s.id))
-          .exec(),
-        es(ES_INDICES.questions, 'index', (c, o) =>
-          c.index(
-            { index: ES_INDICES.questions, id: qid, document: { ...q, intent: intent.label } },
-            o,
-          ),
+      await r
+        .multi()
+        .hset(keys.question(qid), { ...q, eventId: s.eventId, intent: intent.label })
+        .lpush(keys.questions(s.id), qid)
+        .incr(keys.questionCount(s.id))
+        .exec();
+      // Valkey holds the live value; the ES record (and WS1's dedup corpus) follows.
+      es(ES_INDICES.questions, 'index', (c, o) =>
+        c.index(
+          { index: ES_INDICES.questions, id: qid, document: { ...q, intent: intent.label } },
+          o,
         ),
-      ]);
+      ).catch(() => logger.warn('question record failed'));
 
       questionsCounter.add(1, { event: s.eventId, session: s.id });
       if (status === 'open') {
@@ -168,16 +218,18 @@ export function registerQuestions(app: FastifyInstance): void {
         throw new HttpError(403, 'forbidden', 'Token is for another event');
       if (q.status === 'hidden') throw new HttpError(404, 'question_not_found', 'No such question');
       const r = kv();
-      // One vote per attendee per question; a repeat vote is a no-op.
-      if ((await r.sadd(keys.voters(q.id), claims.sub)) === 0)
-        return { questionId: q.id, votes: q.votes };
-
-      const res = await r
-        .multi()
-        .hincrby(keys.question(q.id), 'votes', 1)
-        .hincrby(keys.cluster(q.clusterId), 'votes', 1)
-        .exec();
-      q.votes = Number(res?.[0]?.[1] ?? q.votes + 1);
+      // One vote per attendee per question; a repeat vote is a no-op. Atomic, so a
+      // recorded voter always has a counted vote.
+      const [added, votes] = (await r.eval(
+        VOTE,
+        3,
+        keys.voters(q.id),
+        keys.question(q.id),
+        keys.cluster(q.clusterId),
+        claims.sub,
+      )) as [number, number];
+      q.votes = Number(votes);
+      if (added === 0) return { questionId: q.id, votes: q.votes };
       const cluster = await loadCluster(q.clusterId);
       // The most-voted question represents its cluster.
       if (cluster && cluster.representativeQuestionId !== q.id) {
@@ -208,20 +260,31 @@ export function registerQuestions(app: FastifyInstance): void {
       if (q.eventId && q.eventId !== claims.eventId)
         throw new HttpError(403, 'forbidden', 'Token is for another event');
       const r = kv();
-      const wasHidden = q.status === 'hidden';
+      // Status change and cluster deltas in one script: concurrent PATCHes apply a
+      // visibility transition once. Hiding takes the question (and its votes) out of its
+      // cluster; unhiding puts them back.
+      const [old, applied] = (await r.eval(
+        SET_STATUS,
+        2,
+        keys.question(q.id),
+        keys.cluster(q.clusterId),
+        status,
+      )) as [string, number];
+      const wasHidden = old === 'hidden';
       q.status = status;
-      await r.hset(keys.question(q.id), 'status', status);
-
-      // Hiding takes a question (and its votes) out of its cluster; unhiding puts it back.
       let cluster = await loadCluster(q.clusterId);
-      if (cluster && wasHidden !== (status === 'hidden')) {
-        const sign = status === 'hidden' ? -1 : 1;
-        const res = await r
-          .multi()
-          .hincrby(keys.cluster(cluster.id), 'size', sign)
-          .hincrby(keys.cluster(cluster.id), 'votes', sign * q.votes)
-          .exec();
-        cluster = { ...cluster, size: Number(res?.[0]?.[1]), votes: Number(res?.[1]?.[1]) };
+      if (cluster && applied && status === 'hidden') {
+        cluster = await relabelWithout(cluster, q.id);
+      } else if (cluster && applied && (!cluster.label || !cluster.representativeQuestionId)) {
+        // Unhidden into a cluster that lost its label or representative: it takes both.
+        const patch: Record<string, string> = {};
+        if (!cluster.label) {
+          patch.label = cluster.label = provisionalLabel(q.text);
+          patch.labelFrom = q.id;
+        }
+        if (!cluster.representativeQuestionId)
+          patch.representativeQuestionId = cluster.representativeQuestionId = q.id;
+        await r.hset(keys.cluster(cluster.id), patch);
       } else if (!cluster && wasHidden && status !== 'hidden') {
         // Hidden at ask time, so it never opened a cluster: open one now.
         cluster = {
@@ -234,7 +297,7 @@ export function registerQuestions(app: FastifyInstance): void {
         };
         await r
           .multi()
-          .hset(keys.cluster(cluster.id), cluster)
+          .hset(keys.cluster(cluster.id), { ...cluster, labelFrom: q.id })
           .sadd(keys.clusters(q.sessionId), cluster.id)
           .exec();
       }

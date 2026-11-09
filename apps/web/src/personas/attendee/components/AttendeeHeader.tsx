@@ -12,17 +12,15 @@ export function AttendeeHeader({ eventName, handle, title, back }: Props) {
   const { pathname } = useLocation();
   const isHome = pathname === '/a' || pathname === '/a/';
   return (
-    <header className="at-header">
-      <a href="#main" className="at-skip">
-        Skip to content
-      </a>
+    <div className="at-header">
+      {/* The shell's app bar above carries the brand and the skip link. */}
       <div className="at-header__row">
         {back && !isHome ? (
           <Link to="/a" className="at-back" aria-label="Back to home">
             <span aria-hidden="true">‹</span> Home
           </Link>
         ) : (
-          <span className="at-brand">Lanyard</span>
+          <span />
         )}
         {handle && (
           <span className="at-handle" title="Your anonymous handle for this event">
@@ -31,7 +29,7 @@ export function AttendeeHeader({ eventName, handle, title, back }: Props) {
           </span>
         )}
       </div>
-      <h1 className="at-title">{title ?? eventName ?? ' '}</h1>
-    </header>
+      <h1 className="at-title">{title ?? (eventName ? `Today at ${eventName}` : ' ')}</h1>
+    </div>
   );
 }

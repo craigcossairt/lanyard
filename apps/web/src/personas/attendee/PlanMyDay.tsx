@@ -10,13 +10,15 @@ import { cachedSessions, useMySchedule } from './lib/schedule';
 import { useEventId, useSession } from './lib/session';
 
 /**
- * WS1 is adding the cited sessions to the response (title, room, startsAt/endsAt, track,
- * speakerNames). Every field is read defensively so an older API shape still renders.
+ * WS1's contract (#93): 200 → { plan, summary, sessions: PlanSession[] } with
+ * PlanSession = Session & { roomName }, ordered 1:1 with `plan`; the summary already carries
+ * event-local times. 202 → { plan: [], sessions: [], summary: 'Preparing your day plan…' }
+ * with Retry-After: 2. Fields are read defensively so an older 200 shape still renders.
  */
 interface PlanSession {
   id: string;
   title?: string;
-  room?: string;
+  roomName?: string;
   roomId?: string;
   startsAt?: string;
   endsAt?: string;
@@ -25,6 +27,12 @@ interface PlanSession {
   status?: Session['status'];
 }
 type PlanResponse = PlanMyDayResponse & { sessions?: PlanSession[] };
+
+const PENDING_RETRIES = 6;
+const PENDING_RETRY_MS = 2_000;
+/** The 202 shape: nothing planned yet and a "Preparing…" summary. */
+const isPending = (r: PlanResponse) =>
+  r.plan.length === 0 && (r.sessions?.length ?? 0) === 0 && /preparing/i.test(r.summary);
 
 /** A card's data: a full Session when we know it, else what the plan response gave us. */
 interface CardData {
@@ -62,6 +70,7 @@ export default function PlanMyDay() {
   const [state, setState] = useState<{
     status: 'idle' | 'loading' | 'done' | 'error';
     plan?: PlanResponse;
+    pending?: string;
     error?: string;
   }>({ status: 'idle' });
   const tz = view?.event.timezone;
@@ -79,10 +88,24 @@ export default function PlanMyDay() {
     setPrefs({ interests: text }, { mirror: false });
     setState({ status: 'loading' });
     try {
-      const plan = await api.post<PlanResponse>(
-        `/events/${encodeURIComponent(eventId)}/plan-my-day`,
-        { interests: text },
-      );
+      let plan: PlanResponse | null = null;
+      // The API answers 202 "Preparing…" (empty plan, Retry-After: 2) while the worker runs.
+      for (let attempt = 0; attempt < PENDING_RETRIES; attempt += 1) {
+        const res = await api.post<PlanResponse>(
+          `/events/${encodeURIComponent(eventId)}/plan-my-day`,
+          { interests: text },
+        );
+        if (!isPending(res)) {
+          plan = res;
+          break;
+        }
+        setState({ status: 'loading', pending: res.summary });
+        await new Promise((r) => setTimeout(r, PENDING_RETRY_MS));
+      }
+      if (!plan) {
+        setState({ status: 'error', error: 'Still preparing your plan. Try again in a moment.' });
+        return;
+      }
       setState({ status: 'done', plan });
     } catch (err) {
       setState({
@@ -102,7 +125,7 @@ export default function PlanMyDay() {
       const fromDevice = known[p.sessionId];
       if (!fromApi && !fromDevice) return [];
       const session = toSession(eventId, fromApi ?? { id: p.sessionId }, fromDevice);
-      const roomName = roomById(view?.rooms, session.roomId)?.name ?? fromApi?.room;
+      const roomName = fromApi?.roomName ?? roomById(view?.rooms, session.roomId)?.name;
       return [{ session, roomName, reason: p.reason }];
     });
   }, [state.plan, known, eventId, view?.rooms]);
@@ -155,7 +178,7 @@ export default function PlanMyDay() {
 
         <p role="status" aria-live="polite" className="ly-muted">
           {state.status === 'loading'
-            ? 'Reading the schedule and picking talks that fit together…'
+            ? (state.pending ?? 'Reading the schedule and picking talks that fit together…')
             : ''}
         </p>
 

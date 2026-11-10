@@ -25,7 +25,7 @@ Attendees join from a QR with no account. The only identity is a generated handl
 - **Ask.** Questions are anonymous. If someone already asked the same thing, the new question joins that cluster.
 - **Signals.** Buttons with an icon and a word. Sending one shows “Sent” and `aria-pressed`, not a colour change alone. The speaker sees counts for 60 seconds.
 - **Catch up.** One action. The summary is generated from captions, not from a separate account of who left the room.
-- **Display.** Display & access sets caption size, light / dark / high contrast, readable spacing, and reduced motion. High contrast is also the start state when the OS asks for more contrast. The language list on that page is stored for caption translation; it does not switch the interface yet.
+- **Display.** Display & access sets caption size, light / dark / high contrast, readable spacing, and reduced motion. The app starts in the dark theme; high contrast is one tap away in Display & access and is remembered on the device. The language list on that page is stored for caption translation; it does not switch the interface yet.
 - **Skip link.** The app bar’s “Skip to content” moves focus to `#main` (or the first `<main>`). Full-screen live and speaker views hide the bar and carry their own skip link.
 - **Meet people.** The profile starts private. The consent copy says who can see the handle and LinkedIn link, that Lanyard does not fetch the LinkedIn page, and that opting out deletes the profile. The control is a toggle with `aria-pressed`.
 

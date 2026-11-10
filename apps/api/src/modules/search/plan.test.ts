@@ -42,6 +42,7 @@ test('plan smoke rejects invented ids, removes overlaps and caches pending work'
       text: JSON.stringify({
         plan: ['c', 'a', 'b'].map((sessionId) => ({ sessionId, reason: 'fixture' })),
         summary: 'fixture',
+        sessions: [{ id: 'model-echo-without-full-metadata' }],
       }),
       model: 'fixture',
       inputTokens: 1,

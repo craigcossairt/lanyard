@@ -13,6 +13,7 @@ import { searchSessions } from './search';
 import { localDayWindow } from './day';
 
 export type PlanInput = z.infer<typeof PlanMyDayRequest>;
+const PlanGeneration = PlanMyDayResponse.pick({ plan: true, summary: true });
 
 export async function generatePlan(
   eventId: string,
@@ -51,7 +52,7 @@ export async function generatePlan(
   });
   let answer: PlanMyDayResponse;
   try {
-    answer = PlanMyDayResponse.parse(JSON.parse(result.text));
+    answer = PlanGeneration.parse(JSON.parse(result.text));
   } catch {
     throw new HttpError(502, 'invalid_plan', 'Generation returned an invalid schedule');
   }

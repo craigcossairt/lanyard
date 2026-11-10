@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { formatRange, type PlanMyDayResponse, type Session } from '@lanyard/contracts';
 import { Banner, Button, Card, EmptyState, LivePill, StatusPill, TextArea } from '../../ui';
@@ -275,7 +275,8 @@ function PlanCard({
 }) {
   const { session, roomName, reason } = data;
   const live = session.status === 'live';
-  const headingId = `plan-${session.id}`;
+  // A session can appear in both Your plan and My schedule: ids must be unique per card.
+  const headingId = useId();
   const when =
     session.startsAt && session.endsAt ? formatRange(session.startsAt, session.endsAt, tz) : '';
   return (

@@ -141,7 +141,10 @@ Example trace `5daefec5a09af31922bcc1bf747fc9ec` (2.77 s): `POST /api/sessions/:
 
 - **First verdict (22:34Z):** "The app Deployment is healthy: both pods are ready and the latest rollout completed successfully." `healthy: true`, `certainty: established`, `confidence: 0.9`. The restart chart for the hour was flat at zero, there were 0 live issues, and the one startup-probe blip at 22:31:18Z was a rollout race (the app was listening by 22:31:19.966Z).
 - **What this shows:** the cluster absorbed the surge with no crash, OOM or restart, and recovered on its own. The latency root cause sits in Elasticsearch, outside Kubernetes, which is why Agent0 (spans) found it and Radar (cluster state) didn't. The two tools are complementary.
-- **Follow-up** (22:43Z, aimed at the drill window, the HPA and the CFS throttling): *(pending, added when it lands)*.
+- **Follow-up** (asked 22:43Z, answered 22:48Z, aimed at the drill window): *"The HPA scaled app correctly, but the two new pods stayed idle while the two original pods stayed CPU-throttled from sticky SSE traffic."* `certainty: likely`, `confidence: 0.75`.
+  - **Did well:** the HPA scaled 2 → 4 within seconds of crossing 60% (22:21:15Z) and waited out its 180 s stabilization before scaling down (22:27:15Z).
+  - **Limited by:** the original pods sat at 66–70% of the 0.5-core limit with **18–33% CFS throttling**, while the new pods stayed under 4%. Radar ruled out Service `sessionAffinity` (it's `None`) and new pods failing to become ready. It attributed the skew to Service load-balancing choosing a backend only when a connection opens.
+  - **Recommended:** raise the CPU limit (done in #84: 650m) and redistribute long-lived connections after a scale-up (WS0's 12 s rotation, #59, does exactly this).
 
 ### Re-run (22:54–23:00Z): crash loop, a real outage (Radar issue `dd66c0ce35d63e27`)
 
@@ -157,10 +160,15 @@ This was two Jobs of 150 attendees (`load-002a`, `load-002b`, so the generator w
   - The event loop sat at **100% from 22:55:30 to 23:00:30**, with lag p99 up to 3.11 s (baseline about 12 ms) and GC at 18 to 28% of wall time.
   - Each restart dropped about 150 streams onto the survivor (a burst of about 100k `hgetall`).
   - The simulator and ES dedup were victims, not causes. Recovery came when the load stopped.
+- **Radar hosted investigation** [`chat_OUFaLLO4FC-2vVAj`](https://app.radarhq.io/c/kdJiSEnVNl0/investigations/chat_OUFaLLO4FC-2vVAj?org=org_NCJbssDGEBsU) on issue `dd66c0ce35d63e27`, started by the orchestrator at 23:03Z:
+  - *"App's pods crash-looped for several minutes after a rollout; they self-recovered and are now healthy."* `certainty: likely`, `confidence: 0.65`.
+  - It tied the onset to a rollout at 22:55:22Z (`a0764dd` → `3dfc1ca`). It read the Valkey "Connection is closed" errors as a side effect of the kills, not the trigger, because Valkey itself had no incident.
+  - It listed as unresolved why the pods couldn't pass their probes, and suggested checking whether `/healthz` and `/readyz` depend on slow dependencies.
+- **How the two tools fit together:** Radar saw the cluster side (probe failures, restarts, a coincident rollout, Valkey errors as a symptom) and correctly flagged the cause as unresolved. Agent0 had in-process telemetry and closed it. The `a0764dd` pods were **already at 100% event-loop use (p99 0.52 s) before they were replaced**, so the rollout was not the trigger; snapshot load was. Each tool covered the other's blind spot.
 - **Lesson:** fixing incident B (rotation) multiplied the cost of a per-connect snapshot. A "cheap resume" has to skip the snapshot when `Last-Event-ID` is present.
 
 | Fix | Owner | Status |
 |---|---|---|
-| Liveness timeout 1 → 5 s, failureThreshold 3 → 6; readiness timeout 3 s; HPA `minReplicas` 2 → 3; app CPU limit 500m → 650m; worker `maxSurge: 0` (keeps the 4.0 CPU limits budget) | WS5 | [PR #84](https://github.com/craigcossairt/lanyard/pull/84) (stops the kill loop; Agent0: the worst lag of 3.1 s would not trip 6 × 5 s) |
-| Skip the snapshot on resume with `Last-Event-ID`; fetch the snapshot in one pipelined round trip or cache it per session | WS0 / WS2 | Raised as demo-blocking. About 100 phones means about 5,800 `hgetall`/s, still over two pods' capacity |
+| Liveness timeout 1 → 5 s, failureThreshold 3 → 6; readiness timeout 3 s; HPA `minReplicas` 2 → 3; app CPU limit 500m → 650m; worker `maxSurge: 0` (keeps the 4.0 CPU limits budget) | WS5 | **Merged** as [PR #84](https://github.com/craigcossairt/lanyard/pull/84) at 16:47 MT. Verified through Radar at 23:55Z: Argo Synced and Healthy, `app` 3/3, `worker` 1/1, 0 issues, and the change feed shows the new probe values and limits on the pods. This stops the kill loop: per Agent0, the worst lag of 3.1 s would not trip 6 × 5 s. |
+| Skip the snapshot on resume with `Last-Event-ID`; fetch the snapshot in one pipelined round trip or cache it per session; jitter the rotation | WS0 / WS2 | **Next: the #1 post-hackathon fix.** It doesn't block the video, because the SIMULATED attendees don't open SSE streams and only a handful of real viewers do. At about 100 phones it would mean about 5,800 `hgetall`/s, over two pods' capacity. |
 | No load Jobs during recording; resize the generator (two Jobs) | WS5 | Done |

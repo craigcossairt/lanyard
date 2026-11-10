@@ -40,6 +40,7 @@ test('search route and retrieval helpers smoke', async (t) => {
   const requests: estypes.SearchRequest[] = [];
   let partial = false;
   let expireAsk = false;
+  let expirePlan = false;
   let restoreClock: (() => void) | undefined;
   t.after(() => restoreClock?.());
   const mocked = mock.method(
@@ -48,6 +49,14 @@ test('search route and retrieval helpers smoke', async (t) => {
     async (request: estypes.SearchRequest, opts: { requestTimeout: number }) => {
       assert.equal(opts.requestTimeout, request.index === 'cnh-questions' ? 4000 : 2000);
       requests.push(request);
+      if (request.index === 'cnh-events') return { hits: { hits: [{ _id: 'event', _source: {
+        id: 'event', name: 'Fixture', timezone: 'America/Denver', venueName: 'Fixture',
+        startsAt: '2026-11-09T00:00:00Z', endsAt: '2026-11-11T00:00:00Z',
+      } }] } };
+      if (request.index === 'cnh-rooms') return { hits: { hits: [{ _id: 'room', _source: {
+        id: 'room', eventId: 'event', name: 'Main Stage', capacity: 30, floor: 1, x: 0, y: 0,
+        accessibility: { stepFree: true, hearingLoop: false, quiet: false },
+      } }] } };
       if (Array.isArray(request.index)) {
         if (expireAsk) {
           const now = Date.now();
@@ -85,6 +94,11 @@ test('search route and retrieval helpers smoke', async (t) => {
             })),
           },
         };
+      if (expirePlan) {
+        const now = Date.now();
+        const clock = mock.method(Date, 'now', () => now + 8_000);
+        restoreClock = () => clock.mock.restore();
+      }
       return {
         timed_out: partial,
         hits: {
@@ -183,6 +197,18 @@ test('search route and retrieval helpers smoke', async (t) => {
     (await app.inject({ url: '/api/events/event/search?q=kernel', headers })).statusCode,
     503,
   );
+  partial = false;
+  expirePlan = true;
+  const pendingPlan = await app.inject({
+    method: 'POST', url: '/api/events/event/plan-my-day', headers,
+    payload: { interests: 'kernel', date: '2026-11-09' },
+  });
+  restoreClock?.();
+  expirePlan = false;
+  assert.equal(pendingPlan.statusCode, 202);
+  assert.equal(pendingPlan.headers['retry-after'], '2');
+  assert.deepEqual(pendingPlan.json().plan, []);
+  assert.deepEqual(pendingPlan.json().sessions, []);
   expireAsk = true;
   const organizer = signToken(
     key,

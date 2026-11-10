@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { Session } from '@lanyard/contracts';
+import { PlanMyDayResponse, type PlanSession } from '@lanyard/contracts';
 import { cachedGeneration } from './generation';
 import { generatePlan } from './plan';
 import { localDayWindow } from './day';
@@ -15,17 +15,18 @@ test('plan smoke rejects invented ids, removes overlaps and caches pending work'
   assert.equal(Date.parse(spring.to) - Date.parse(spring.from), 23 * 3600_000);
   const fall = localDayWindow('2026-11-01', 'America/Denver');
   assert.equal(Date.parse(fall.to) - Date.parse(fall.from), 25 * 3600_000);
-  const session: Session = {
+  const session: PlanSession = {
     id: 'a',
     eventId: 'event',
     roomId: 'room',
+    roomName: 'Main Stage',
     title: 'Kernel safety',
     abstract: 'fixture',
     track: 'Security',
     level: 'Beginner',
     tags: [],
     speakerIds: [],
-    speakerNames: [],
+    speakerNames: ['Fixture Speaker'],
     startsAt: '2026-11-09T18:00:00Z',
     endsAt: '2026-11-09T19:00:00Z',
     status: 'scheduled',
@@ -41,7 +42,7 @@ test('plan smoke rejects invented ids, removes overlaps and caches pending work'
     return {
       text: JSON.stringify({
         plan: ['c', 'a', 'b'].map((sessionId) => ({ sessionId, reason: 'fixture' })),
-        summary: 'fixture',
+        summary: 'Starts at 18:00 UTC.',
         sessions: [{ id: 'model-echo-without-full-metadata' }],
       }),
       model: 'fixture',
@@ -49,13 +50,25 @@ test('plan smoke rejects invented ids, removes overlaps and caches pending work'
       outputTokens: 1,
     };
   };
-  const result = await generatePlan('event', { interests: 'kernel' }, candidates, generate);
+  const result = await generatePlan('event', { interests: 'kernel' }, candidates, 'America/Denver', generate);
   assert.deepEqual(
     result.plan.map((p) => p.sessionId),
     ['a', 'c'],
   );
+  assert.deepEqual(result.sessions, [candidates[0], candidates[2]]);
+  assert.equal(result.sessions[0]?.roomName, 'Main Stage');
+  assert.deepEqual(result.sessions[0]?.speakerNames, ['Fixture Speaker']);
+  assert.ok(PlanMyDayResponse.safeParse(result).success);
+  assert.match(result.summary, /11:00.*1:00.*PM/);
+  assert.match(result.summary, /America\/Denver/);
+  assert.doesNotMatch(result.summary, /UTC|18:00|20:00/);
+  const eastern = await generatePlan('event', { interests: 'kernel' }, candidates, 'America/New_York', generate);
+  assert.match(eastern.summary, /1:00.*3:00.*PM/);
+  assert.match(eastern.summary, /America\/New_York/);
+  const empty = await generatePlan('event', { interests: 'kernel' }, [], 'America/Denver', generate);
+  assert.deepEqual(empty.sessions, []);
   await assert.rejects(
-    generatePlan('other-event', { interests: 'kernel' }, candidates, generate),
+    generatePlan('other-event', { interests: 'kernel' }, candidates, 'America/Denver', generate),
     /outside/,
   );
   const invented: Generate = async () => ({
@@ -65,7 +78,7 @@ test('plan smoke rejects invented ids, removes overlaps and caches pending work'
     outputTokens: 1,
   });
   await assert.rejects(
-    generatePlan('event', { interests: 'kernel' }, candidates, invented),
+    generatePlan('event', { interests: 'kernel' }, candidates, 'America/Denver', invented),
     /outside/,
   );
   let finish!: (value: number) => void;

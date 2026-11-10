@@ -5,6 +5,15 @@ returns the shared `SearchResponse`. `track` and `level` match exact indexed
 values. `from`/`to` are UTC instants selecting sessions overlapping `[from,to)`.
 Highlight strings are plain text; render them as text, never as HTML.
 
+Plan-my-day's 200 response includes `sessions`, one full `PlanSession` per
+selected `plan` entry, in the same order. `roomName` is joined from the event's
+room catalogue; UTC `startsAt`/`endsAt` and all other Session fields are retained.
+The server builds the summary with the event-timezone helpers after validating
+and sorting the selected IDs, so model-supplied UTC prose cannot reach it.
+After the 7.5 s request deadline, generation still pending returns 202 with
+`Retry-After: 2` and empty `plan`/`sessions`; retry the same body and treat only
+200 as final. The shared bounded cache retains the 20 s generation.
+
 WS2 imports `findQuestionCluster` and `lastTranscriptChunks` from `helpers.ts`.
 Questions/transcripts must store `eventId` and `sessionId` as contract fields;
 Elasticsearch fills `semantic` through `copy_to`. Duplicate lookup excludes the

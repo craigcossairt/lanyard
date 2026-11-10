@@ -42,7 +42,9 @@ export default defineModule({
           return await planMyDay(eventId, parse(PlanMyDayRequest, req.body), deadline);
         } catch (error) {
           if (error instanceof HttpError && error.code === 'generation_pending')
-            reply.header('Retry-After', '2');
+            return reply.code(202).header('Retry-After', '2').send({
+              plan: [], sessions: [], summary: 'Preparing your day plan. Retry shortly.',
+            });
           throw error;
         }
       },

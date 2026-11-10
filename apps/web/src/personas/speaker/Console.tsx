@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import type { Session } from '@lanyard/contracts';
 import { buildClusterViews } from '../attendee/components/QuestionList';
@@ -10,6 +10,8 @@ import { useSpeechCaptions } from './lib/captions';
 import { useSpeakerConsole } from './lib/console';
 
 const STAGE_KEY = 'lanyard.speaker.stage';
+const PREVIEW_LINES = 6;
+const LIVE_WINDOW_MS = 15_000;
 
 export default function ConsoleRoute() {
   const { id = '' } = useParams();
@@ -80,6 +82,28 @@ function Console({ id }: { id: string }) {
   };
 
   const listening = captions.state === 'listening' || captions.state === 'starting';
+  // What attendees see comes from the stream (snapshot tail + caption.appended), whatever the
+  // source: this mic, typed notes, or a scripted speaker. Our own POSTs echo back on the stream,
+  // so the local list is only a fallback until the echo arrives.
+  const lines =
+    live.captions.length > 0
+      ? live.captions.map((c) => ({ id: c.chunkId, text: c.text }))
+      : captions.recent.map((text, i) => ({ id: `local-${i}`, text }));
+  // Only the tail is rendered (full history stays in state); keep it scrolled to the latest.
+  const visible = lines.slice(-PREVIEW_LINES);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const latestId = visible[visible.length - 1]?.id;
+  useEffect(() => {
+    const el = previewRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [latestId, captions.interim]);
+  // "Live" means a caption arrived in the last 15 s from any source, not just that history exists.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 5_000);
+    return () => clearInterval(t);
+  }, []);
+  const captionsLive = live.lastCaptionAt !== null && now - live.lastCaptionAt < LIVE_WINDOW_MS;
 
   return (
     <div className={`sp-page${stage ? ' sp-page--stage' : ''}`}>
@@ -97,6 +121,9 @@ function Console({ id }: { id: string }) {
               <span className="sp-pill">Ended</span>
             ) : (
               <span className="sp-pill sp-pill--live">● Live</span>
+            )}
+            {captionsLive && !listening && (
+              <span className="sp-pill sp-pill--live"> ● Captions live</span>
             )}
             {live.stream === 'reconnecting' && <span> · Reconnecting…</span>}
           </p>
@@ -164,17 +191,24 @@ function Console({ id }: { id: string }) {
             {captions.state === 'starting' && 'Starting the microphone…'}
             {captions.state === 'idle' &&
               captions.supported &&
-              'Captions are off. Attendees see them the moment you start.'}
+              (captionsLive
+                ? 'Captions are coming from another source. Start the mic to add yours.'
+                : 'Captions are off. Attendees see them the moment you start.')}
             {captions.state === 'blocked' && 'Microphone blocked.'}
           </p>
           {/* Screen readers hear each published caption once; interim text stays silent. */}
           <div className="at-sr-only" aria-live="polite" aria-atomic="true">
-            {captions.recent[captions.recent.length - 1] ?? ''}
+            {lines[lines.length - 1]?.text ?? ''}
           </div>
-          <div className="sp-captions" aria-label="What attendees see">
-            {captions.recent.map((line, i) => (
-              <p key={`${i}-${line.slice(0, 12)}`} className="sp-captions__final">
-                {line}
+          <div
+            ref={previewRef}
+            className="sp-captions"
+            aria-label="What attendees see"
+            style={{ maxHeight: '40vh', overflowY: 'auto' }}
+          >
+            {visible.map((line) => (
+              <p key={line.id} className="sp-captions__final">
+                {line.text}
               </p>
             ))}
             {captions.interim && (
@@ -182,7 +216,7 @@ function Console({ id }: { id: string }) {
                 {captions.interim}
               </p>
             )}
-            {captions.recent.length === 0 && !captions.interim && (
+            {lines.length === 0 && !captions.interim && (
               <p className="sp-muted">Your words appear here as you speak.</p>
             )}
           </div>

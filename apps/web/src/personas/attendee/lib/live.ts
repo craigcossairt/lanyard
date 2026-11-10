@@ -30,7 +30,7 @@ export interface LiveSnapshot {
     sessionId: string;
     roomId: string;
     status: string;
-    captions: Array<{ chunkId: string; seq: number; text: string; lang: string }>;
+    captions: Array<{ chunkId: string; seq: number; text: string; lang: string; endedAt?: string }>;
     questions: Question[];
     clusters: QuestionCluster[];
     signals?: { counts: Record<string, number> };

@@ -8,7 +8,7 @@ import type {
   SignalType,
 } from '@lanyard/contracts';
 import { api } from '../../attendee/lib/api';
-import type { LiveSnapshot } from '../../attendee/lib/live';
+import type { CaptionLine, LiveSnapshot } from '../../attendee/lib/live';
 import { useSse, type SseStatus, type StreamEvent } from '../../attendee/lib/sse';
 
 export type SignalCounts = Partial<Record<SignalType, number>>;
@@ -19,8 +19,18 @@ interface State {
   clusters: QuestionCluster[];
   signals: SignalCounts;
   attendance: { count: number; capacity: number } | null;
-  captionCount: number;
+  /** What attendees see: snapshot tail plus every caption.appended, from any source. */
+  captions: CaptionLine[];
+  /** Epoch ms when the newest caption arrived (snapshot tail uses its endedAt). */
+  lastCaptionAt: number | null;
   ended: boolean;
+}
+
+const MAX_CAPTIONS = 300;
+function addCaption(list: CaptionLine[], c: CaptionLine): CaptionLine[] {
+  // Our own POSTs echo back on the stream: one entry per chunk id.
+  if (list.some((x) => x.chunkId === c.chunkId)) return list;
+  return [...list, c].sort((a, b) => a.seq - b.seq).slice(-MAX_CAPTIONS);
 }
 
 type Action =
@@ -57,7 +67,15 @@ function reducer(state: State, action: Action): State {
       clusters: p.clusters,
       signals: (p.signals?.counts ?? {}) as SignalCounts,
       attendance: p.attendance ?? state.attendance,
-      captionCount: p.captions.length,
+      captions: p.captions
+        .map((c) => ({ chunkId: c.chunkId, seq: c.seq, text: c.text }))
+        .sort((a, b) => a.seq - b.seq)
+        .slice(-MAX_CAPTIONS),
+      lastCaptionAt: (() => {
+        const last = p.captions[p.captions.length - 1];
+        const t = last?.endedAt ? Date.parse(last.endedAt) : NaN;
+        return Number.isFinite(t) ? t : null;
+      })(),
       ended: p.status === 'ended',
     };
   }
@@ -65,7 +83,15 @@ function reducer(state: State, action: Action): State {
   const sid = state.questions[0]?.sessionId ?? state.clusters[0]?.sessionId ?? '';
   switch (m.type) {
     case 'caption.appended':
-      return { ...state, captionCount: state.captionCount + 1 };
+      return {
+        ...state,
+        captions: addCaption(state.captions, {
+          chunkId: m.payload.chunkId,
+          seq: m.payload.seq,
+          text: m.payload.text,
+        }),
+        lastCaptionAt: Date.now(),
+      };
     case 'question.created':
     case 'question.updated':
       return {
@@ -129,7 +155,8 @@ const initial: State = {
   clusters: [],
   signals: {},
   attendance: null,
-  captionCount: 0,
+  captions: [],
+  lastCaptionAt: null,
   ended: false,
 };
 

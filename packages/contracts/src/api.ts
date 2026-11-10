@@ -102,9 +102,13 @@ export const PlanMyDayRequest = z.object({
   interests: z.string().max(500),
   date: z.string().optional(),
 });
+export const PlanSession = Session.extend({ roomName: z.string() });
+export type PlanSession = z.infer<typeof PlanSession>;
 export const PlanMyDayResponse = z.object({
   plan: z.array(z.object({ sessionId: Id, reason: z.string() })),
   summary: z.string(),
+  // Optional for compatibility with the previous API during rolling upgrades.
+  sessions: z.array(PlanSession).optional(),
 });
 export type PlanMyDayResponse = z.infer<typeof PlanMyDayResponse>;
 

@@ -76,7 +76,7 @@ Roles are carried by a signed token: attendee (issued on join), or speaker, orga
 | GET `/config` | public | Runtime config for the SPA: version, event timezone, Dash0 RUM settings (public values only) | WS0 |
 | GET `/sessions/:id` | any | Session snapshot (session, questions, clusters, attendance), refetched after an SSE reconnect | WS2 |
 | GET `/events/:eventId/search?q=&track=&level=&from=&to=` | any | Hybrid session search; optional exact track/level filters and UTC overlap window `[from,to)`, limit 1–50 | WS1 |
-| POST `/events/:eventId/plan-my-day` | attendee | RAG schedule suggestion with cited session ids | WS1 |
+| POST `/events/:eventId/plan-my-day` | attendee | RAG schedule suggestion with cited session ids; `sessions: PlanSession[]` contains each selected full Session plus `roomName`, in plan order. 200 responses include all details; schema allows omission only for older API compatibility. Summary times use the event timezone. Pending generation returns 202 + Retry-After with empty plan/sessions within 7.5 s. | WS1 |
 | POST `/events/:eventId/ask` | organizer (attendee in P1) | Ask the conference (RAG over transcripts and questions) | WS1 |
 | GET and PUT `/me/schedule` | attendee | My schedule | WS3 |
 | PUT `/me/prefs` | attendee | Accessibility prefs, language, interests (opt-in) | WS3 |

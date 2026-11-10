@@ -32,7 +32,7 @@ const PENDING_RETRIES = 6;
 const PENDING_RETRY_MS = 2_000;
 /** The 202 shape: nothing planned yet and a "Preparing…" summary. */
 const isPending = (r: PlanResponse) =>
-  r.plan.length === 0 && (r.sessions?.length ?? 0) === 0 && /preparing/i.test(r.summary);
+  r.plan.length === 0 && (r.sessions?.length ?? 0) === 0 && /^\s*preparing/i.test(r.summary);
 
 /** A card's data: a full Session when we know it, else what the plan response gave us. */
 interface CardData {
@@ -99,7 +99,7 @@ export default function PlanMyDay() {
           plan = res;
           break;
         }
-        setState({ status: 'loading', pending: res.summary });
+        setState({ status: 'loading', pending: 'Building your day…' });
         await new Promise((r) => setTimeout(r, PENDING_RETRY_MS));
       }
       if (!plan) {
